@@ -1,0 +1,21 @@
+# dependencies / build
+node_modules/
+.next/
+dist/
+build/
+coverage/
+.turbo/
+
+# env and secrets
+.env
+.env.*
+!.env.example
+
+# local data
+*.log
+*.sqlite
+*.db
+
+# OS / editor
+.DS_Store
+.idea/
