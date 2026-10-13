@@ -1,0 +1,208 @@
+/**
+ * Russian is the source of truth for message keys. Every other locale must
+ * implement the same keys (enforced by the `Messages` type in `es.ts`).
+ * Placeholders use `{name}` syntax.
+ */
+export const ru = {
+  "app.name": "Ojo de Halcón",
+  "app.tagline": "Все ваши трамите — в одном месте",
+
+  "common.loading": "Загрузка…",
+  "common.save": "Сохранить",
+  "common.saved": "Сохранено",
+  "common.logout": "Выйти",
+  "common.copy": "Копировать",
+  "common.copied": "Скопировано",
+  "common.retry": "Попробовать снова",
+  "common.cancel": "Отмена",
+  "common.skip": "Пропустить",
+  "common.continue": "Продолжить",
+  "common.genericError": "Что-то пошло не так. Попробуйте ещё раз.",
+  "common.rateLimited": "Слишком много попыток. Подождите немного и повторите.",
+  "common.notConfigured": "Сервис временно недоступен: не настроен Telegram-бот.",
+
+  "nav.dashboard": "Главная",
+  "nav.news": "Новости проекта",
+  "nav.links": "Полезное",
+  "nav.settings": "Настройки",
+  "nav.menu": "Меню",
+
+  "menu.group.dni": "ДНИ",
+  "menu.group.citizenship": "Гражданство",
+  "menu.dni_approval": "Migraciones",
+  "menu.dni_production": "RENAPER",
+  "menu.dni_post": "Почта",
+  "menu.citizenship_dnm": "Migraciones",
+  "menu.citizenship_court": "Суд",
+
+  "field.email": "E-mail",
+  "field.password": "Пароль",
+  "field.passwordConfirm": "Повторите пароль",
+  "field.passwordHint": "Не короче {min} символов",
+  "field.firstName": "Имя",
+  "field.lastName": "Фамилия",
+  "field.birthDate": "Дата рождения",
+  "field.day": "День",
+  "field.month": "Месяц",
+  "field.year": "Год",
+
+  "auth.login.title": "Вход",
+  "auth.login.subtitle": "Войдите в свой кабинет.",
+  "auth.login.submit": "Войти",
+  "auth.login.forgot": "Забыли пароль?",
+  "auth.login.noAccount": "Нет аккаунта?",
+  "auth.login.registerLink": "Зарегистрироваться",
+  "auth.login.invalid": "Неверный e-mail или пароль",
+
+  "auth.register.title": "Регистрация",
+  "auth.register.subtitle": "Создайте аккаунт. Профиль и Telegram можно заполнить на следующем шаге.",
+  "auth.register.consent":
+    "Я буду отслеживать только свои трамите и согласен(на) на обработку моих персональных данных.",
+  "auth.register.submit": "Создать аккаунт",
+  "auth.register.haveAccount": "Уже есть аккаунт?",
+  "auth.register.loginLink": "Войти",
+  "auth.register.emailTaken": "Аккаунт с таким e-mail уже существует",
+
+  "auth.forgot.title": "Сброс пароля",
+  "auth.forgot.subtitle": "Укажите e-mail аккаунта — пришлём ссылку для создания нового пароля.",
+  "auth.forgot.submit": "Отправить ссылку",
+  "auth.forgot.sent": "Если такой адрес зарегистрирован, мы отправили на него ссылку для сброса пароля.",
+  "auth.forgot.back": "Вернуться ко входу",
+
+  "auth.reset.title": "Новый пароль",
+  "auth.reset.submit": "Сохранить пароль",
+  "auth.reset.done": "Пароль изменён. Теперь можно войти.",
+  "auth.reset.invalid": "Ссылка недействительна или устарела. Запросите новую.",
+  "auth.reset.toLogin": "Перейти ко входу",
+
+  "auth.verify.pendingTitle": "Подтвердите e-mail",
+  "auth.verify.pendingText": "Мы отправили письмо на {email}. Откройте ссылку из письма, чтобы продолжить.",
+  "auth.verify.resend": "Отправить письмо ещё раз",
+  "auth.verify.resent": "Письмо отправлено.",
+  "auth.verify.doneTitle": "E-mail подтверждён",
+  "auth.verify.doneText": "Спасибо! Теперь можно пользоваться сервисом.",
+  "auth.verify.invalid": "Ссылка недействительна или устарела.",
+  "auth.verify.toApp": "Перейти в кабинет",
+
+  "onboarding.title": "Расскажите о себе",
+  "onboarding.subtitle":
+    "Это необязательно. По имени и дате рождения мы сможем сами находить ваши дела там, где это возможно.",
+  "onboarding.profile": "Данные из документов",
+  "onboarding.services": "Что вы отслеживаете?",
+  "onboarding.servicesHelp": "Уведомления будут приходить только по отмеченным сервисам.",
+  "onboarding.submit": "Готово",
+
+  "dashboard.title": "Главная",
+  "dashboard.welcome": "Здравствуйте, {name}!",
+  "dashboard.welcomeAnon": "Добро пожаловать!",
+  "dashboard.stub":
+    "Здесь появятся ваши трекеры: DNI, почта, гражданство и суд. Раздел в разработке.",
+  "dashboard.profileNudge": "Заполните профиль, чтобы мы могли искать ваши дела автоматически.",
+  "dashboard.profileLink": "Заполнить профиль",
+  "dashboard.telegramNudge": "Подключите Telegram, чтобы получать уведомления.",
+  "dashboard.telegramLink": "Подключить Telegram",
+
+  "settings.title": "Настройки",
+  "settings.profile.title": "Профиль",
+  "settings.profile.help":
+    "Имя, фамилия и дата рождения используются для проверки, что вы отслеживаете своё дело.",
+  "settings.profile.email": "E-mail: {email}",
+  "settings.profile.locked":
+    "Профиль нельзя изменить после подключения дел. Для исправления обратитесь в поддержку.",
+
+  "settings.telegram.title": "Telegram",
+  "settings.telegram.help": "Через Telegram приходят уведомления. Для входа он не используется.",
+  "settings.telegram.linked": "Подключён",
+  "settings.telegram.account": "Аккаунт: {username}",
+  "settings.telegram.noUsername": "без имени пользователя",
+  "settings.telegram.notLinked": "Не подключён",
+  "settings.telegram.connect": "Подключить Telegram",
+  "settings.telegram.instruction": "Откройте бота и нажмите «Start» — привязка произойдёт автоматически.",
+  "settings.telegram.openBot": "Открыть Telegram",
+  "settings.telegram.orCode": "Или отправьте боту этот код вручную:",
+  "settings.telegram.waiting": "Ждём подтверждения…",
+  "settings.telegram.expiresIn": "Код действует ещё {minutes} мин.",
+  "settings.telegram.expired": "Код устарел. Получите новый.",
+  "settings.telegram.unlink": "Отключить",
+  "settings.telegram.failure.ALREADY_LINKED": "Этот Telegram уже привязан к другому аккаунту.",
+
+  "settings.services.title": "Уведомления",
+  "settings.services.help": "Уведомления приходят в Telegram только по отмеченным сервисам.",
+
+  "settings.account.title": "Удаление аккаунта",
+  "settings.account.warning":
+    "Аккаунт и все связанные данные будут удалены без возможности восстановления.",
+  "settings.account.passwordLabel": "Введите пароль для подтверждения",
+  "settings.account.delete": "Удалить аккаунт",
+  "settings.account.invalidPassword": "Неверный пароль",
+
+  "service.soon": "Сервис в разработке",
+  "service.soonText":
+    "Автоматическое отслеживание этого сервиса скоро появится. Пока статус можно проверить на официальном сайте.",
+  "service.officialSite": "Открыть официальный сайт",
+  "service.notifications": "Уведомления по этому сервису",
+  "service.notificationsOn": "включены",
+  "service.notificationsOff": "выключены",
+  "service.changeInSettings": "Изменить в настройках",
+
+  "news.title": "Новости проекта",
+  "news.subtitle": "Запуск, новые сервисы, обновления и анонсы.",
+  "news.empty": "Пока новостей нет.",
+  "news.back": "Все новости",
+  "news.latest": "Последние новости",
+  "news.all": "Все новости",
+
+  "links.title": "Полезное",
+  "links.subtitle": "Официальные сайты и сервисы, которые пригодятся на пути к DNI и гражданству.",
+  "links.group.tracking": "Отслеживание статусов",
+  "links.group.documents": "Документы и справки",
+  "links.group.citizenship": "Гражданство",
+  "links.open": "Открыть",
+  "links.item.dni-approval": "Статус одобрения DNI в Migraciones",
+  "links.item.dni-production": "Статус изготовления DNI в RENAPER",
+  "links.item.dni-post": "Отслеживание DNI на почте (Correo Argentino)",
+  "links.item.citizenship-status": "Статус трамите на гражданство",
+  "links.item.court-status": "Статус дела о гражданстве в суде",
+  "links.item.entry-certificate": "Справка о дате визита в страну",
+  "links.item.criminal-record-turn": "Турно на справку о несудимости в Аргентине",
+  "links.item.citizenship-procedure": "Трамите на гражданство онлайн",
+  "links.item.citizenship-documents": "Загрузить документы к трамите на гражданство",
+  "links.bot.title": "Наш Telegram-бот",
+  "links.bot.text": "Через него приходят уведомления. Подключается в настройках.",
+  "links.bot.open": "Открыть бота",
+
+  "sections.dni_approval": "DNI: одобрение в Migraciones",
+  "sections.dni_production": "DNI: изготовление в RENAPER",
+  "sections.dni_post": "DNI: доставка почтой",
+  "sections.citizenship_dnm": "Гражданство: Migraciones",
+  "sections.citizenship_court": "Гражданство: суд",
+
+  "validation.required": "Обязательное поле",
+  "validation.nameInvalid": "Допустимы буквы, пробел, дефис и апостроф",
+  "validation.nameTooLong": "Слишком длинное значение",
+  "validation.birthDateInvalid": "Укажите существующую дату",
+  "validation.birthDateFuture": "Дата рождения не может быть в будущем",
+  "validation.ageTooYoung": "Аккаунт можно создать с 18 лет",
+  "validation.ageTooOld": "Проверьте год рождения",
+  "validation.consentRequired": "Необходимо согласие",
+  "validation.emailInvalid": "Проверьте адрес e-mail",
+  "validation.passwordTooShort": "Пароль слишком короткий",
+  "validation.passwordTooLong": "Пароль слишком длинный",
+  "validation.passwordMismatch": "Пароли не совпадают",
+
+  "email.verify.subject": "Подтвердите e-mail — Ojo de Halcón",
+  "email.verify.body": "Чтобы подтвердить адрес, откройте ссылку: {link}",
+  "email.reset.subject": "Сброс пароля — Ojo de Halcón",
+  "email.reset.body": "Чтобы задать новый пароль, откройте ссылку: {link}\nЕсли вы не запрашивали сброс, просто проигнорируйте письмо.",
+
+  "bot.welcome":
+    "Здравствуйте! Чтобы подключить уведомления, откройте на сайте «Настройки» и нажмите «Подключить Telegram».",
+  "bot.linked": "Готово! Telegram подключён. Уведомления будут приходить сюда.",
+  "bot.codeInvalid": "Код не найден или уже использован. Получите новый в настройках на сайте.",
+  "bot.codeExpired": "Код устарел. Получите новый в настройках на сайте.",
+  "bot.alreadyLinked": "Этот Telegram уже привязан к другому аккаунту.",
+  "bot.error": "Не удалось обработать код. Попробуйте ещё раз позже.",
+} as const;
+
+export type MessageKey = keyof typeof ru;
+export type Messages = Record<MessageKey, string>;

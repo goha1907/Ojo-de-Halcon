@@ -19,3 +19,8 @@ coverage/
 # OS / editor
 .DS_Store
 .idea/
+
+# generated
+packages/db/src/generated/
+*.tsbuildinfo
+next-env.d.ts
