@@ -5,7 +5,7 @@ const SOURCES: ReadonlyArray<{ key: MessageKey; soon?: boolean }> = [
   { key: "landing.sources.renaper" },
   { key: "landing.sources.correo" },
   { key: "landing.sources.pjn" },
-  { key: "landing.sources.migraciones", soon: true },
+  { key: "landing.sources.migraciones" },
 ];
 
 /** The pain the service removes, and what it follows today. */

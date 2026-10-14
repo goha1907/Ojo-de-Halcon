@@ -99,22 +99,6 @@ export interface EventPayload {
   notify?: boolean;
 }
 
-/** One detected change of a case, for the "recent changes" feed. */
-export interface RecentEventDto {
-  id: string;
-  createdAt: string;
-  trackerId: string;
-  kind: TrackerKindValue;
-  label: string | null;
-  reference: string;
-  /** Title of the stage that appeared, or the new status when only the status changed. */
-  title: string;
-  /** Date of that stage as the source gave it. */
-  date: string;
-  /** The first report of a case that was just added. */
-  initial: boolean;
-}
-
 /** Latest known stage of one case, for the digest sent when Telegram gets linked. */
 export interface DigestItem {
   kind: TrackerKindValue;
@@ -273,6 +257,16 @@ export function createTrackerService(deps: {
     return occupied === 0 ? "OK" : "SUBSCRIPTION_REQUIRED";
   }
 
+  /** Runs a create; null when another request just added the very same case (unique key). */
+  async function createUnique<T>(create: () => Promise<T>): Promise<T | null> {
+    try {
+      return await create();
+    } catch (error) {
+      if (typeof error === "object" && error !== null && (error as { code?: string }).code === "P2002") return null;
+      throw error;
+    }
+  }
+
   /** The date Migraciones is asked with (DD/MM/YYYY): the case's own, else the owner's profile. */
   async function dnmBirthDate(tracker: Tracker): Promise<string | null> {
     const date =
@@ -306,7 +300,7 @@ export function createTrackerService(deps: {
       if (!holderBirthDate) return { ok: false, reason: "BIRTH_DATE_REQUIRED" };
     }
     const existing = await prisma.tracker.findFirst({
-      where: { userId, kind, reference, status: { not: "FINISHED" } },
+      where: { userId, kind, reference },
     });
     if (existing) return { ok: false, reason: "ALREADY_EXISTS" };
     const remembered = takeRead(userId, kind, reference, holderBirthDate);
@@ -316,26 +310,12 @@ export function createTrackerService(deps: {
       const gate = await addGate(userId);
       if (gate !== "OK") return { ok: false, reason: gate };
     }
-    const tracker = await prisma.tracker.upsert({
-      where: { userId_kind_reference: { userId, kind, reference } },
-      create: {
-        userId,
-        kind,
-        reference,
-        label: label ?? null,
-        holderBirthDate,
-        nextCheckAt: now(),
-      },
-      update: {
-        status: "ACTIVE",
-        // a case taken up again is notified again
-        notifyTelegram: true,
-        nextCheckAt: now(),
-        lastError: null,
-        label: label ?? null,
-        ...(holderBirthDate ? { holderBirthDate } : {}),
-      },
-    });
+    const tracker = await createUnique(() =>
+      prisma.tracker.create({
+        data: { userId, kind, reference, label: label ?? null, holderBirthDate, nextCheckAt: now() },
+      }),
+    );
+    if (!tracker) return { ok: false, reason: "ALREADY_EXISTS" };
     // the case was read in the preview step: store that read now, so the card is filled at once
     if (remembered) {
       // added already closed: no "your case is finished" notice for something the user just saw
@@ -364,7 +344,7 @@ export function createTrackerService(deps: {
     birthDate?: Date | null,
   ): Promise<TramitePreviewResult> {
     const existing = await prisma.tracker.findFirst({
-      where: { userId, kind, reference, status: { not: "FINISHED" } },
+      where: { userId, kind, reference },
     });
     if (existing) return { ok: false, reason: "ALREADY_EXISTS" };
     let holderBirthDate: Date | null = null;
@@ -511,32 +491,6 @@ export function createTrackerService(deps: {
     return result.count === 1;
   }
 
-  /** The latest detected changes of the user's cases, newest first. */
-  async function recentEvents(userId: string, limit = 8): Promise<RecentEventDto[]> {
-    const rows = await prisma.trackerEvent.findMany({
-      where: { tracker: { userId } },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      include: { tracker: { select: { id: true, kind: true, label: true, reference: true } } },
-    });
-    return rows.map((row) => {
-      const payload = row.payload as unknown as EventPayload;
-      const kind = row.tracker.kind as TrackerKindValue;
-      const field = STATE_FIELD[kind] ?? "status";
-      return {
-        id: row.id,
-        createdAt: row.createdAt.toISOString(),
-        trackerId: row.tracker.id,
-        kind,
-        label: row.tracker.label,
-        reference: row.tracker.reference,
-        title: payload.step?.title ?? payload.header?.[field] ?? payload.header?.status ?? "",
-        date: payload.step?.date ?? payload.header?.statusDate ?? "",
-        initial: payload.initial === true,
-      };
-    });
-  }
-
   /** Anonymous tally of seen statuses and stages, most frequent first (for product analytics). */
   async function statusStats(kind?: TrackerKindValue) {
     return prisma.statusObservation.findMany({
@@ -626,7 +580,8 @@ export function createTrackerService(deps: {
     const existing = await prisma.tracker.findUnique({
       where: { userId_kind_reference: { userId, kind: "PJN", reference } },
     });
-    if (existing && existing.status !== "FINISHED") return { ok: false, reason: "ALREADY_EXISTS" };
+    // the same case is never added twice, whatever state the first one is in (even finished)
+    if (existing) return { ok: false, reason: "ALREADY_EXISTS" };
     return { ok: true, reference };
   }
 
@@ -686,26 +641,20 @@ export function createTrackerService(deps: {
       const gate = await addGate(userId);
       if (gate !== "OK") return { ok: false, reason: gate };
     }
-    const tracker = await prisma.tracker.upsert({
-      where: { userId_kind_reference: { userId, kind: "PJN", reference } },
-      create: {
-        userId,
-        kind: "PJN",
-        reference,
-        status,
-        label: label ?? null,
-        lastCheckedAt: now(),
-        nextCheckAt: now(),
-      },
-      update: {
-        status,
-        label: label ?? null,
-        lastError: null,
-        lastCheckedAt: now(),
-        nextCheckAt: now(),
-        slotSince: now(),
-      },
-    });
+    const tracker = await createUnique(() =>
+      prisma.tracker.create({
+        data: {
+          userId,
+          kind: "PJN",
+          reference,
+          status,
+          label: label ?? null,
+          lastCheckedAt: now(),
+          nextCheckAt: now(),
+        },
+      }),
+    );
+    if (!tracker) return { ok: false, reason: "ALREADY_EXISTS" };
     await prisma.trackerSnapshot.upsert({
       where: { trackerId: tracker.id },
       create: { trackerId: tracker.id, header: asJson(header), steps: [], contentHash: contentHash(header, []) },
@@ -1144,7 +1093,6 @@ export function createTrackerService(deps: {
     list,
     addTramite,
     previewTramite,
-    recentEvents,
     closeFinished,
     statusStats,
     findPjnByProfile,

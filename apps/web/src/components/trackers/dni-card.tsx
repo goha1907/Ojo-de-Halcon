@@ -2,6 +2,7 @@ import type { TrackerDto } from "@ojo/core";
 import { isDnmKind, parsePjnReference, type TranslateFn } from "@ojo/shared";
 import { Alert, cn } from "@ojo/ui";
 import { daysSince } from "@/lib/days";
+import { toneOf } from "@/lib/status-tones";
 import { DniCardShell } from "./dni-card-shell";
 import { FixNumberForm } from "./fix-number-form";
 import { ReleaseCaseButton } from "./release-case-button";
@@ -68,6 +69,7 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
   return (
     <DniCardShell
       id={tracker.id}
+      tone={toneOf(tracker.status, tracker.keptInSubscription)}
       label={tracker.label}
       number={caseNumber}
       summary={

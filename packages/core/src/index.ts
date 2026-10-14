@@ -47,7 +47,6 @@ export type {
   PjnSearchResult,
   PjnStartResult,
   TrackerDto,
-  RecentEventDto,
   TrackerService,
 } from "./trackers/tracker-service";
 export type { AccessPlan, AccessState } from "./access/access-service";

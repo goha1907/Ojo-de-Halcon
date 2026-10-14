@@ -2,6 +2,8 @@
 
 import { useCallback, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { useT } from "@/components/providers/i18n-provider";
+import { StatusLegend } from "./status-legend";
+import { toneOf, type StatusTone } from "@/lib/status-tones";
 
 export type BoardStatus = "PENDING_CONFIRMATION" | "ACTIVE" | "FINISHED" | "PAUSED";
 
@@ -123,8 +125,22 @@ export function TrackerBoard({ items, storageKey }: { items: BoardItem[]; storag
     (name) => name === "all" || name === filter || counts[name] > 0,
   );
 
+  const legendTones: StatusTone[] = ["tracking", "removing", "finished", "paused", "pending"];
+  const presentTones = new Set(items.map((item) => toneOf(item.status, item.kept)));
+  const legend = legendTones
+    // the three main states are always explained; the rare ones only when one is on the page
+    .filter((tone) => ["tracking", "removing", "finished"].includes(tone) || presentTones.has(tone))
+    .map((tone) => ({
+      tone,
+      label: t(`board.legend.${tone}` as never),
+      hint: t(`board.legend.${tone}.hint` as never),
+    }));
+
   return (
     <div className="space-y-4">
+      {items.length > 0 && (
+        <StatusLegend title={t("board.legend.title")} infoLabel={t("board.legend.info")} items={legend} />
+      )}
       {items.length > 1 && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <label className="flex items-center gap-2 text-sm text-slate-600">

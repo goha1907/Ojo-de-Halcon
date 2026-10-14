@@ -6,9 +6,12 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, type ReactNode } from "react";
 import { useT } from "@/components/providers/i18n-provider";
 import { apiRequest } from "@/lib/api-client";
+import { TONE_STYLES, type StatusTone } from "@/lib/status-tones";
 
 interface Props {
   id: string;
+  /** Colour of the card edge: the state of the tracking at a glance. */
+  tone: StatusTone;
   /** The user's own name of the tracking, if any. */
   label: string | null;
   /** The official number shown next to the name. */
@@ -27,7 +30,7 @@ const ICON_NEUTRAL = `${ICON_BUTTON} border-slate-200 bg-white text-slate-700 ho
 const ICON_PRIMARY = `${ICON_BUTTON} border-brand-600 bg-brand-600 text-white hover:bg-brand-700`;
 
 /** Folding frame of a tracking card: clickable header with an in-place rename, body below. */
-export function DniCardShell({ id, label, number, summary, renameTitle, toggleTitle, strip, children }: Props) {
+export function DniCardShell({ id, tone, label, number, summary, renameTitle, toggleTitle, strip, children }: Props) {
   const t = useT();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -60,7 +63,12 @@ export function DniCardShell({ id, label, number, summary, renameTitle, toggleTi
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section
+      className={cn(
+        "overflow-hidden rounded-2xl border border-l-4 border-slate-200 bg-white shadow-sm",
+        TONE_STYLES[tone].edge,
+      )}
+    >
       <div
         role="button"
         tabIndex={0}

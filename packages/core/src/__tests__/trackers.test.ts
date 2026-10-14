@@ -817,33 +817,41 @@ describe("final statuses end a case", () => {
   });
 });
 
-describe("recent changes feed", () => {
-  it("lists the latest changes of the user's cases, newest first, and no one else's", async () => {
-    let step = 0;
+describe("the same case is never added twice", () => {
+  it("refuses a repeat in every section, whatever state the first one is in", async () => {
+    const header = { expediente: "CNE 7900/2026", dependencia: "J", sit_actual: "ARCHIVESE", caratula: "X" };
     const core = makeCore({
       scraper: {
-        renaper: async () =>
-          renaperAnswer({
-            steps: Array.from({ length: step + 1 }, (_, i) => ({ date: `2026-10-1${i}`, title: `STAGE ${i}`, detail: "" })),
-          }),
+        renaper: async () => renaperAnswer({ header: { status: "Embalado" }, finished: true }),
+        correo: async () => renaperAnswer(),
+        dnm: async () => ({ found: true, header: { status: "X", state: "RESUELTO" }, steps: [], finished: true }),
+        pjnCase: async () => ({ header, actuaciones: [] }),
       },
     });
     const userId = await newUser(core);
-    const other = await newUser(core, "other@example.com");
+    await prisma.user.update({ where: { id: userId }, data: { birthDate: new Date("1990-03-05") } });
     await subscribe(userId);
-    await subscribe(other);
-    await core.trackers.addTramite(userId, "RENAPER", "755824304", "Mine");
-    await core.trackers.addTramite(other, "RENAPER", "111111111");
-    await core.trackers.runDue(10);
-    step = 1;
-    await prisma.tracker.updateMany({ data: { nextCheckAt: new Date() } });
-    await core.trackers.runDue(10);
+    const input = { jurisdiction: "4", number: "7900", year: "2026" };
 
-    const events = await core.trackers.recentEvents(userId);
-    expect(events.map((event) => [event.label, event.title, event.initial])).toEqual([
-      ["Mine", "STAGE 1", false],
-      ["Mine", "STAGE 0", true],
-    ]);
+    // the first of each is added (RENAPER, DNI and the court case end up finished, Correo stays open)
+    for (const kind of ["RENAPER", "CORREO", "DNM_DNI", "DNM_CITIZENSHIP"] as const) {
+      expect(await core.trackers.addTramite(userId, kind, "755824304")).toMatchObject({ ok: true });
+    }
+    expect(await core.trackers.addPjn(userId, input)).toMatchObject({ ok: true });
+
+    for (const kind of ["RENAPER", "CORREO", "DNM_DNI", "DNM_CITIZENSHIP"] as const) {
+      expect(await core.trackers.previewTramite(userId, kind, "755824304")).toEqual({
+        ok: false,
+        reason: "ALREADY_EXISTS",
+      });
+      expect(await core.trackers.addTramite(userId, kind, "755824304")).toEqual({
+        ok: false,
+        reason: "ALREADY_EXISTS",
+      });
+    }
+    expect(await core.trackers.previewPjn(userId, input)).toEqual({ ok: false, reason: "ALREADY_EXISTS" });
+    expect(await core.trackers.addPjn(userId, input)).toEqual({ ok: false, reason: "ALREADY_EXISTS" });
+    expect(await prisma.tracker.count({ where: { userId } })).toBe(5);
   });
 });
 
