@@ -5,12 +5,13 @@ import { ProfileCard } from "@/components/settings/profile-card";
 import { ServicesCard } from "@/components/settings/services-card";
 import { TelegramCard } from "@/components/settings/telegram-card";
 import { getCore } from "@/server/core";
+import { getEnv } from "@/server/env";
 import { getT } from "@/server/i18n";
 import { requireUser } from "@/server/session";
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const { t, locale } = await getT();
+  const { t } = await getT();
   const core = getCore();
   const [services, people, access] = await Promise.all([
     core.preferences.get(user.id),
@@ -29,7 +30,7 @@ export default async function SettingsPage() {
       <PeopleCard people={people} />
       <TelegramCard linked={user.telegramLinked} username={user.telegramUsername} />
       <ServicesCard initial={services} />
-      <AccessCard access={access} t={t} locale={locale} />
+      <AccessCard access={access} stubEnabled={getEnv().PAYMENTS_STUB} />
       <DeleteAccountCard />
     </>
   );

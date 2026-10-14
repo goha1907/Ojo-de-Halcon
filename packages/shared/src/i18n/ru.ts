@@ -277,11 +277,11 @@ export const ru = {
   "people.remove": "Удалить",
   "people.removeConfirm": "Удалить человека вместе с его делами?",
   "people.limit": "Достигнут лимит: {max} человек.",
-  "people.subscription": "Добавление людей доступно с подпиской: пробный период покрывает одно дело. Оплата появится позже.",
+  "people.subscription": "Добавление людей доступно с подпиской: пробный период покрывает одно дело. Оформить можно в Настройках → Подписка.",
   "validation.personConsent": "Подтвердите согласие",
   "track.field.person": "На кого",
   "track.person.me": "Я",
-  "track.error.subscription": "Пробный период покрывает одно дело. Чтобы добавить ещё одно дело или человека, нужна подписка (оплата появится позже).",
+  "track.error.subscription": "Пробный период покрывает одно дело. Чтобы добавить ещё одно дело или человека, нужна подписка (Настройки → Подписка).",
   "track.error.person": "Человек не найден",
   "track.forPerson": "Для: {name}",
   "settings.access.title": "Подписка",
@@ -290,6 +290,12 @@ export const ru = {
   "settings.access.trialExpired": "Пробный период закончился {date}. Отслеживание приостановлено до подписки.",
   "settings.access.subscription": "Подписка активна до {date}.",
   "settings.access.payment": "Оплата подписки появится позже.",
+
+  "settings.access.stubTitle": "Тестовый режим оплаты",
+  "settings.access.stubHelp": "Оплата ещё не подключена: кнопки ниже имитируют подписку для проверки сценариев.",
+  "settings.access.stubActivate": "Оформить подписку (тест)",
+  "settings.access.stubCancel": "Отменить подписку",
+  "settings.access.stubReset": "Сбросить пробный период",
 } as const;
 
 export type MessageKey = keyof typeof ru;

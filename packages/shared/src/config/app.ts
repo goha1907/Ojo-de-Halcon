@@ -37,6 +37,8 @@ export const APP_CONFIG = {
     maxPeople: 5,
     /** Free trial length, counted from the first added tracker. */
     trialDays: 7,
+    /** Length of one paid period. */
+    subscriptionDays: 30,
   },
   rateLimit: {
     /** Sign-in attempts, per client IP. */
@@ -83,4 +85,5 @@ export const API_ROUTES = {
   pjnSearch: "/api/trackers/pjn/search",
   pjnConfirm: "/api/trackers/pjn/confirm",
   people: "/api/people",
+  billingStub: "/api/billing/stub",
 } as const;

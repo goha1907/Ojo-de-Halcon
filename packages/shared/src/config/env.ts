@@ -21,13 +21,19 @@ const envSchema = z.object({
   SCRAPER_DIR: z.string().default("services/scraper"),
   SCRAPER_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(150),
   SCRAPER_CONCURRENCY: z.coerce.number().int().positive().default(1),
+  /**
+   * "true": the settings page shows test buttons that grant a subscription
+   * without payment. Defaults to on outside production; refused in production
+   * unless explicitly forced, so a real deployment never gives access away.
+   */
+  PAYMENTS_STUB: z.enum(["true", "false"]).optional(),
   EMAIL_VERIFICATION_REQUIRED: z
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
 });
 
-export type Env = z.infer<typeof envSchema>;
+export type Env = Omit<z.infer<typeof envSchema>, "PAYMENTS_STUB"> & { PAYMENTS_STUB: boolean };
 
 let cached: Env | undefined;
 
@@ -41,8 +47,13 @@ export function loadEnv(source: Record<string, string | undefined> = process.env
       .join("; ");
     throw new Error(`Invalid environment: ${problems}`);
   }
-  if (source === process.env) cached = parsed.data;
-  return parsed.data;
+  const stub = parsed.data.PAYMENTS_STUB;
+  const env: Env = {
+    ...parsed.data,
+    PAYMENTS_STUB: stub === undefined ? parsed.data.NODE_ENV !== "production" : stub === "true",
+  };
+  if (source === process.env) cached = env;
+  return env;
 }
 
 /** Test helper: forget the cached environment. */
