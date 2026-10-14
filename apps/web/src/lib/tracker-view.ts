@@ -1,8 +1,9 @@
 import type { TrackerDto } from "@ojo/core";
-import { parsePjnReference } from "@ojo/shared";
+import { correoDisplay, parsePjnReference } from "@ojo/shared";
 
 /** The number shown to people: the court file number for court cases, else the trámite number. */
 export function displayNumber(tracker: Pick<TrackerDto, "kind" | "reference" | "header">): string {
+  if (tracker.kind === "CORREO") return correoDisplay(tracker.reference);
   if (tracker.kind !== "PJN") return tracker.reference;
   if (tracker.header.expediente) return tracker.header.expediente;
   const parsed = parsePjnReference(tracker.reference);

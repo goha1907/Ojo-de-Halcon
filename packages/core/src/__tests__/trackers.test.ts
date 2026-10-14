@@ -445,7 +445,7 @@ describe("ordered notifications and the Telegram digest", () => {
     });
     const userId = await newUser(core);
     await subscribe(userId);
-    await confirmedCase(core, userId); // court first (the last menu item)
+    await confirmedCase(core, userId); // court first (before the post office in the menu)
     await core.trackers.addTramite(userId, "RENAPER", "755824304");
     await core.trackers.addTramite(userId, "CORREO", "755824304");
     await core.trackers.runDue();
@@ -453,8 +453,8 @@ describe("ordered notifications and the Telegram digest", () => {
     const digest = await core.trackers.latestSteps(userId);
     expect(digest.map((item) => [item.section, item.step?.title])).toEqual([
       ["dni_production", "Verificado"],
-      ["dni_post", "STEP 2"],
       ["citizenship_court", "STEP 4"],
+      ["dni_post", "STEP 2"],
     ]);
   });
 });
@@ -814,6 +814,50 @@ describe("final statuses end a case", () => {
     await core.trackers.addTramite(userId, "CORREO", "755824304");
     await core.trackers.runDue();
     expect((await core.trackers.list(userId))[0]!.status).toBe("FINISHED");
+  });
+});
+
+describe("trackers: Correo forms", () => {
+  it("passes the form, prefix and code of a stored reference to the scraper", async () => {
+    const asked: string[] = [];
+    const core = makeCore({
+      scraper: {
+        correo: async (reference: string) => {
+          asked.push(reference);
+          return renaperAnswer();
+        },
+      },
+    });
+    const userId = await newUser(core);
+    await subscribe(userId);
+    expect(await core.trackers.addTramite(userId, "CORREO", "ondnp:CU:123456789")).toMatchObject({ ok: true });
+    expect(await core.trackers.addTramite(userId, "CORREO", "oidn:AB123456789CD")).toMatchObject({ ok: true });
+    await core.trackers.runDue();
+    expect(asked.sort()).toEqual(["oidn:AB123456789CD", "ondnp:CU:123456789"]);
+  });
+
+  it("keeps parcels with the same code under another prefix apart", async () => {
+    const core = makeCore();
+    const userId = await newUser(core);
+    await subscribe(userId);
+    await core.trackers.addTramite(userId, "CORREO", "ondnp:CU:123456789");
+    expect(await core.trackers.addTramite(userId, "CORREO", "ondnp:SU:123456789")).toMatchObject({ ok: true });
+    expect(await core.trackers.addTramite(userId, "CORREO", "ondnp:CU:123456789")).toMatchObject({
+      ok: false,
+      reason: "ALREADY_EXISTS",
+    });
+  });
+
+  it("only replaces a code with a valid reference of its own kind", async () => {
+    const core = makeCore();
+    const userId = await newUser(core);
+    await subscribe(userId);
+    const correo = await core.trackers.addTramite(userId, "CORREO", "ondnp:CU:123456789");
+    const renaper = await core.trackers.addTramite(userId, "RENAPER", "755824304");
+    if (!correo.ok || !renaper.ok) throw new Error("add failed");
+    expect(await core.trackers.replaceNumber(userId, correo.tracker.id, "ondnp:ZZ:1234567")).toBe("NOT_ALLOWED");
+    expect(await core.trackers.replaceNumber(userId, renaper.tracker.id, "ondnp:CU:1234567")).toBe("NOT_ALLOWED");
+    expect(await core.trackers.replaceNumber(userId, correo.tracker.id, "ondnp:CU:987654321")).toBe("OK");
   });
 });
 

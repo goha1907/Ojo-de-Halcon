@@ -1,4 +1,4 @@
-import { holderBirthDateSchema, tramiteNumberSchema } from "@ojo/shared";
+import { correoReferenceSchema, holderBirthDateSchema, tramiteNumberSchema } from "@ojo/shared";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiError, parseBody, withUser } from "@/server/api";
@@ -19,7 +19,11 @@ export async function DELETE(_request: Request, context: Context) {
   });
 }
 
-const correctSchema = z.object({ number: tramiteNumberSchema, birthDate: holderBirthDateSchema.optional() });
+// plain digits for trámites, or a Correo reference ("<form>:<…>"); the slot's kind decides which is valid
+const correctSchema = z.object({
+  number: z.union([tramiteNumberSchema, correoReferenceSchema]),
+  birthDate: holderBirthDateSchema.optional(),
+});
 
 /** Replaces the number of a RENAPER/Correo slot (typo, re-issued number, or cooldown over). */
 export async function PATCH(request: Request, context: Context) {

@@ -25,7 +25,7 @@ export function ReplaceSection({
             {t("track.replace.title")}
           </summary>
           <div className="mt-3">
-            <FixNumberForm id={tracker.id} current={tracker.reference} mode="replace" />
+            <FixNumberForm id={tracker.id} current={tracker.reference} kind={tracker.kind} mode="replace" />
           </div>
         </details>
       );

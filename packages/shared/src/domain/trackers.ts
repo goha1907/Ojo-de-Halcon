@@ -4,6 +4,8 @@ import { TRACKER_CONFIG } from "../config/trackers";
 import { findJurisdiction } from "../config/pjn";
 import type { MessageKey } from "../i18n/ru";
 import { normalizeSpaces, holderBirthDateSchema } from "./profile";
+import { normalizeCorreoReference } from "./correo";
+import { onlyDigits } from "./trackers-utils";
 
 const msg = (key: MessageKey) => ({ message: key });
 
@@ -39,9 +41,7 @@ export const TRACKER_KIND_SECTION = {
   PJN: "citizenship_court",
 } as const satisfies Record<TrackerKindValue, string>;
 
-export function onlyDigits(value: string): string {
-  return value.replace(/\D/g, "");
-}
+export { onlyDigits };
 
 export const tramiteNumberSchema = z
   .string()
@@ -52,6 +52,16 @@ export const tramiteNumberSchema = z
       .min(TRACKER_CONFIG.tramiteNumber.minDigits, msg("validation.tramiteInvalid"))
       .max(TRACKER_CONFIG.tramiteNumber.maxDigits, msg("validation.tramiteInvalid")),
   );
+
+/** A Correo reference: plain digits (DNI) or "<form>:<…>", validated against the form's own rules. */
+export const correoReferenceSchema = z.string().transform((value, ctx) => {
+  const reference = normalizeCorreoReference(value);
+  if (reference === null) {
+    ctx.addIssue({ code: "custom", message: "validation.correoInvalid" satisfies MessageKey });
+    return z.NEVER;
+  }
+  return reference;
+});
 
 export const pjnJurisdictionSchema = z
   .string()
@@ -90,7 +100,7 @@ export const addTrackerSchema = z.discriminatedUnion("kind", [
     birthDate: holderBirthDateSchema.optional(),
   }),
   z.object({ kind: z.literal("RENAPER"), number: tramiteNumberSchema }),
-  z.object({ kind: z.literal("CORREO"), number: tramiteNumberSchema }),
+  z.object({ kind: z.literal("CORREO"), number: correoReferenceSchema }),
   z.object({ kind: z.literal("PJN") }).merge(pjnCaseSchema),
 ]);
 export type AddTrackerInput = z.infer<typeof addTrackerSchema>;

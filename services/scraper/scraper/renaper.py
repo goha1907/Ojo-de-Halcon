@@ -20,7 +20,20 @@ ACTION = "submit_tramite"
 CORREO_ENDPOINT = (
     "https://www.correoargentino.com.ar/sites/all/modules/custom/ca_forms/api/wsFacade.php"
 )
-CORREO_REFERER = "https://www.correoargentino.com.ar/formularios/ondng"
+CORREO_FORMS_URL = "https://www.correoargentino.com.ar/formularios/"
+# `action` of each tracking form -> its page (they all post to the same endpoint)
+CORREO_PAGES = {
+    "ondnp": "ondnp",
+    "ondnc": "ondnc",
+    "ondi": "ondi",
+    "oidn": "oidn",
+    "ondng": "ondng",
+    "onpa": "onpa",
+    "mercadolibre": "mercadolibre",
+    "ecommerce": "e-commerce",
+}
+# forms whose trámite number the site pads with zeros to 12 digits
+CORREO_PADDED = {"ondng", "onpa"}
 CORREO_NOT_FOUND = "no se encontraron resultados"
 
 _FETCH_JS = """async ([num, siteKey, action]) => {
@@ -125,8 +138,29 @@ def parse_renaper(raw: dict) -> dict | None:
     }
 
 
-def fetch_correo(number: str, timeout: float = 25.0) -> list[dict] | None:
-    body = urllib.parse.urlencode({"action": "ondng", "id": digits(number, 12)}).encode()
+def correo_id(action: str, number: str) -> str:
+    """The code as the form sends it (the site's own client-side rules)."""
+    if action in CORREO_PADDED:
+        return digits(number, 12)
+    code = str(number).strip()
+    if action in ("ondnp", "ondnc", "ondi"):
+        pattern = r"\d{7,9}"
+    elif action == "oidn":
+        pattern = r"[A-Za-z]{2}\d{9}[A-Za-z]{2}"
+    else:
+        pattern = r"[A-Za-z0-9]{1,40}"
+    if not re.fullmatch(pattern, code):
+        raise SourceError("bad_number")
+    return code
+
+
+def fetch_correo(number: str, action: str = "ondng", producto: str = "", timeout: float = 25.0) -> list[dict] | None:
+    if action not in CORREO_PAGES:
+        raise SourceError("bad_number")
+    fields = {"action": action, "id": correo_id(action, number), "producto": producto, "pais": ""}
+    if action in ("ondnp", "ondnc", "ondi"):
+        fields["pais"] = "AR"
+    body = urllib.parse.urlencode({k: v for k, v in fields.items() if v}).encode()
     request = urllib.request.Request(
         CORREO_ENDPOINT,
         data=body,
@@ -134,7 +168,7 @@ def fetch_correo(number: str, timeout: float = 25.0) -> list[dict] | None:
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
             "X-Requested-With": "XMLHttpRequest",
-            "Referer": CORREO_REFERER,
+            "Referer": CORREO_FORMS_URL + CORREO_PAGES[action],
         },
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
@@ -184,9 +218,9 @@ def renaper_status(number: str, playwright) -> dict:
     }
 
 
-def correo_status(number: str) -> dict:
-    """Correo tab: stages of the DNI shipment from the post office site (ondng form)."""
-    steps = fetch_correo(number)
+def correo_status(number: str, action: str = "ondng", producto: str = "") -> dict:
+    """Correo tab: stages of a shipment from the post office site (one of its tracking forms)."""
+    steps = fetch_correo(number, action, producto)
     if not steps:
         raise SourceError("not_found")
     return {"found": True, "header": {}, "steps": steps, "finished": _delivered(steps)}

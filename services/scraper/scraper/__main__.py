@@ -1,7 +1,8 @@
 """CLI used by the Node worker; prints exactly one JSON document to stdout.
 
     python -m scraper renaper --number 755824304
-    python -m scraper correo --number 755824304
+    python -m scraper correo --number 755824304            # DNI form (ondng)
+    python -m scraper correo --action ondnp --producto CU --number 123456789
     python -m scraper dnm-dni --number 1129912025        # birth date: env SCRAPER_BIRTH_DATE (DD/MM/YYYY)
     python -m scraper dnm-citizenship --number 2275808    # same
     python -m scraper pjn-party --jurisdiction 4 --name MEDVEDEV
@@ -23,7 +24,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="scraper")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("renaper").add_argument("--number", required=True)
-    sub.add_parser("correo").add_argument("--number", required=True)
+    correo = sub.add_parser("correo")
+    correo.add_argument("--number", required=True)
+    correo.add_argument("--action", default="ondng")
+    correo.add_argument("--producto", default="")
     sub.add_parser("dnm-dni").add_argument("--number", required=True)
     sub.add_parser("dnm-citizenship").add_argument("--number", required=True)
     party = sub.add_parser("pjn-party")
@@ -43,7 +47,7 @@ def run(args: argparse.Namespace) -> dict:
         birth = os.environ.get("SCRAPER_BIRTH_DATE", "")
         return {"ok": True, **migraciones.status(kind, args.number, birth)}
     if args.command == "correo":  # plain HTTP, no browser needed
-        return {"ok": True, **renaper.correo_status(args.number)}
+        return {"ok": True, **renaper.correo_status(args.number, args.action, args.producto)}
 
     from playwright.sync_api import sync_playwright
 

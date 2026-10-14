@@ -31,7 +31,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const money = (amount: number) => formatMoney(amount, PRICING.currency, locale);
   const day = (iso: string | number) =>
     new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(iso));
-  const nameOf = (item: { label: string | null; reference: string }) => item.label ?? `№ ${item.reference}`;
+  const nameOf = (item: Parameters<typeof displayNumber>[0] & { label: string | null }) =>
+    item.label ?? `№ ${displayNumber(item)}`;
   const sectionLabel = (kind: keyof typeof TRACKER_KIND_SECTION) =>
     t(`sections.${TRACKER_KIND_SECTION[kind]}` as MessageKey);
 

@@ -32,3 +32,29 @@ class RenaperTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CorreoFormsTest(unittest.TestCase):
+    def test_trámite_forms_are_padded_to_twelve(self):
+        self.assertEqual(renaper.correo_id("ondng", "755824304"), "000755824304")
+        self.assertEqual(renaper.correo_id("onpa", "123456"), "000000123456")
+
+    def test_coded_forms_need_seven_to_nine_digits(self):
+        self.assertEqual(renaper.correo_id("ondnp", "123456789"), "123456789")
+        for bad in ("123456", "1234567890", "12345678A"):
+            with self.assertRaises(renaper.SourceError):
+                renaper.correo_id("ondnc", bad)
+
+    def test_international_code_shape(self):
+        self.assertEqual(renaper.correo_id("oidn", "AB123456789CD"), "AB123456789CD")
+        with self.assertRaises(renaper.SourceError):
+            renaper.correo_id("oidn", "123456789")
+
+    def test_parcel_codes_are_alphanumeric(self):
+        self.assertEqual(renaper.correo_id("mercadolibre", "ABC123xyz"), "ABC123xyz")
+        with self.assertRaises(renaper.SourceError):
+            renaper.correo_id("ecommerce", "AB-12")
+
+    def test_unknown_form_is_rejected(self):
+        with self.assertRaises(renaper.SourceError):
+            renaper.fetch_correo("123456789", action="nope")

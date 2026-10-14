@@ -2,6 +2,7 @@ import type { TrackerDto } from "@ojo/core";
 import { isDnmKind, parsePjnReference, type TranslateFn } from "@ojo/shared";
 import { Alert, cn } from "@ojo/ui";
 import { daysSince } from "@/lib/days";
+import { displayNumber } from "@/lib/tracker-view";
 import { toneOf } from "@/lib/status-tones";
 import { DniCardShell } from "./dni-card-shell";
 import { FixNumberForm } from "./fix-number-form";
@@ -35,7 +36,7 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
   const h = tracker.header;
   const court = isCourt ? parsePjnReference(tracker.reference) : null;
   // the number shown next to the name: the court file number, or the trámite number
-  const caseNumber = isCourt ? (h.expediente ?? (court ? `${court.number}/${court.year}` : tracker.reference)) : tracker.reference;
+  const caseNumber = isCourt ? (h.expediente ?? (court ? `${court.number}/${court.year}` : tracker.reference)) : displayNumber(tracker);
   // stages are stored oldest first; the card shows the newest on top
   const stages = [...tracker.steps].reverse();
   const latest = stages[0];
@@ -119,6 +120,7 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
             <FixNumberForm
               id={tracker.id}
               current={tracker.reference}
+              kind={tracker.kind}
               mode="typo"
               bare
               {...(isDnm ? { birthDate: tracker.holderBirthDate ?? "" } : {})}

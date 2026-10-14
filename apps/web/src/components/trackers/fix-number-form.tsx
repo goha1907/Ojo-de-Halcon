@@ -1,6 +1,13 @@
 "use client";
 
-import { composeIsoDate, splitIsoDate, tramiteNumberSchema } from "@ojo/shared";
+import {
+  composeIsoDate,
+  correoReference,
+  parseCorreoReference,
+  splitIsoDate,
+  tramiteNumberSchema,
+  type TrackerKindValue,
+} from "@ojo/shared";
 import { Alert, Button, TextField } from "@ojo/ui";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -8,6 +15,7 @@ import { useT } from "@/components/providers/i18n-provider";
 import { BirthDateField } from "@/components/profile/birth-date-field";
 import { ApiError, apiRequest } from "@/lib/api-client";
 import { describeApiError } from "@/lib/api-errors";
+import { CorreoFields, defaultProducto, type CorreoValue } from "./correo-fields";
 
 /**
  * Replaces the trámite number of a slot: a typo that never returned data, a
@@ -16,12 +24,15 @@ import { describeApiError } from "@/lib/api-errors";
 export function FixNumberForm({
   id,
   current,
+  kind,
   mode = "typo",
   bare = false,
   birthDate,
 }: {
   id: string;
   current: string;
+  /** Correo slots are corrected with the fields of their own form. */
+  kind?: TrackerKindValue;
   mode?: "typo" | "replace";
   /** No frame, title or hint: the surrounding block explains it. */
   bare?: boolean;
@@ -31,6 +42,17 @@ export function FixNumberForm({
   const t = useT();
   const router = useRouter();
   const [number, setNumber] = useState(current);
+  const isCorreo = kind === "CORREO";
+  const [correo, setCorreo] = useState<CorreoValue>(() => {
+    const parsed = parseCorreoReference(current);
+    const form = parsed?.form ?? "ondng";
+    return {
+      form,
+      producto: parsed?.producto ?? defaultProducto(form),
+      number: mode === "replace" ? "" : (parsed?.id ?? ""),
+    };
+  });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [birth, setBirth] = useState(splitIsoDate(birthDate ?? null));
@@ -38,17 +60,29 @@ export function FixNumberForm({
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError("");
-    const parsed = tramiteNumberSchema.safeParse(number);
-    if (!parsed.success) {
-      setError(t("validation.tramiteInvalid"));
-      return;
+    setFieldErrors({});
+    let value: string;
+    if (isCorreo) {
+      const checked = correoReference({ form: correo.form, producto: correo.producto, number: correo.number });
+      if (!checked.ok) {
+        setFieldErrors({ [checked.issue.field]: t(checked.issue.message) });
+        return;
+      }
+      value = checked.reference;
+    } else {
+      const parsed = tramiteNumberSchema.safeParse(number);
+      if (!parsed.success) {
+        setError(t("validation.tramiteInvalid"));
+        return;
+      }
+      value = parsed.data;
     }
     setBusy(true);
     try {
       const date = birthDate === undefined ? null : composeIsoDate(birth);
       await apiRequest(`/api/trackers/${id}`, {
         method: "PATCH",
-        body: { number: parsed.data, ...(date ? { birthDate: date } : {}) },
+        body: { number: value, ...(date ? { birthDate: date } : {}) },
       });
       router.refresh();
     } catch (e) {
@@ -79,12 +113,16 @@ export function FixNumberForm({
       {error && <Alert tone="error">{error}</Alert>}
       <div className={bare ? "flex items-end gap-3" : "space-y-3"}>
         <div className={bare ? "min-w-0 flex-1" : undefined}>
-          <TextField
-            label={t("track.field.tramite")}
-            inputMode="numeric"
-            value={mode === "replace" && number === current ? "" : number}
-            onChange={(e) => setNumber(e.target.value)}
-          />
+          {isCorreo ? (
+            <CorreoFields value={correo} errors={fieldErrors} onChange={setCorreo} lockForm />
+          ) : (
+            <TextField
+              label={t("track.field.tramite")}
+              inputMode="numeric"
+              value={mode === "replace" && number === current ? "" : number}
+              onChange={(e) => setNumber(e.target.value)}
+            />
+          )}
         </div>
         {birthDate === undefined && (
           <Button type="submit" loading={busy}>

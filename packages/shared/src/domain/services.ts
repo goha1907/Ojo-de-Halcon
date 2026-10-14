@@ -13,15 +13,15 @@ export const SERVICE_GROUPS = [
     ],
   },
   {
-    key: "post",
-    items: [{ section: "dni_post", slug: "correo" }],
-  },
-  {
     key: "citizenship",
     items: [
       { section: "citizenship_dnm", slug: "migraciones" },
       { section: "citizenship_court", slug: "tribunal" },
     ],
+  },
+  {
+    key: "post",
+    items: [{ section: "dni_post", slug: "correo" }],
   },
 ] as const satisfies ReadonlyArray<{
   key: string;

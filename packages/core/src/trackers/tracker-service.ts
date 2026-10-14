@@ -9,6 +9,7 @@ import {
   findJurisdiction,
   isDnmKind,
   isFinalStatus,
+  normalizeCorreoReference,
   parseExpediente,
   parsePjnReference,
   pjnReference,
@@ -430,6 +431,10 @@ export function createTrackerService(deps: {
       include: { snapshot: true },
     });
     if (!tracker || !replaceState(tracker, now()).canReplace) return "NOT_ALLOWED";
+    // a Correo reference ("<form>:<…>") only fits a Correo slot, and a Correo slot takes only valid ones
+    if (tracker.kind === "CORREO" ? normalizeCorreoReference(newReference) === null : newReference.includes(":")) {
+      return "NOT_ALLOWED";
+    }
     const duplicate = await prisma.tracker.findFirst({
       where: {
         userId,

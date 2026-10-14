@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import type { TrackerStep } from "@ojo/shared";
+import { CORREO_FORMS, parseCorreoReference, type TrackerStep } from "@ojo/shared";
 
 export interface ScrapedTramite {
   found: boolean;
@@ -28,8 +28,8 @@ export interface PjnCaseResult {
 export interface Scraper {
   /** RENAPER status of a trámite number. */
   renaper(number: string): Promise<ScrapedTramite>;
-  /** Correo Argentino DNI shipment of a trámite number (independent of RENAPER). */
-  correo(number: string): Promise<ScrapedTramite>;
+  /** Correo Argentino shipment of a stored reference (see `parseCorreoReference`); independent of RENAPER. */
+  correo(reference: string): Promise<ScrapedTramite>;
   /** Migraciones (DNM): needs the holder's birth date as DD/MM/YYYY next to the number. */
   dnm(input: { kind: "DNM_DNI" | "DNM_CITIZENSHIP"; number: string; birthDate: string }): Promise<ScrapedTramite>;
   pjnParty(input: { jurisdiction: string; name: string }): Promise<PjnPartyRow[]>;
@@ -118,7 +118,18 @@ export function createProcessScraper(options: ProcessScraperOptions): Scraper {
 
   return {
     renaper: (number) => call<ScrapedTramite>(["renaper", "--number", number]),
-    correo: (number) => call<ScrapedTramite>(["correo", "--number", number]),
+    correo(reference) {
+      const parsed = parseCorreoReference(reference);
+      if (!parsed) return Promise.reject(new ScraperError("bad_number"));
+      return call<ScrapedTramite>([
+        "correo",
+        "--action",
+        CORREO_FORMS[parsed.form].action,
+        "--number",
+        parsed.id,
+        ...(parsed.producto ? ["--producto", parsed.producto] : []),
+      ]);
+    },
     // the birth date travels in the environment of the child, never in its argument list
     dnm: ({ kind, number, birthDate }) =>
       call<ScrapedTramite>([kind === "DNM_DNI" ? "dnm-dni" : "dnm-citizenship", "--number", number], {

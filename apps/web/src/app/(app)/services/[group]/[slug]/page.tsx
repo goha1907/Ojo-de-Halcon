@@ -73,8 +73,8 @@ export default async function ServicePage({
               node: <DniCard tracker={tracker} t={t} locale={locale} subscription={subscription} />,
               status: tracker.status,
               kept: tracker.keptInSubscription,
-              name: tracker.label ?? tracker.reference,
-              number: tracker.reference,
+              name: tracker.label ?? displayNumber(tracker),
+              number: displayNumber(tracker),
               addedAt: new Date(tracker.addedAt).getTime(),
               changedAt: lastChange(tracker),
               search: [

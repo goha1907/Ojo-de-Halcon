@@ -1,14 +1,17 @@
-import { APP_CONFIG, holderBirthDateSchema, tramiteNumberSchema } from "@ojo/shared";
+import { APP_CONFIG, correoReferenceSchema, holderBirthDateSchema, tramiteNumberSchema } from "@ojo/shared";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiError, limitByUser, parseBody, withVerifiedUser } from "@/server/api";
 import { getCore } from "@/server/core";
 
-const bodySchema = z.object({
-  kind: z.enum(["DNM_DNI", "DNM_CITIZENSHIP", "RENAPER", "CORREO"]),
-  number: tramiteNumberSchema,
-  birthDate: holderBirthDateSchema.optional(),
-});
+const bodySchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.enum(["DNM_DNI", "DNM_CITIZENSHIP", "RENAPER"]),
+    number: tramiteNumberSchema,
+    birthDate: holderBirthDateSchema.optional(),
+  }),
+  z.object({ kind: z.literal("CORREO"), number: correoReferenceSchema }),
+]);
 
 /**
  * Step one of adding a trámite: reads the source and shows what identifies the case (and whether
@@ -20,8 +23,9 @@ export async function POST(request: Request) {
     if (limited) return limited;
     const body = await parseBody(request, bodySchema);
     if (!body.ok) return body.response;
-    const { kind, number, birthDate } = body.data;
-    const result = await getCore().trackers.previewTramite(user.id, kind, number, birthDate ?? null);
+    const { kind, number } = body.data;
+    const birthDate = "birthDate" in body.data ? (body.data.birthDate ?? null) : null;
+    const result = await getCore().trackers.previewTramite(user.id, kind, number, birthDate);
     if (!result.ok) return apiError(result.reason);
     return NextResponse.json({ ok: true, header: result.header });
   });

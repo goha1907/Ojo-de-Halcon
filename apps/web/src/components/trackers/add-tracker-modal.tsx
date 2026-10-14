@@ -5,7 +5,10 @@ import {
   APP_CONFIG,
   PJN_DEFAULT_JURISDICTION,
   PJN_JURISDICTIONS,
+  CORREO_DEFAULT_FORM,
   composeIsoDate,
+  correoDisplay,
+  correoReference,
   isDnmKind,
   splitIsoDate,
   settingsHref,
@@ -26,6 +29,7 @@ import { BirthDateField } from "@/components/profile/birth-date-field";
 import { ApiError, apiRequest } from "@/lib/api-client";
 import { describeApiError } from "@/lib/api-errors";
 import { issuesToFieldErrors } from "@/lib/form-errors";
+import { CorreoFields, defaultProducto, type CorreoValue } from "./correo-fields";
 
 /** Window event other components dispatch to open the modal (optionally for one kind). */
 export const ADD_TRACKER_EVENT = "ojo:add-tracker";
@@ -78,6 +82,11 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
   const [found, setFound] = useState<Record<string, string> | null>(null);
   const [label, setLabel] = useState("");
   const [number, setNumber] = useState("");
+  const [correo, setCorreo] = useState<CorreoValue>({
+    form: CORREO_DEFAULT_FORM,
+    producto: defaultProducto(CORREO_DEFAULT_FORM),
+    number: "",
+  });
   const [year, setYear] = useState("");
   const [jurisdiction, setJurisdiction] = useState(defaultJurisdiction ?? PJN_DEFAULT_JURISDICTION);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -93,9 +102,19 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
     [],
   );
   const isCourt = kind === "PJN";
+  const isCorreo = kind === "CORREO";
   const slots = usage;
   // every paid case is taken: offer to buy more instead of the form
   const full = lock === null && slots !== null && slots.used >= slots.limit;
+
+  const shownNumber = isCorreo
+    ? correoDisplay(
+        (() => {
+          const result = correoReference({ form: correo.form, producto: correo.producto, number: correo.number });
+          return result.ok ? result.reference : correo.number;
+        })(),
+      )
+    : (tramiteNumberSchema.safeParse(number).data ?? number);
 
   function showError(error: unknown) {
     if (error instanceof ApiError && error.code === "VALIDATION") {
@@ -110,6 +129,11 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
   function buildPayload() {
     const extra = label.trim() ? { label: label.trim() } : {};
     if (isCourt) return { kind, jurisdiction, number, year, ...extra };
+    if (isCorreo) {
+      const result = correoReference({ form: correo.form, producto: correo.producto, number: correo.number });
+      // an invalid input is reported by the field check in onSubmit; the raw text keeps the schema failing
+      return { kind, number: result.ok ? result.reference : correo.number, ...extra };
+    }
     const birth = composeIsoDate(birthDate);
     return isDnmKind(kind) && birth ? { kind, number, birthDate: birth, ...extra } : { kind, number, ...extra };
   }
@@ -118,6 +142,13 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setFormError("");
+    if (isCorreo) {
+      const checked = correoReference({ form: correo.form, producto: correo.producto, number: correo.number });
+      if (!checked.ok) {
+        setErrors({ [checked.issue.field]: t(checked.issue.message) });
+        return;
+      }
+    }
     const payload = buildPayload();
     const parsed = addTrackerSchema.safeParse(payload);
     if (!parsed.success) {
@@ -262,11 +293,11 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
                 <>
                   <h3 className="text-base font-semibold text-slate-900">{t("track.step.confirmNumber")}</h3>
                   <p className="rounded-lg border border-slate-200 p-3 text-2xl font-semibold tracking-wide text-slate-900">
-                    {tramiteNumberSchema.safeParse(number).data ?? number}
+                    {shownNumber}
                   </p>
                   <Alert tone="info">
                     {t("track.step.confirmNumberText", {
-                      number: tramiteNumberSchema.safeParse(number).data ?? number,
+                      number: shownNumber,
                     })}
                   </Alert>
                 </>
@@ -297,13 +328,17 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
             onChange={(e) => setJurisdiction(e.target.value)}
           />
         )}
-        <TextField
-          label={isCourt ? t("track.field.caseNumber") : t("track.field.tramite")}
-          inputMode="numeric"
-          value={number}
-          error={errors.number}
-          onChange={(e) => setNumber(e.target.value)}
-        />
+        {isCorreo ? (
+          <CorreoFields value={correo} errors={errors} onChange={setCorreo} />
+        ) : (
+          <TextField
+            label={isCourt ? t("track.field.caseNumber") : t("track.field.tramite")}
+            inputMode="numeric"
+            value={number}
+            error={errors.number}
+            onChange={(e) => setNumber(e.target.value)}
+          />
+        )}
         {isDnmKind(kind) && (
           <div className="space-y-1.5">
             <BirthDateField
