@@ -50,20 +50,11 @@ export function createAccessService(deps: { prisma: PrismaClient; now: () => Dat
   }
 
   /**
-   * TEST ONLY: grants or revokes access without payment. The caller (web
+   * TEST ONLY: revokes the subscription or resets the trial (payment goes through billing). The caller (web
    * route) must check the PAYMENTS_STUB flag; real billing replaces this.
    */
-  async function stub(userId: string, action: "activate" | "cancel" | "resetTrial"): Promise<AccessState> {
-    const user = await prisma.user.findUniqueOrThrow({
-      where: { id: userId },
-      select: { subscriptionUntil: true },
-    });
-    const current = now();
-    if (action === "activate") {
-      const from = user.subscriptionUntil && user.subscriptionUntil > current ? user.subscriptionUntil : current;
-      const until = new Date(from.getTime() + APP_CONFIG.limits.subscriptionDays * DAY_MS);
-      await prisma.user.update({ where: { id: userId }, data: { subscriptionUntil: until } });
-    } else if (action === "cancel") {
+  async function stub(userId: string, action: "cancel" | "resetTrial"): Promise<AccessState> {
+    if (action === "cancel") {
       await prisma.user.update({ where: { id: userId }, data: { subscriptionUntil: null } });
     } else {
       await prisma.user.update({ where: { id: userId }, data: { trialStartedAt: null } });

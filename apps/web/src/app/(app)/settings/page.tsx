@@ -13,11 +13,14 @@ export default async function SettingsPage() {
   const user = await requireUser();
   const { t } = await getT();
   const core = getCore();
-  const [services, people, access] = await Promise.all([
+  const [services, people, access, billing, payments] = await Promise.all([
     core.preferences.get(user.id),
     core.people.list(user.id),
     core.access.get(user.id),
+    core.billing.state(user.id),
+    core.billing.history(user.id),
   ]);
+  const stubEnabled = getEnv().PAYMENTS_STUB;
 
   return (
     <>
@@ -27,10 +30,15 @@ export default async function SettingsPage() {
         emailVerified={user.emailVerified}
         initial={{ firstName: user.firstName, lastName: user.lastName, birthDate: user.birthDate, pjnJurisdiction: user.pjnJurisdiction }}
       />
-      <PeopleCard people={people} />
+      <PeopleCard
+        people={people}
+        billing={billing}
+        subscribed={access.plan === "subscription"}
+        stubEnabled={stubEnabled}
+      />
       <TelegramCard linked={user.telegramLinked} username={user.telegramUsername} />
       <ServicesCard initial={services} />
-      <AccessCard access={access} stubEnabled={getEnv().PAYMENTS_STUB} />
+      <AccessCard access={access} billing={billing} payments={payments} stubEnabled={stubEnabled} />
       <DeleteAccountCard />
     </>
   );

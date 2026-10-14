@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { APP_CONFIG } from "../config/app";
+import { DISPOSABLE_EMAIL_DOMAINS, GMAIL_DOMAINS } from "../config/email";
 import { findJurisdiction } from "../config/pjn";
 import type { MessageKey } from "../i18n/ru";
 
@@ -17,6 +18,29 @@ export function normalizeSpaces(value: string): string {
 
 export function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
+}
+
+/**
+ * One key per real mailbox: lower case, `+tag` removed, and for Gmail also
+ * dots removed and `googlemail.com` mapped to `gmail.com`. Used to stop one
+ * person from creating several accounts (and trials) with address variations.
+ */
+export function canonicalEmail(value: string): string {
+  const email = normalizeEmail(value);
+  const at = email.lastIndexOf("@");
+  if (at < 1) return email;
+  let local = email.slice(0, at).split("+")[0]!;
+  let domain = email.slice(at + 1);
+  if (GMAIL_DOMAINS.includes(domain)) {
+    local = local.replaceAll(".", "");
+    domain = "gmail.com";
+  }
+  return `${local}@${domain}`;
+}
+
+export function isDisposableEmail(value: string): boolean {
+  const domain = normalizeEmail(value).split("@").pop() ?? "";
+  return DISPOSABLE_EMAIL_DOMAINS.has(domain);
 }
 
 /** Full years between `birth` and `today` (both interpreted as UTC dates). */
@@ -151,7 +175,7 @@ export const passwordSchema = z
 
 export const registerSchema = z
   .object({
-    email: emailSchema,
+    email: emailSchema.refine((value) => !isDisposableEmail(value), msg("validation.emailDisposable")),
     password: passwordSchema,
     passwordConfirm: z.string(),
     acceptTerms: z.literal(true, msg("validation.consentRequired")),
@@ -187,5 +211,7 @@ export const personSchema = z.object({
   lastName: nameSchema,
   birthDate: personBirthDateSchema,
   pjnJurisdiction: courtSchema,
+  /** Send this person's updates to the owner's Telegram. */
+  notifyTelegram: z.boolean().default(true),
 });
 export type PersonInput = z.infer<typeof personSchema>;

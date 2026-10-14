@@ -1,7 +1,7 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import type { Prisma, PrismaClient, Tracker, TrackerKind, TrackerSnapshot } from "@ojo/db";
 import {
-  LINKED_TRAMITE_KINDS,
+  SERVICE_GROUPS,
   APP_CONFIG,
   TRACKER_CONFIG,
   TRACKER_KIND_SECTION,
@@ -15,6 +15,7 @@ import {
   type TrackerStatusValue,
   type TrackerStep,
 } from "@ojo/shared";
+import { keyedHash } from "../crypto";
 import { resolveAccess } from "../access/access-service";
 import { ScraperError, type Scraper } from "./scraper";
 
@@ -24,8 +25,6 @@ export interface TrackerDto {
   reference: string;
   label: string | null;
   status: TrackerStatusValue;
-  /** Kind of the twin tracker created from the same trámite number. */
-  linkedKind: TrackerKindValue | null;
   /** Relative the case belongs to; null = the account owner. */
   person: { id: string; name: string } | null;
   header: TrackerHeaderFields;
@@ -43,10 +42,14 @@ export interface PjnCandidate {
   caratula: string;
 }
 
-type AddFailure = "ALREADY_EXISTS" | "SECTION_BUSY" | "SUBSCRIPTION_REQUIRED" | "PERSON_NOT_FOUND";
+type AddFailure =
+  | "ALREADY_EXISTS"
+  | "SECTION_BUSY"
+  | "SUBSCRIPTION_REQUIRED"
+  | "PERSON_NOT_FOUND";
 
 export type AddResult =
-  | { ok: true; tracker: TrackerDto; alsoCreated: TrackerKindValue | null }
+  | { ok: true; tracker: TrackerDto }
   | { ok: false; reason: AddFailure };
 
 export type PjnStartResult =
@@ -57,10 +60,23 @@ export type PjnSearchResult =
   | { ok: true; candidates: PjnCandidate[] }
   | { ok: false; reason: "PROFILE_INCOMPLETE" | "NO_COURT" | "SOURCE_DOWN" | "PERSON_NOT_FOUND" };
 
+/** One notification = one change. A check that finds several new stages creates several events. */
 export interface EventPayload {
-  /** Stages that appeared since the previous check (at most a few). */
-  newSteps: TrackerStep[];
+  /** The stage that appeared; null when only the status in the header changed. */
+  step: TrackerStep | null;
   header: TrackerHeaderFields;
+  /** "Case added": the first report of a case, showing its latest stage. */
+  initial?: boolean;
+}
+
+/** Latest known stage of one case, for the digest sent when Telegram gets linked. */
+export interface DigestItem {
+  kind: TrackerKindValue;
+  section: string;
+  personName: string | null;
+  header: TrackerHeaderFields;
+  /** Most recent stage, or null when none is known yet. */
+  step: TrackerStep | null;
 }
 
 export interface PendingNotification {
@@ -73,8 +89,11 @@ export interface PendingNotification {
   payload: EventPayload;
 }
 
-const MAX_STEPS_IN_EVENT = 5;
+/** Upper bound of separate messages produced by one check (protects against floods). */
+const MAX_EVENTS_PER_CHECK = 10;
 const HOUR_MS = 3_600_000;
+/** A claimed notification that was never confirmed is retried after this time. */
+const CLAIM_TIMEOUT_MS = 5 * 60_000;
 
 function stepKey(step: TrackerStep): string {
   return `${step.date}|${step.title}|${step.detail}`;
@@ -89,18 +108,14 @@ function contentHash(header: TrackerHeaderFields, steps: TrackerStep[]): string 
   return createHash("sha256").update(JSON.stringify({ header, steps })).digest("hex");
 }
 
-function otherLinkedKind(kind: TrackerKindValue): TrackerKindValue | null {
-  return (LINKED_TRAMITE_KINDS as readonly string[]).includes(kind)
-    ? (LINKED_TRAMITE_KINDS.find((item) => item !== kind) ?? null)
-    : null;
-}
-
 export function createTrackerService(deps: {
   prisma: PrismaClient;
   scraper: Scraper;
   now: () => Date;
+  /** Pepper for the trial ledger hashes. */
+  secret: string;
 }) {
-  const { prisma, scraper, now } = deps;
+  const { prisma, scraper, now, secret } = deps;
 
   type TrackerWithSnapshot = Tracker & {
     snapshot: TrackerSnapshot | null;
@@ -115,7 +130,6 @@ export function createTrackerService(deps: {
       reference: tracker.reference,
       label: tracker.label,
       status: tracker.status as TrackerStatusValue,
-      linkedKind: tracker.linkGroupId ? otherLinkedKind(kind) : null,
       person: tracker.person
         ? { id: tracker.person.id, name: `${tracker.person.firstName} ${tracker.person.lastName}` }
         : null,
@@ -160,15 +174,9 @@ export function createTrackerService(deps: {
 
   /**
    * Access rule. A subscription allows everything; without one the free trial
-   * covers a single case (a RENAPER + Correo pair counts as one), so any other
-   * case needs a subscription.
+   * covers a single case, so any other case needs a subscription.
    */
-  async function mayAdd(
-    userId: string,
-    personKey: string,
-    kind: TrackerKindValue,
-    reference: string,
-  ): Promise<boolean> {
+  async function mayAdd(userId: string): Promise<boolean> {
     const user = await prisma.user.findUniqueOrThrow({
       where: { id: userId },
       select: { trialStartedAt: true, subscriptionUntil: true },
@@ -176,33 +184,39 @@ export function createTrackerService(deps: {
     const access = resolveAccess(user, now());
     if (access.plan === "subscription") return true;
     if (access.plan === "trial_expired") return false;
-    const open = await prisma.tracker.findMany({
-      where: { userId, status: { not: "FINISHED" } },
-      select: { personKey: true, kind: true, reference: true, linkGroupId: true, id: true },
-    });
-    if (open.length === 0) return true;
-    // the twin of the case already being tracked is the same case
-    const isTwin =
-      (LINKED_TRAMITE_KINDS as readonly string[]).includes(kind) &&
-      open.some(
-        (item) =>
-          item.personKey === personKey &&
-          item.reference === reference &&
-          (LINKED_TRAMITE_KINDS as readonly string[]).includes(item.kind),
-      );
-    return isTwin;
+    // the trial covers exactly one case in total
+    const open = await prisma.tracker.count({ where: { userId, status: { not: "FINISHED" } } });
+    return open === 0;
   }
 
+  const ledgerKey = (value: string) => keyedHash(secret, "ledger", value);
+
+  /** Starts the trial at the first tracker and remembers it for the mailbox. */
   async function startTrial(userId: string): Promise<void> {
-    await prisma.user.updateMany({
+    const started = await prisma.user.updateMany({
       where: { id: userId, trialStartedAt: null },
       data: { trialStartedAt: now() },
+    });
+    if (started.count === 0) return;
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { emailCanonical: true, trialStartedAt: true },
+    });
+    await prisma.trialLedger.upsert({
+      where: { keyHash: ledgerKey(`email:${user.emailCanonical}`) },
+      create: {
+        keyHash: ledgerKey(`email:${user.emailCanonical}`),
+        kind: "email",
+        trialStartedAt: user.trialStartedAt,
+      },
+      update: {},
     });
   }
 
   /**
-   * Adds a trámite number. RENAPER and Correo share the number, so both
-   * trackers are created together (`alsoCreated` tells which twin was added).
+   * Adds a trámite number to one source. RENAPER and Correo are independent:
+   * a person may wait for the DNI at either one or both, so each is added on
+   * its own (and counts as its own case).
    */
   async function addTramite(
     userId: string,
@@ -217,38 +231,20 @@ export function createTrackerService(deps: {
       where: { userId, personKey, kind, reference, status: { not: "FINISHED" } },
     });
     if (existing) return { ok: false, reason: "ALREADY_EXISTS" };
-    for (const item of LINKED_TRAMITE_KINDS) {
-      if (await sectionBusy(userId, personKey, item, reference)) return { ok: false, reason: "SECTION_BUSY" };
-    }
-    if (!(await mayAdd(userId, personKey, kind, reference))) {
-      return { ok: false, reason: "SUBSCRIPTION_REQUIRED" };
-    }
+    if (await sectionBusy(userId, personKey, kind, reference)) return { ok: false, reason: "SECTION_BUSY" };
+    if (!(await mayAdd(userId))) return { ok: false, reason: "SUBSCRIPTION_REQUIRED" };
 
-    const linkGroupId = randomUUID();
-    const created: Tracker[] = [];
-    for (const item of LINKED_TRAMITE_KINDS) {
-      const tracker = await prisma.tracker.upsert({
-        where: { userId_personKey_kind_reference: { userId, personKey, kind: item, reference } },
-        create: {
-          userId,
-          personId: person.personId,
-          personKey,
-          kind: item,
-          reference,
-          linkGroupId,
-          nextCheckAt: now(),
-        },
-        update: { linkGroupId, status: "ACTIVE", nextCheckAt: now(), lastError: null },
-      });
-      created.push(tracker);
-    }
+    const tracker = await prisma.tracker.upsert({
+      where: { userId_personKey_kind_reference: { userId, personKey, kind, reference } },
+      create: { userId, personId: person.personId, personKey, kind, reference, nextCheckAt: now() },
+      update: { status: "ACTIVE", nextCheckAt: now(), lastError: null },
+    });
     await startTrial(userId);
-    const main = created.find((tracker) => tracker.kind === kind)!;
     const full = await prisma.tracker.findUniqueOrThrow({
-      where: { id: main.id },
+      where: { id: tracker.id },
       include: { snapshot: true, person: true },
     });
-    return { ok: true, tracker: toDto(full), alsoCreated: otherLinkedKind(kind) };
+    return { ok: true, tracker: toDto(full) };
   }
 
   /** Searches the court registry by the profile name and keeps results that match it. */
@@ -262,15 +258,32 @@ export function createTrackerService(deps: {
       return { ok: false, reason: "NO_COURT" };
     }
     try {
-      const rows = await scraper.pjnParty({
-        jurisdiction: user.pjnJurisdiction,
-        name: user.lastName,
-      });
+      // The site expects "SURNAME NAME" without commas; a bare surname is the fallback
+      // (e.g. when the registry holds only one of several given names).
+      const full = `${user.lastName} ${user.firstName}`;
+      let rows = await scraper.pjnParty({ jurisdiction: user.pjnJurisdiction, name: full });
+      if (rows.length === 0) {
+        rows = await scraper.pjnParty({ jurisdiction: user.pjnJurisdiction, name: user.lastName });
+      }
+      const tracked = new Set(
+        (
+          await prisma.tracker.findMany({
+            where: { userId, personKey: personId ?? "self", kind: "PJN" },
+            select: { reference: true },
+          })
+        ).map((item) => item.reference),
+      );
       const candidates: PjnCandidate[] = [];
       for (const row of rows) {
         if (!caratulaMatchesName(row.caratula, user.firstName, user.lastName)) continue;
         const parsed = parseExpediente(row.expediente);
         if (!parsed) continue;
+        const reference = pjnReference({
+          jurisdiction: user.pjnJurisdiction,
+          number: parsed.number,
+          year: parsed.year,
+        });
+        if (tracked.has(reference)) continue;
         candidates.push({
           jurisdiction: user.pjnJurisdiction,
           number: parsed.number,
@@ -304,9 +317,7 @@ export function createTrackerService(deps: {
     });
     if (existing && existing.status !== "FINISHED") return { ok: false, reason: "ALREADY_EXISTS" };
     if (await sectionBusy(userId, personKey, "PJN", reference)) return { ok: false, reason: "SECTION_BUSY" };
-    if (!(await mayAdd(userId, personKey, "PJN", reference))) {
-      return { ok: false, reason: "SUBSCRIPTION_REQUIRED" };
-    }
+    if (!(await mayAdd(userId))) return { ok: false, reason: "SUBSCRIPTION_REQUIRED" };
 
     let header: TrackerHeaderFields;
     try {
@@ -352,22 +363,28 @@ export function createTrackerService(deps: {
     return result.count === 1;
   }
 
+  /** Support/admin only (not exposed to users). */
   async function remove(userId: string, trackerId: string): Promise<boolean> {
     const tracker = await prisma.tracker.findFirst({ where: { id: trackerId, userId } });
     if (!tracker) return false;
-    // A trámite pair is removed together: the number is shared by both tabs.
-    const ids = tracker.linkGroupId
-      ? (
-          await prisma.tracker.findMany({
-            where: { userId, linkGroupId: tracker.linkGroupId },
-            select: { id: true },
-          })
-        ).map((row) => row.id)
-      : [tracker.id];
-    const result = await prisma.tracker.deleteMany({ where: { id: { in: ids }, userId } });
+    const result = await prisma.tracker.deleteMany({ where: { id: tracker.id, userId } });
     return result.count > 0;
   }
 
+  /**
+   * The only removal available to users: a court case found by mistake that
+   * they have not confirmed yet (nothing but the carátula was read). Confirmed
+   * cases can only be closed by support, otherwise adding/removing cases over
+   * and over would bypass the subscription limits.
+   */
+  async function discardPending(userId: string, trackerId: string): Promise<boolean> {
+    const result = await prisma.tracker.deleteMany({
+      where: { id: trackerId, userId, status: "PENDING_CONFIRMATION" },
+    });
+    return result.count === 1;
+  }
+
+  /** Support/admin only (not exposed to users). */
   async function finish(userId: string, trackerId: string): Promise<boolean> {
     const result = await prisma.tracker.updateMany({
       where: { id: trackerId, userId, status: "ACTIVE" },
@@ -406,16 +423,47 @@ export function createTrackerService(deps: {
         },
       }),
     ];
-    // The very first snapshot is the baseline, not news.
-    const changed = previous !== null && previous.contentHash !== hash;
-    if (changed) {
-      const payload: EventPayload = {
-        newSteps: newSteps.slice(-MAX_STEPS_IN_EVENT),
-        header: data.header,
-      };
+    // Who hears about this case: a muted relative stays silent, and the owner's
+    // first report is held back until the person is unmuted (next data refresh).
+    const owner = tracker.personId
+      ? await prisma.person.findUnique({ where: { id: tracker.personId }, select: { notifyTelegram: true } })
+      : null;
+    const muted = owner !== null && !owner.notifyTelegram;
+    const base = now().getTime();
+    const latest = data.steps.length ? data.steps[data.steps.length - 1]! : null;
+
+    if (!tracker.initialNotified && !muted) {
+      // "Case added" report: the latest stage right after the first read.
+      const payload: EventPayload = { step: latest, header: data.header, initial: true };
       operations.push(
-        prisma.trackerEvent.create({ data: { trackerId: tracker.id, payload: asJson(payload) } }),
+        prisma.trackerEvent.create({
+          data: { trackerId: tracker.id, payload: asJson(payload), createdAt: new Date(base) },
+        }),
+        prisma.tracker.update({ where: { id: tracker.id }, data: { initialNotified: true } }),
       );
+    } else {
+      // The first snapshot is a baseline, not news. A court case confirmed after
+      // its carátula-only snapshot is baselined too (it was never fully read).
+      const previousSteps = (previous?.steps ?? []) as unknown as TrackerStep[];
+      const baseline = previous === null || (tracker.kind === "PJN" && previousSteps.length === 0);
+      if (!baseline && previous.contentHash !== hash) {
+        // One event per new stage, oldest first; timestamps keep their order.
+        const steps: (TrackerStep | null)[] = newSteps.length
+          ? newSteps.slice(-MAX_EVENTS_PER_CHECK)
+          : [null];
+        steps.forEach((step, index) => {
+          const payload: EventPayload = { step, header: data.header };
+          operations.push(
+            prisma.trackerEvent.create({
+              data: {
+                trackerId: tracker.id,
+                payload: asJson(payload),
+                createdAt: new Date(base + index),
+              },
+            }),
+          );
+        });
+      }
     }
     await prisma.$transaction(operations);
   }
@@ -426,34 +474,26 @@ export function createTrackerService(deps: {
       where: { id: tracker.id },
       data: {
         lastError: code,
-        nextCheckAt: new Date(now().getTime() + TRACKER_CONFIG.retryAfterMinutes * 60_000),
+        // "not found yet" is normal for a new number: check again on the regular cadence
+        nextCheckAt: new Date(
+          now().getTime() +
+            (code === "not_found"
+              ? TRACKER_CONFIG.checkIntervalHours * HOUR_MS
+              : TRACKER_CONFIG.retryAfterMinutes * 60_000),
+        ),
       },
     });
   }
 
-  async function checkTramite(tracker: Tracker, handled: Set<string>): Promise<void> {
-    const twins = await prisma.tracker.findMany({
-      where: {
-        userId: tracker.userId,
-        personKey: tracker.personKey,
-        reference: tracker.reference,
-        kind: { in: [...LINKED_TRAMITE_KINDS] },
-        status: "ACTIVE",
-      },
-    });
-    for (const twin of twins) handled.add(twin.id);
+  async function checkTramite(tracker: Tracker): Promise<void> {
     try {
-      const result = await scraper.tramite(tracker.reference);
-      for (const twin of twins) {
-        const part = twin.kind === "RENAPER" ? result.renaper : result.correo;
-        await applyResult(twin, {
-          header: part.header,
-          steps: part.steps,
-          finished: part.finished,
-        });
-      }
+      const part =
+        tracker.kind === "RENAPER"
+          ? await scraper.renaper(tracker.reference)
+          : await scraper.correo(tracker.reference);
+      await applyResult(tracker, { header: part.header, steps: part.steps, finished: part.finished });
     } catch (error) {
-      for (const twin of twins) await recordFailure(twin, error);
+      await recordFailure(tracker, error);
     }
   }
 
@@ -499,16 +539,23 @@ export function createTrackerService(deps: {
       if (handled.has(tracker.id)) continue;
       handled.add(tracker.id);
       if (tracker.kind === "PJN") await checkPjn(tracker);
-      else await checkTramite(tracker, handled);
+      else await checkTramite(tracker);
       checked += 1;
     }
     return checked;
   }
 
-  /** Unsent events of users who linked Telegram and kept this service enabled. */
+  /**
+   * Unsent events of users who linked Telegram and kept this service enabled.
+   * Returned events are claimed: concurrent callers get different events.
+   */
   async function pendingNotifications(limit = 50): Promise<PendingNotification[]> {
+    const staleBefore = new Date(now().getTime() - CLAIM_TIMEOUT_MS);
     const events = await prisma.trackerEvent.findMany({
-      where: { notifiedAt: null },
+      where: {
+        notifiedAt: null,
+        OR: [{ claimedAt: null }, { claimedAt: { lt: staleBefore } }],
+      },
       orderBy: { createdAt: "asc" },
       take: limit,
       include: {
@@ -522,11 +569,22 @@ export function createTrackerService(deps: {
       const section = TRACKER_KIND_SECTION[tracker.kind as TrackerKindValue];
       const pref = user.servicePrefs.find((row) => row.serviceKey === section);
       const enabled = pref ? pref.enabled : true;
-      if (user.telegramId === null || !enabled) {
+      const mutedPerson = tracker.person !== null && !tracker.person.notifyTelegram;
+      if (user.telegramId === null || !enabled || mutedPerson) {
         // Nobody to tell: close the event so it does not pile up.
         await prisma.trackerEvent.update({ where: { id: event.id }, data: { notifiedAt: now() } });
         continue;
       }
+      // Atomic claim: another worker may have taken this event meanwhile.
+      const claim = await prisma.trackerEvent.updateMany({
+        where: {
+          id: event.id,
+          notifiedAt: null,
+          OR: [{ claimedAt: null }, { claimedAt: { lt: staleBefore } }],
+        },
+        data: { claimedAt: now() },
+      });
+      if (claim.count !== 1) continue;
       result.push({
         eventId: event.id,
         telegramId: user.telegramId,
@@ -542,6 +600,40 @@ export function createTrackerService(deps: {
     return result;
   }
 
+  /**
+   * Latest stage of every case, in the order of the left menu (DNI first, then
+   * citizenship; owner before relatives). Sent once when Telegram is linked.
+   */
+  async function latestSteps(userId: string): Promise<DigestItem[]> {
+    const rows = await prisma.tracker.findMany({
+      where: {
+        userId,
+        status: { not: "PENDING_CONFIRMATION" },
+        // relatives muted by the owner are left out of Telegram
+        OR: [{ personId: null }, { person: { notifyTelegram: true } }],
+      },
+      include: { snapshot: true, person: true },
+    });
+    const order = SERVICE_GROUPS.flatMap((group) => group.items.map((item) => item.section as string));
+    const items = rows.map((row) => {
+      const kind = row.kind as TrackerKindValue;
+      const steps = (row.snapshot?.steps ?? []) as unknown as TrackerStep[];
+      return {
+        kind,
+        section: TRACKER_KIND_SECTION[kind] as string,
+        personName: row.person ? `${row.person.firstName} ${row.person.lastName}` : null,
+        header: (row.snapshot?.header ?? {}) as TrackerHeaderFields,
+        step: steps.length ? steps[steps.length - 1]! : null,
+      };
+    });
+    const rank = (item: DigestItem) => [order.indexOf(item.section), item.personName === null ? 0 : 1] as const;
+    return items.sort((a, b) => {
+      const [sa, pa] = rank(a);
+      const [sb, pb] = rank(b);
+      return sa - sb || pa - pb || (a.personName ?? "").localeCompare(b.personName ?? "");
+    });
+  }
+
   async function markNotified(eventId: string): Promise<void> {
     await prisma.trackerEvent.updateMany({
       where: { id: eventId, notifiedAt: null },
@@ -555,10 +647,12 @@ export function createTrackerService(deps: {
     findPjnByProfile,
     startPjn,
     confirmPjn,
+    discardPending,
     remove,
     finish,
     runDue,
     pendingNotifications,
+    latestSteps,
     markNotified,
   };
 }

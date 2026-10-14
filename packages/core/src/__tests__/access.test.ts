@@ -31,29 +31,12 @@ describe("payment stub", () => {
     return { core, userId: registered.userId };
   }
 
-  it("grants, extends and cancels a subscription", async () => {
+  it("cancels a subscription and resets the trial", async () => {
     const { core, userId } = await user();
-    const first = await core.access.stub(userId, "activate");
-    expect(first.plan).toBe("subscription");
-    const second = await core.access.stub(userId, "activate");
-    expect(new Date(second.until!).getTime()).toBeGreaterThan(new Date(first.until!).getTime());
+    await core.billing.checkout(userId, 0);
+    expect((await core.access.get(userId)).plan).toBe("subscription");
     expect((await core.access.stub(userId, "cancel")).plan).toBe("none");
-  });
-
-  it("unlocks relatives and extra cases, and resets the trial", async () => {
-    const { core, userId } = await user();
     await core.trackers.addTramite(userId, "RENAPER", "755824304");
-    const person = {
-      firstName: "Ana",
-      lastName: "Perez",
-      birthDate: new Date("2015-05-01T00:00:00Z"),
-      pjnJurisdiction: "",
-    };
-    expect(await core.people.add(userId, person)).toMatchObject({ ok: false });
-    await core.access.stub(userId, "activate");
-    expect(await core.people.add(userId, person)).toMatchObject({ ok: true });
-
-    await core.access.stub(userId, "cancel");
     await prisma.tracker.deleteMany({ where: { userId } });
     expect((await core.access.stub(userId, "resetTrial")).plan).toBe("none");
   });

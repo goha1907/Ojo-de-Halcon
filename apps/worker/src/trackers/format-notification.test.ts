@@ -8,7 +8,7 @@ describe("formatNotification", () => {
       locale: "ru",
       label: null,
       payload: {
-        newSteps: [{ date: "3/09/2026", title: "DESPACHO", detail: "TRASLADO" }],
+        step: { date: "3/09/2026", title: "DESPACHO", detail: "TRASLADO" },
         header: { sit_actual: "GIRO" },
       },
     });
@@ -22,7 +22,7 @@ describe("formatNotification", () => {
       kind: "CORREO",
       locale: "xx",
       label: "Мама",
-      payload: { newSteps: [], header: {} },
+      payload: { step: null, header: {} },
     });
     expect(text).toContain("Мама");
   });

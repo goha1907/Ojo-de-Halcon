@@ -86,4 +86,8 @@ export const API_ROUTES = {
   pjnConfirm: "/api/trackers/pjn/confirm",
   people: "/api/people",
   billingStub: "/api/billing/stub",
+  billingQuote: "/api/billing/quote",
+  billingCheckout: "/api/billing/checkout",
+  billingRenew: "/api/billing/renew",
+  billingSeats: "/api/billing/seats",
 } as const;

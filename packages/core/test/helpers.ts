@@ -33,7 +33,10 @@ export function makeMailbox() {
 }
 
 const unusedScraper: Scraper = {
-  tramite: async () => {
+  renaper: async () => {
+    throw new Error("scraper not stubbed");
+  },
+  correo: async () => {
     throw new Error("scraper not stubbed");
   },
   pjnParty: async () => {
@@ -68,7 +71,7 @@ export function tokenFromMail(message: MailMessage): string {
 
 export async function resetDb(): Promise<void> {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "ProfileChange", "ServicePreference", "TelegramLinkCode", "EmailToken", "Session", "User" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "TelegramOutbox", "TrialLedger", "ProfileChange", "ServicePreference", "TelegramLinkCode", "EmailToken", "Session", "User" RESTART IDENTITY CASCADE',
   );
 }
 

@@ -1,0 +1,29 @@
+import { describe, expect, it } from "vitest";
+import { formatDigest } from "./format-digest";
+
+describe("formatDigest", () => {
+  it("shows the service, the latest stage and the status", () => {
+    const text = formatDigest(
+      {
+        kind: "PJN",
+        section: "citizenship_court",
+        personName: null,
+        header: { sit_actual: "GIRO" },
+        step: { date: "3/09/2026", title: "PASE", detail: "FISCALIA" },
+      },
+      "ru",
+    );
+    expect(text).toContain("Суд");
+    expect(text).toContain("• 3/09/2026 · PASE — FISCALIA");
+    expect(text).toContain("GIRO");
+  });
+
+  it("adds the person name and handles a case without stages", () => {
+    const text = formatDigest(
+      { kind: "RENAPER", section: "dni_production", personName: "Ana Perez", header: {}, step: null },
+      "es",
+    );
+    expect(text).toContain("Ana Perez");
+    expect(text).toContain("Todavía no hay etapas");
+  });
+});

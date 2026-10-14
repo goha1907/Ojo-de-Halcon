@@ -112,3 +112,21 @@ describe("credentials", () => {
     expect(resetPasswordSchema.safeParse({ token: "t", password: "longenough1", passwordConfirm: "longenough1" }).success).toBe(true);
   });
 });
+
+describe("canonical e-mail", () => {
+  it("maps address variations of one mailbox to one key", async () => {
+    const { canonicalEmail } = await import("../index");
+    expect(canonicalEmail("E.G.o.r+trial@Gmail.com")).toBe("egor@gmail.com");
+    expect(canonicalEmail("egor@googlemail.com")).toBe("egor@gmail.com");
+    expect(canonicalEmail("Ivan.Petrov+x@mail.ru")).toBe("ivan.petrov@mail.ru");
+  });
+
+  it("rejects disposable domains on registration only", async () => {
+    const { isDisposableEmail, registerSchema } = await import("../index");
+    expect(isDisposableEmail("a@Mailinator.com")).toBe(true);
+    expect(isDisposableEmail("a@gmail.com")).toBe(false);
+    const base = { password: "password-123", passwordConfirm: "password-123", acceptTerms: true as const };
+    expect(registerSchema.safeParse({ ...base, email: "x@yopmail.com" }).success).toBe(false);
+    expect(registerSchema.safeParse({ ...base, email: "x@gmail.com" }).success).toBe(true);
+  });
+});

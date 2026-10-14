@@ -1,9 +1,9 @@
 """RENAPER (mitramite.renaper.gob.ar) and Correo Argentino DNI tracking.
 
-RENAPER's page issues a reCAPTCHA v3 token itself; we run the same fetch from a
-Playwright page. The Correo site is a plain POST. One RENAPER answer also holds
-the postal movement, which is used when the Correo site does not know the
-shipment yet.
+Two independent sources: a person may wait for the DNI at RENAPER only, at the
+post office only, or both. RENAPER's page issues a reCAPTCHA v3 token itself, so
+the same fetch runs from a Playwright page. The Correo site (form `ondng`, type
+DNI) is a plain POST.
 """
 
 from __future__ import annotations
@@ -148,30 +148,27 @@ def fetch_correo(number: str, timeout: float = 25.0) -> list[dict] | None:
     return steps
 
 
-def tramite(number: str, playwright) -> dict:
-    """One trámite number -> both tabs: RENAPER steps and postal steps."""
+def _delivered(steps: list[dict]) -> bool:
+    return any("entregad" in f"{s['title']} {s['detail']}".lower() for s in steps)
+
+
+def renaper_status(number: str, playwright) -> dict:
+    """RENAPER tab: header, RENAPER stages only. Independent of the post office."""
     parsed = parse_renaper(fetch_renaper(number, playwright))
-    try:
-        correo_steps = fetch_correo(number)
-    except Exception:  # the postal site may be down; RENAPER data still helps
-        correo_steps = None
-    if parsed is None and correo_steps is None:
+    if parsed is None:
         raise SourceError("not_found")
-    postal = correo_steps if correo_steps else (parsed or {}).get("postal_steps", [])
-    delivered = bool(parsed and parsed["delivered"]) or any(
-        "entregad" in f"{s['title']} {s['detail']}".lower() for s in postal
-    )
     return {
-        "renaper": {
-            "found": parsed is not None,
-            "header": parsed["header"] if parsed else {},
-            "steps": parsed["renaper_steps"] if parsed else [],
-            "finished": bool(parsed and (parsed["in_correo"] or delivered)),
-        },
-        "correo": {
-            "found": bool(postal),
-            "header": {},
-            "steps": postal,
-            "finished": delivered,
-        },
+        "found": True,
+        "header": parsed["header"],
+        "steps": parsed["renaper_steps"],
+        # handed over to the post office or already delivered
+        "finished": bool(parsed["in_correo"] or parsed["delivered"]),
     }
+
+
+def correo_status(number: str) -> dict:
+    """Correo tab: stages of the DNI shipment from the post office site (ondng form)."""
+    steps = fetch_correo(number)
+    if not steps:
+        raise SourceError("not_found")
+    return {"found": True, "header": {}, "steps": steps, "finished": _delivered(steps)}

@@ -1,6 +1,7 @@
 import type { UserDto } from "@ojo/core";
 import { NextResponse } from "next/server";
 import type { ZodType } from "zod";
+import { getEnv } from "./env";
 import { clientIp, rateLimit } from "./rate-limit";
 import { getCurrentUser } from "./session";
 
@@ -23,7 +24,11 @@ export type ApiErrorCode =
   | "NO_COURT"
   | "PERSON_NOT_FOUND"
   | "SUBSCRIPTION_REQUIRED"
-  | "LIMIT_REACHED";
+  | "LIMIT_REACHED"
+  | "EMAIL_NOT_VERIFIED"
+  | "SLOT_REQUIRED"
+  | "INVALID_SEATS"
+  | "PEOPLE_MISMATCH";
 
 const STATUS: Record<ApiErrorCode, number> = {
   VALIDATION: 422,
@@ -45,6 +50,10 @@ const STATUS: Record<ApiErrorCode, number> = {
   PERSON_NOT_FOUND: 404,
   SUBSCRIPTION_REQUIRED: 402,
   LIMIT_REACHED: 409,
+  EMAIL_NOT_VERIFIED: 403,
+  SLOT_REQUIRED: 402,
+  INVALID_SEATS: 422,
+  PEOPLE_MISMATCH: 409,
 };
 
 export function apiError(code: ApiErrorCode, extra?: Record<string, unknown>) {
@@ -97,4 +106,15 @@ export function limitByUser(
   limit: { windowMs: number; max: number },
 ): Response | null {
   return rateLimit(`${name}:${userId}`, limit).allowed ? null : apiError("RATE_LIMITED");
+}
+
+/**
+ * Like `withUser`, for actions that create or change tracked data: when e-mail
+ * verification is switched on, the address must be confirmed first.
+ */
+export async function withVerifiedUser(handler: (user: UserDto) => Promise<Response>): Promise<Response> {
+  return withUser(async (user) => {
+    if (getEnv().EMAIL_VERIFICATION_REQUIRED && !user.emailVerified) return apiError("EMAIL_NOT_VERIFIED");
+    return handler(user);
+  });
 }

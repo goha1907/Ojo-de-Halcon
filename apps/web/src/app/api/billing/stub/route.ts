@@ -4,7 +4,7 @@ import { apiError, parseBody, withUser } from "@/server/api";
 import { getCore } from "@/server/core";
 import { getEnv } from "@/server/env";
 
-const bodySchema = z.object({ action: z.enum(["activate", "cancel", "resetTrial"]) });
+const bodySchema = z.object({ action: z.enum(["cancel", "resetTrial"]) });
 
 /** Test stub for payments: only answers when PAYMENTS_STUB is on. */
 export async function POST(request: Request) {

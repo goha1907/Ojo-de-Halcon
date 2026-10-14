@@ -11,8 +11,13 @@ export interface NotificationInput {
   locale: string;
   label: string | null;
   payload: {
-    newSteps: { date: string; title: string; detail: string }[];
+    /** One stage per event (current format). */
+    step?: { date: string; title: string; detail: string } | null;
+    /** Events written before one-event-per-stage; still delivered. */
+    newSteps?: { date: string; title: string; detail: string }[];
     header: Record<string, string>;
+    /** First report of a case that was just added. */
+    initial?: boolean;
   };
 }
 
@@ -29,13 +34,14 @@ export function formatNotification(input: NotificationInput): string {
   const sectionKey = `menu.${TRACKER_KIND_SECTION[input.kind]}` as MessageKey;
   const service = input.label ? `${t(sectionKey)} · ${input.label}` : t(sectionKey);
 
-  const lines = [t("bot.update.title", { service })];
-  for (const step of input.payload.newSteps) {
+  const lines = [t(input.payload.initial ? "bot.initial.title" : "bot.update.title", { service })];
+  const steps = input.payload.step ? [input.payload.step] : (input.payload.newSteps ?? []);
+  for (const step of steps) {
     const text = [step.title, step.detail].filter(Boolean).join(" — ");
     lines.push(`• ${[step.date, text].filter(Boolean).join(" · ")}`);
   }
   const status = input.payload.header[STATUS_FIELD[input.kind]];
   if (status) lines.push(t("bot.update.status", { status }));
-  lines.push(t("bot.update.openSite"));
+  if (!input.payload.initial) lines.push(t("bot.update.openSite"));
   return lines.join("\n");
 }

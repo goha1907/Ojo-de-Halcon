@@ -2,6 +2,7 @@ import { createAccountService } from "./accounts/account-service";
 import { createSessionService } from "./auth/session-service";
 import { createPreferencesService } from "./notifications/preferences-service";
 import { createAccessService } from "./access/access-service";
+import { createBillingService } from "./billing/billing-service";
 import { createPeopleService } from "./people/people-service";
 import { createProfileService } from "./profile/profile-service";
 import { createTelegramService } from "./telegram/telegram-service";
@@ -17,9 +18,10 @@ export function createCore(deps: CoreDeps) {
     telegram: createTelegramService({ prisma, config, now }),
     profile: createProfileService({ prisma, now }),
     preferences: createPreferencesService({ prisma }),
-    trackers: createTrackerService({ prisma, scraper, now }),
+    trackers: createTrackerService({ prisma, scraper, now, secret: config.secret }),
     people: createPeopleService({ prisma, now }),
     access: createAccessService({ prisma, now }),
+    billing: createBillingService({ prisma, now }),
   };
 }
 
@@ -33,10 +35,11 @@ export type { ProfileEditDecision } from "./profile/profile-service";
 export type { MailMessage, Mailer } from "./mailer";
 export { createConsoleMailer } from "./mailer";
 export { createCoreFromEnv } from "./from-env";
-export type { Scraper, TramiteResult, PjnCaseResult, PjnPartyRow, ProcessScraperOptions } from "./trackers/scraper";
+export type { Scraper, ScrapedTramite, PjnCaseResult, PjnPartyRow, ProcessScraperOptions } from "./trackers/scraper";
 export { ScraperError, createProcessScraper } from "./trackers/scraper";
 export type {
   AddResult,
+  DigestItem,
   EventPayload,
   PendingNotification,
   PjnCandidate,
@@ -48,3 +51,11 @@ export type {
 export type { AccessPlan, AccessState } from "./access/access-service";
 export { resolveAccess } from "./access/access-service";
 export type { PeopleService, PersonDto, PersonResult } from "./people/people-service";
+export type {
+  BillingService,
+  BillingStateDto,
+  CheckoutResult,
+  PaymentDto,
+  QuoteDto,
+  ReduceResult,
+} from "./billing/billing-service";

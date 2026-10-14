@@ -1,11 +1,11 @@
 import { APP_CONFIG, addTrackerRequestSchema, pjnReference } from "@ojo/shared";
 import { NextResponse } from "next/server";
-import { apiError, limitByUser, parseBody, withUser } from "@/server/api";
+import { apiError, limitByUser, parseBody, withVerifiedUser } from "@/server/api";
 import { getCore } from "@/server/core";
 
-/** Adds a tracker. RENAPER/Correo answer with the twin that was created too. */
+/** Adds one tracker (RENAPER, Correo and court cases are independent). */
 export async function POST(request: Request) {
-  return withUser(async (user) => {
+  return withVerifiedUser(async (user) => {
     const limited = limitByUser(user.id, "tracker-add", APP_CONFIG.rateLimit.trackerAdd);
     if (limited) return limited;
     const body = await parseBody(request, addTrackerRequestSchema);
@@ -30,6 +30,6 @@ export async function POST(request: Request) {
 
     const result = await trackers.addTramite(user.id, input.kind, input.number, input.personId);
     if (!result.ok) return apiError(result.reason);
-    return NextResponse.json({ ok: true, tracker: result.tracker, alsoCreated: result.alsoCreated });
+    return NextResponse.json({ ok: true, tracker: result.tracker });
   });
 }

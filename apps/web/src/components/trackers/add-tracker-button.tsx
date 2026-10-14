@@ -11,9 +11,11 @@ import { ADD_TRACKER_EVENT, AddTrackerModal } from "./add-tracker-modal";
 export function AddTrackerButton({
   defaultJurisdiction,
   people,
+  lock,
 }: {
   defaultJurisdiction: string | null;
   people: PersonDto[];
+  lock: "trial" | "expired" | null;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -49,6 +51,7 @@ export function AddTrackerButton({
         onClose={() => setOpen(false)}
         defaultJurisdiction={defaultJurisdiction}
         people={people}
+        lock={lock}
         {...(kind ? { initialKind: kind } : {})}
       />
     </>

@@ -4,6 +4,7 @@ import type { PersonDto } from "@ojo/core";
 import {
   PJN_DEFAULT_JURISDICTION,
   PJN_JURISDICTIONS,
+  ROUTES,
   TRACKER_KINDS,
   TRACKER_KIND_SECTION,
   addTrackerSchema,
@@ -12,6 +13,7 @@ import {
   type TrackerKindValue,
 } from "@ojo/shared";
 import { Alert, Button, Modal, SelectField, TextField } from "@ojo/ui";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 import { useT } from "@/components/providers/i18n-provider";
@@ -31,6 +33,8 @@ interface Props {
   defaultJurisdiction: string | null;
   /** Relatives the case can be added for (the owner is always the first option). */
   people: PersonDto[];
+  /** Set when the plan does not allow another case; the form is replaced by an offer. */
+  lock: "trial" | "expired" | null;
 }
 
 const ERROR_KEYS: Record<string, MessageKey> = {
@@ -42,10 +46,8 @@ const ERROR_KEYS: Record<string, MessageKey> = {
   SOURCE_DOWN: "track.error.sourceDown",
 };
 
-const sectionLabel = (kind: TrackerKindValue): MessageKey => `menu.${TRACKER_KIND_SECTION[kind]}` as MessageKey;
-
 /** One window for adding any tracker (the "+ Tracking" button lives in the header). */
-export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKind, people }: Props) {
+export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKind, people, lock }: Props) {
   const t = useT();
   const router = useRouter();
   const [kind, setKind] = useState<TrackerKindValue>(initialKind ?? "RENAPER");
@@ -107,12 +109,25 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
     }
   }
 
-  const linkedWarning = !isCourt
-    ? t("track.warn.linked", { first: t(sectionLabel("RENAPER")), second: t(sectionLabel("CORREO")) })
-    : null;
-
   return (
     <Modal open={open} onClose={onClose} title={t("track.modal.title")} closeLabel={t("common.cancel")}>
+      {lock ? (
+        <div className="space-y-4">
+          <Alert tone="info">{lock === "expired" ? t("track.limit.expired") : t("track.limit.text")}</Alert>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={onClose}>
+              {t("common.cancel")}
+            </Button>
+            <Link
+              href={`${ROUTES.settings}#subscription`}
+              onClick={onClose}
+              className="inline-flex items-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700"
+            >
+              {t("track.limit.go")}
+            </Link>
+          </div>
+        </div>
+      ) : (
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         {formError && <Alert tone="error">{formError}</Alert>}
         {people.length > 0 && (
@@ -164,7 +179,6 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
             onChange={(e) => setYear(e.target.value)}
           />
         )}
-        {linkedWarning && <Alert tone="info">{linkedWarning}</Alert>}
         {isCourt && <Alert tone="info">{t("track.pjn.hint")}</Alert>}
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>
@@ -175,6 +189,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
           </Button>
         </div>
       </form>
+      )}
     </Modal>
   );
 }

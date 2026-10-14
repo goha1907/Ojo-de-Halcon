@@ -13,7 +13,7 @@ export function randomToken(bytes: number): string {
   return randomBytes(bytes).toString("base64url");
 }
 
-export type HashScope = "telegram" | "session" | "email";
+export type HashScope = "telegram" | "session" | "email" | "ledger";
 
 /**
  * Keyed hash used for every stored one-time credential (link codes, session

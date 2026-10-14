@@ -15,6 +15,8 @@ enum EmailTokenType {
 model User {
   id                    String    @id @default(cuid())
   email                 String    @unique
+  /// One key per real mailbox (see canonicalEmail); blocks address variations.
+  emailCanonical        String    @unique
   passwordHash          String
   emailVerifiedAt       DateTime?
   firstName             String?
@@ -32,6 +34,8 @@ model User {
   trialStartedAt        DateTime?
   /// Paid access end (payments are not connected yet; set manually).
   subscriptionUntil     DateTime?
+  /// Paid slots for relatives (the owner is always covered by the base price).
+  seats                 Int       @default(0)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -42,6 +46,7 @@ model User {
   telegramLinkCode TelegramLinkCode?
   trackers         Tracker[]
   people           Person[]
+  payments         Payment[]
 }
 
 model Session {
@@ -117,35 +122,34 @@ enum TrackerStatus {
   FINISHED
 }
 
-/// One tracked procedure of one user. RENAPER and CORREO items created from the
-/// same trámite number share `linkGroupId`.
+/// One tracked procedure of one user. RENAPER and CORREO are independent sources.
 model Tracker {
-  id            String        @id @default(cuid())
-  userId        String
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// Relative the case belongs to; null = the account owner.
-  personId      String?
-  person        Person?       @relation(fields: [personId], references: [id], onDelete: Cascade)
+  personId        String?
+  person          Person?       @relation(fields: [personId], references: [id], onDelete: Cascade)
   /// `personId` or "self"; part of the unique key (NULLs are not unique in SQL).
-  personKey     String        @default("self")
-  kind          TrackerKind
+  personKey       String        @default("self")
+  /// The "case added" notification was produced (it waits while the person is muted).
+  initialNotified Boolean       @default(false)
+  kind            TrackerKind
   /// RENAPER/CORREO: trámite number. PJN: "<jurisdiction>:<number>:<year>".
-  reference     String
-  label         String?
-  linkGroupId   String?
-  status        TrackerStatus @default(ACTIVE)
-  lastCheckedAt DateTime?
-  nextCheckAt   DateTime      @default(now())
-  lastError     String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  reference       String
+  label           String?
+  status          TrackerStatus @default(ACTIVE)
+  lastCheckedAt   DateTime?
+  nextCheckAt     DateTime      @default(now())
+  lastError       String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   snapshot TrackerSnapshot?
   events   TrackerEvent[]
 
   @@unique([userId, personKey, kind, reference])
   @@index([status, nextCheckAt])
-  @@index([linkGroupId])
 }
 
 /// Latest parsed state of a tracker: header plus the list of stages.
@@ -160,6 +164,8 @@ model TrackerSnapshot {
 
 /// A detected change; `notifiedAt` is null until the Telegram message is sent.
 model TrackerEvent {
+  /// Set by the worker that is about to send the message (prevents double delivery).
+  claimedAt  DateTime?
   id         String    @id @default(cuid())
   trackerId  String
   tracker    Tracker   @relation(fields: [trackerId], references: [id], onDelete: Cascade)
@@ -181,9 +187,62 @@ model Person {
   lastName        String
   birthDate       DateTime @db.Date
   pjnJurisdiction String?
+  /// false: updates of this person are not sent to the owner's Telegram.
+  notifyTelegram  Boolean  @default(true)
   createdAt       DateTime @default(now())
 
   trackers Tracker[]
 
   @@index([userId])
+}
+
+/// Telegram messages to send after the account (or the link) is gone, so they
+/// cannot reference the user. Delivered and removed by the worker.
+model TelegramOutbox {
+  /// Set by the worker that is about to send the message (prevents double delivery).
+  claimedAt  DateTime?
+  id         String    @id @default(cuid())
+  telegramId BigInt
+  /// Message kind: "account_deleted" | "unlinked" | "person_added" | "person_removed"
+  kind       String
+  locale     String
+  /// Message parameters (e.g. the relative's name).
+  payload    Json?
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+  sentAt     DateTime?
+
+  @@index([sentAt, createdAt])
+}
+
+/// Remembers used trials after an account is deleted. Only keyed hashes are
+/// stored, never the e-mail or the case number itself.
+model TrialLedger {
+  id             String    @id @default(cuid())
+  /// HMAC of "email:<canonical>".
+  keyHash        String    @unique
+  /// Entry type; only "email" for now.
+  kind           String
+  trialStartedAt DateTime?
+  createdAt      DateTime  @default(now())
+}
+
+/// Payment history. Kept (user becomes null) when an account is deleted, so
+/// refunds and accounting stay possible; holds no personal data itself.
+model Payment {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// Whole units of `currency`.
+  amount     Int
+  currency   String
+  /// "subscription" | "seats" | "renewal"
+  kind       String
+  /// Relative slots bought with this payment.
+  seatsDelta Int      @default(0)
+  /// Payment provider; "stub" until real billing is connected.
+  provider   String
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

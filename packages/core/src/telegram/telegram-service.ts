@@ -15,6 +15,11 @@ function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: string }).code === "P2002";
 }
 
+/** After this many failed deliveries a message is given up on. */
+const OUTBOX_MAX_ATTEMPTS = 5;
+/** A claimed message that was never confirmed is picked up again after this time. */
+const CLAIM_TIMEOUT_MS = 5 * 60_000;
+
 export function createTelegramService(deps: {
   prisma: PrismaClient;
   config: CoreConfig;
@@ -72,21 +77,85 @@ export function createTelegramService(deps: {
   }
 
   async function unlink(userId: string): Promise<void> {
-    await prisma.$transaction([
-      prisma.user.update({
+    // The unlink itself decides whether a message is queued, so two concurrent
+    // requests (double click, retry) produce exactly one farewell.
+    await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
         where: { id: userId },
+        select: { telegramId: true, locale: true },
+      });
+      if (!user || user.telegramId === null) return;
+      const released = await tx.user.updateMany({
+        where: { id: userId, telegramId: user.telegramId },
         data: { telegramId: null, telegramUsername: null, telegramLinkedAt: null },
-      }),
-      prisma.telegramLinkCode.deleteMany({ where: { userId } }),
-    ]);
+      });
+      if (released.count === 1) {
+        await tx.telegramOutbox.create({
+          data: { telegramId: user.telegramId, kind: "unlinked", locale: user.locale },
+        });
+      }
+      await tx.telegramLinkCode.deleteMany({ where: { userId } });
+    });
   }
 
   async function purgeExpired(): Promise<number> {
     const result = await prisma.telegramLinkCode.deleteMany({ where: { expiresAt: { lt: now() } } });
+    // delivered (or given-up) outbox rows are only kept for a day
+    const dayAgo = new Date(now().getTime() - 86_400_000);
+    await prisma.telegramOutbox.deleteMany({
+      where: { createdAt: { lt: dayAgo }, OR: [{ sentAt: { not: null } }, { attempts: { gte: OUTBOX_MAX_ATTEMPTS } }] },
+    });
     return result.count;
   }
 
-  return { createLinkCode, confirmFromBot, unlink, purgeExpired };
+  /**
+   * Takes messages for delivery. Each row is claimed atomically, so several
+   * workers (or an overlapping tick) never send the same message twice. A claim
+   * that was not completed is retried after `CLAIM_TIMEOUT_MS`.
+   */
+  async function claimOutbox(limit = 50) {
+    const staleBefore = new Date(now().getTime() - CLAIM_TIMEOUT_MS);
+    const candidates = await prisma.telegramOutbox.findMany({
+      where: {
+        sentAt: null,
+        attempts: { lt: OUTBOX_MAX_ATTEMPTS },
+        OR: [{ claimedAt: null }, { claimedAt: { lt: staleBefore } }],
+      },
+      orderBy: { createdAt: "asc" },
+      take: limit,
+    });
+    const claimed = [];
+    for (const item of candidates) {
+      const result = await prisma.telegramOutbox.updateMany({
+        where: {
+          id: item.id,
+          sentAt: null,
+          OR: [{ claimedAt: null }, { claimedAt: { lt: staleBefore } }],
+        },
+        data: { claimedAt: now() },
+      });
+      if (result.count === 1) claimed.push(item);
+    }
+    return claimed;
+  }
+
+  async function markOutboxSent(id: string): Promise<void> {
+    await prisma.telegramOutbox.updateMany({ where: { id, sentAt: null }, data: { sentAt: now() } });
+  }
+
+  async function markOutboxFailed(id: string): Promise<void> {
+    await prisma.telegramOutbox.updateMany({ where: { id }, data: { attempts: { increment: 1 } } });
+  }
+
+  return {
+    createLinkCode,
+    confirmFromBot,
+    unlink,
+    purgeExpired,
+    claimOutbox,
+    markOutboxSent,
+    markOutboxFailed,
+  };
 }
 
 export type TelegramService = ReturnType<typeof createTelegramService>;

@@ -7,7 +7,7 @@ export interface StartHandlerCore {
       code: string;
       telegram: { id: number; username?: string | null };
     }): Promise<
-      | { ok: true }
+      | { ok: true; userId: string }
       | { ok: false; reason: "UNKNOWN_CODE" | "EXPIRED" | "ALREADY_LINKED" }
     >;
   };
@@ -16,28 +16,34 @@ export interface StartHandlerCore {
 /** Telegram allows 1-64 chars of [A-Za-z0-9_-] in a /start payload. */
 const PAYLOAD_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
+/** Which message to answer, and the account that was just linked (if any). */
+export interface StartOutcome {
+  key: MessageKey;
+  linkedUserId: string | null;
+}
+
 /** Decides which message to answer for `/start [payload]` (linking Telegram to an account). */
 export async function handleStart(input: {
   core: StartHandlerCore;
   payload: string;
   from: { id: number; username?: string | undefined };
-}): Promise<MessageKey> {
+}): Promise<StartOutcome> {
   const payload = input.payload.trim();
-  if (!payload) return "bot.welcome";
-  if (!PAYLOAD_PATTERN.test(payload)) return "bot.codeInvalid";
+  if (!payload) return { key: "bot.welcome", linkedUserId: null };
+  if (!PAYLOAD_PATTERN.test(payload)) return { key: "bot.codeInvalid", linkedUserId: null };
 
   const result = await input.core.telegram.confirmFromBot({
     code: payload,
     telegram: { id: input.from.id, username: input.from.username ?? null },
   });
-  if (result.ok) return "bot.linked";
+  if (result.ok) return { key: "bot.linked", linkedUserId: result.userId };
 
   switch (result.reason) {
     case "EXPIRED":
-      return "bot.codeExpired";
+      return { key: "bot.codeExpired", linkedUserId: null };
     case "ALREADY_LINKED":
-      return "bot.alreadyLinked";
+      return { key: "bot.alreadyLinked", linkedUserId: null };
     default:
-      return "bot.codeInvalid";
+      return { key: "bot.codeInvalid", linkedUserId: null };
   }
 }

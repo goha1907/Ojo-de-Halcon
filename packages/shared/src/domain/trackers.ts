@@ -8,9 +8,6 @@ const msg = (key: MessageKey) => ({ message: key });
 export const TRACKER_KINDS = ["RENAPER", "CORREO", "PJN"] as const;
 export type TrackerKindValue = (typeof TRACKER_KINDS)[number];
 
-/** Kinds that share one trámite number and are created together. */
-export const LINKED_TRAMITE_KINDS = ["RENAPER", "CORREO"] as const;
-
 export const TRACKER_STATUSES = ["PENDING_CONFIRMATION", "ACTIVE", "FINISHED"] as const;
 export type TrackerStatusValue = (typeof TRACKER_STATUSES)[number];
 

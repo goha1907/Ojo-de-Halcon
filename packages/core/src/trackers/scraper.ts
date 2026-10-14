@@ -8,11 +8,6 @@ export interface ScrapedTramite {
   finished: boolean;
 }
 
-export interface TramiteResult {
-  renaper: ScrapedTramite;
-  correo: ScrapedTramite;
-}
-
 export interface PjnPartyRow {
   expediente: string;
   dependencia: string;
@@ -29,7 +24,10 @@ export interface PjnCaseResult {
 
 /** Boundary to the data sources (public sites). Faked in tests. */
 export interface Scraper {
-  tramite(number: string): Promise<TramiteResult>;
+  /** RENAPER status of a trámite number. */
+  renaper(number: string): Promise<ScrapedTramite>;
+  /** Correo Argentino DNI shipment of a trámite number (independent of RENAPER). */
+  correo(number: string): Promise<ScrapedTramite>;
   pjnParty(input: { jurisdiction: string; name: string }): Promise<PjnPartyRow[]>;
   pjnCase(input: {
     jurisdiction: string;
@@ -112,7 +110,8 @@ export function createProcessScraper(options: ProcessScraperOptions): Scraper {
   }
 
   return {
-    tramite: (number) => call<TramiteResult>(["tramite", "--number", number]),
+    renaper: (number) => call<ScrapedTramite>(["renaper", "--number", number]),
+    correo: (number) => call<ScrapedTramite>(["correo", "--number", number]),
     async pjnParty({ jurisdiction, name }) {
       const result = await call<{ results: PjnPartyRow[] }>([
         "pjn-party",

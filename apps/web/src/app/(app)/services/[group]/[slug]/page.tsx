@@ -37,10 +37,13 @@ export default async function ServicePage({
   const official = findLink(SERVICE_OFFICIAL_LINK[service.section]);
   const enabled = preferences[service.section];
   const kind = SECTION_KIND[service.section];
+  const ownerName =
+    [user.firstName, user.lastName].filter(Boolean).join(" ") || t("track.person.me");
   const trackers = kind ? (await core.trackers.list(user.id)).filter((item) => item.kind === kind) : [];
   const people = kind === "PJN" ? await core.people.list(user.id) : [];
+  // any tracker counts, finished ones too: the case is already known and is not offered again
   const hasCase = (personId: string | null) =>
-    trackers.some((item) => (item.person?.id ?? null) === personId && item.status !== "FINISHED");
+    trackers.some((item) => (item.person?.id ?? null) === personId);
   // everyone who has a court chosen and no case yet gets a "find the case" offer
   const finders = [
     ...(hasCase(null) ? [] : [{ personId: undefined, name: undefined }]),
@@ -67,9 +70,12 @@ export default async function ServicePage({
                 {...(finder.personId ? { personId: finder.personId, personName: finder.name } : {})}
               />
             ))}
-          {trackers.map((tracker) => (
-            <TrackerCard key={tracker.id} tracker={tracker} t={t} locale={locale} />
-          ))}
+          {/* the owner's cases first, then relatives in the order they were added */}
+          {[...trackers]
+            .sort((a, b) => Number(a.person !== null) - Number(b.person !== null))
+            .map((tracker) => (
+              <TrackerCard key={tracker.id} tracker={tracker} t={t} locale={locale} ownerName={ownerName} />
+            ))}
           {trackers.length === 0 && kind !== "PJN" && (
             <Card title={t("track.empty")} description={t("track.emptyHint")}>
               {official && (

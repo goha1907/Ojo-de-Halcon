@@ -6,19 +6,16 @@ import { useState } from "react";
 import { useT } from "@/components/providers/i18n-provider";
 import { apiRequest } from "@/lib/api-client";
 
-interface Props {
-  id: string;
-  status: "PENDING_CONFIRMATION" | "ACTIVE" | "FINISHED";
-  /** The tracker has a twin that is removed together with it. */
-  linked: boolean;
-}
-
-export function TrackerActions({ id, status, linked }: Props) {
+/**
+ * Only a case waiting for confirmation has actions. A confirmed case cannot be
+ * finished or removed by the user (support only), to protect subscription limits.
+ */
+export function PendingCaseActions({ id }: { id: string }) {
   const t = useT();
   const router = useRouter();
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"confirm" | "discard" | null>(null);
 
-  async function run(name: string, action: () => Promise<unknown>) {
+  async function run(name: "confirm" | "discard", action: () => Promise<unknown>) {
     setBusy(name);
     try {
       await action();
@@ -30,34 +27,20 @@ export function TrackerActions({ id, status, linked }: Props) {
 
   return (
     <div className="flex flex-wrap gap-2">
-      {status === "PENDING_CONFIRMATION" && (
-        <Button
-          loading={busy === "confirm"}
-          onClick={() =>
-            run("confirm", () => apiRequest("/api/trackers/pjn/confirm", { method: "POST", body: { id } }))
-          }
-        >
-          {t("pjn.find.confirm")}
-        </Button>
-      )}
-      {status === "ACTIVE" && (
-        <Button
-          variant="secondary"
-          loading={busy === "finish"}
-          onClick={() => run("finish", () => apiRequest(`/api/trackers/${id}`, { method: "PATCH", body: { action: "finish" } }))}
-        >
-          {t("track.finish")}
-        </Button>
-      )}
+      <Button
+        loading={busy === "confirm"}
+        disabled={busy === "discard"}
+        onClick={() => void run("confirm", () => apiRequest("/api/trackers/pjn/confirm", { method: "POST", body: { id } }))}
+      >
+        {t("pjn.find.confirm")}
+      </Button>
       <Button
         variant="ghost"
-        loading={busy === "remove"}
-        onClick={() => {
-          if (linked && !window.confirm(t("track.removeLinked"))) return;
-          void run("remove", () => apiRequest(`/api/trackers/${id}`, { method: "DELETE" }));
-        }}
+        loading={busy === "discard"}
+        disabled={busy === "confirm"}
+        onClick={() => void run("discard", () => apiRequest(`/api/trackers/${id}`, { method: "DELETE" }))}
       >
-        {t("track.remove")}
+        {t("pjn.pending.discard")}
       </Button>
     </div>
   );

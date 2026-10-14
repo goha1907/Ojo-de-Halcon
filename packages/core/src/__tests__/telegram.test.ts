@@ -86,5 +86,45 @@ describe("telegram linking", () => {
     await core.telegram.unlink(userId);
     const row = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
     expect([row.telegramId, row.telegramUsername, row.telegramLinkedAt]).toEqual([null, null, null]);
+
+    const outbox = await core.telegram.claimOutbox();
+    expect(outbox.map((item) => [item.kind, item.telegramId])).toEqual([["unlinked", 5n]]);
+  });
+
+  it("queues one farewell even when unlink is requested twice at once", async () => {
+    const core = makeCore();
+    const userId = await user("g@h.co", core);
+    const { code } = await core.telegram.createLinkCode(userId);
+    await core.telegram.confirmFromBot({ code, telegram: { id: 8 } });
+    await Promise.all([core.telegram.unlink(userId), core.telegram.unlink(userId)]);
+    expect(await prisma.telegramOutbox.count()).toBe(1);
+  });
+
+  it("hands a message to one worker only", async () => {
+    const core = makeCore();
+    const userId = await user("i@j.co", core);
+    const { code } = await core.telegram.createLinkCode(userId);
+    await core.telegram.confirmFromBot({ code, telegram: { id: 9 } });
+    await core.telegram.unlink(userId);
+    const [a, b] = await Promise.all([core.telegram.claimOutbox(), core.telegram.claimOutbox()]);
+    expect(a.length + b.length).toBe(1);
+  });
+
+  it("does not queue a message when nothing was linked", async () => {
+    const core = makeCore();
+    const userId = await user("c@d.co", core);
+    await core.telegram.unlink(userId);
+    expect(await core.telegram.claimOutbox()).toHaveLength(0);
+  });
+
+  it("retries a failed outbox message a limited number of times", async () => {
+    const core = makeCore();
+    const userId = await user("e@f.co", core);
+    const { code } = await core.telegram.createLinkCode(userId);
+    await core.telegram.confirmFromBot({ code, telegram: { id: 6 } });
+    await core.telegram.unlink(userId);
+    const [item] = await core.telegram.claimOutbox();
+    for (let i = 0; i < 5; i += 1) await core.telegram.markOutboxFailed(item!.id);
+    expect(await core.telegram.claimOutbox()).toHaveLength(0);
   });
 });

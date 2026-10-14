@@ -1,6 +1,7 @@
 """CLI used by the Node worker; prints exactly one JSON document to stdout.
 
-    python -m scraper tramite --number 755824304
+    python -m scraper renaper --number 755824304
+    python -m scraper correo --number 755824304
     python -m scraper pjn-party --jurisdiction 4 --name MEDVEDEV
     python -m scraper pjn-case --jurisdiction 4 --number 7900 --year 2026 [--header-only]
 """
@@ -17,7 +18,8 @@ from . import pjn, renaper
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="scraper")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("tramite").add_argument("--number", required=True)
+    sub.add_parser("renaper").add_argument("--number", required=True)
+    sub.add_parser("correo").add_argument("--number", required=True)
     party = sub.add_parser("pjn-party")
     party.add_argument("--jurisdiction", required=True)
     party.add_argument("--name", required=True)
@@ -30,11 +32,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run(args: argparse.Namespace) -> dict:
+    if args.command == "correo":  # plain HTTP, no browser needed
+        return {"ok": True, **renaper.correo_status(args.number)}
+
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as playwright:
-        if args.command == "tramite":
-            return {"ok": True, **renaper.tramite(args.number, playwright)}
+        if args.command == "renaper":
+            return {"ok": True, **renaper.renaper_status(args.number, playwright)}
         import ddddocr
 
         ocr = ddddocr.DdddOcr(show_ad=False)

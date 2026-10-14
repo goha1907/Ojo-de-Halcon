@@ -6,11 +6,12 @@ export interface CardProps {
   description?: ReactNode;
   children: ReactNode;
   className?: string;
+  id?: string;
 }
 
-export function Card({ title, description, children, className }: CardProps) {
+export function Card({ title, description, children, className, id }: CardProps) {
   return (
-    <section className={cn("rounded-2xl border border-slate-200 bg-white p-6 shadow-sm", className)}>
+    <section id={id} className={cn("scroll-mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm", className)}>
       {(title || description) && (
         <header className="mb-4 space-y-1">
           {title && <h2 className="text-lg font-semibold text-slate-900">{title}</h2>}

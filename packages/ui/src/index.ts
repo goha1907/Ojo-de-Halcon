@@ -1,6 +1,7 @@
 export { Alert } from "./components/alert";
 export { Button, type ButtonProps } from "./components/button";
 export { Card, type CardProps } from "./components/card";
+export { CollapsibleCard, type CollapsibleCardProps } from "./components/collapsible-card";
 export { DateField, type DateFieldProps, type DateParts } from "./components/date-field";
 export {
   CheckboxField,

@@ -1,4 +1,4 @@
-import { ROUTES } from "@ojo/shared";
+import { ROUTES, TRACKER_KIND_SECTION } from "@ojo/shared";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { VerifyPending } from "@/components/auth/verify-pending";
@@ -12,12 +12,32 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const mustVerify = getEnv().EMAIL_VERIFICATION_REQUIRED && !user.emailVerified;
   if (!mustVerify && !user.onboardingDone) redirect(ROUTES.onboarding);
 
-  const people = await getCore().people.list(user.id);
+  const core = getCore();
+  const [people, access, trackers] = await Promise.all([
+    core.people.list(user.id),
+    core.access.get(user.id),
+    core.trackers.list(user.id),
+  ]);
+  const sectionCounts: Record<string, number> = {};
+  for (const item of trackers) {
+    const section = TRACKER_KIND_SECTION[item.kind];
+    sectionCounts[section] = (sectionCounts[section] ?? 0) + 1;
+  }
+  // without a subscription the trial covers one case; an expired trial covers none
+  const addLock =
+    access.plan === "trial_expired"
+      ? "expired"
+      : access.plan !== "subscription" && trackers.some((item) => item.status !== "FINISHED")
+        ? "trial"
+        : null;
 
   return (
     <AppShell userLabel={user.firstName ?? user.email} showMenu={!mustVerify}
       defaultJurisdiction={user.pjnJurisdiction}
       people={people}
+      access={access}
+      addLock={addLock}
+      sectionCounts={sectionCounts}
     >
       {mustVerify ? <VerifyPending email={user.email} /> : children}
     </AppShell>

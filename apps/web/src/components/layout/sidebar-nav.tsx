@@ -10,7 +10,8 @@ const ITEM = "block rounded-lg px-3 py-2 text-sm transition-colors";
 const ACTIVE = "bg-brand-50 font-medium text-brand-700";
 const IDLE = "text-slate-700 hover:bg-slate-100";
 
-export function SidebarNav() {
+/** `counts` maps a section id to the number of cases the user has there. */
+export function SidebarNav({ counts = {} }: { counts?: Record<string, number> }) {
   const t = useT();
   const pathname = usePathname();
 
@@ -40,6 +41,9 @@ export function SidebarNav() {
                   className={cn(ITEM, "ml-2", isActive(pathname, item.href) ? ACTIVE : IDLE)}
                 >
                   {t(item.labelKey)}
+                  {(counts[item.id] ?? 0) > 0 && (
+                    <span className="ml-1 text-slate-500">({counts[item.id]})</span>
+                  )}
                 </Link>
               ))}
             </div>

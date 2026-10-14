@@ -1,5 +1,5 @@
 import type { EmailTokenType, PrismaClient } from "@ojo/db";
-import { createTranslator, normalizeEmail, resolveLocale } from "@ojo/shared";
+import { canonicalEmail, createTranslator, normalizeEmail, resolveLocale } from "@ojo/shared";
 import { hashPassword, keyedHash, randomToken, verifyPassword } from "../crypto";
 import type { Mailer } from "../mailer";
 import type { CoreConfig } from "../types";
@@ -61,12 +61,23 @@ export function createAccountService(deps: {
 
   async function register(input: { email: string; password: string; locale?: string }): Promise<RegisterResult> {
     const email = normalizeEmail(input.email);
-    if (await prisma.user.findUnique({ where: { email } })) return { ok: false, reason: "EMAIL_TAKEN" };
+    const emailCanonical = canonicalEmail(email);
+    const taken = await prisma.user.findFirst({
+      where: { OR: [{ email }, { emailCanonical }] },
+      select: { id: true },
+    });
+    if (taken) return { ok: false, reason: "EMAIL_TAKEN" };
+    // A mailbox that already used its trial (even on a deleted account) keeps that start date.
+    const used = await prisma.trialLedger.findUnique({
+      where: { keyHash: keyedHash(config.secret, "ledger", `email:${emailCanonical}`) },
+    });
     const passwordHash = await hashPassword(input.password);
     try {
       const user = await prisma.user.create({
         data: {
           email,
+          emailCanonical,
+          trialStartedAt: used?.trialStartedAt ?? null,
           passwordHash,
           locale: resolveLocale(input.locale),
           termsAcceptedAt: now(),
@@ -121,7 +132,17 @@ export function createAccountService(deps: {
   async function deleteAccount(userId: string, password: string): Promise<{ ok: boolean }> {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user || !(await verifyPassword(password, user.passwordHash))) return { ok: false };
-    await prisma.user.delete({ where: { id: userId } });
+    // The farewell goes through the outbox: the user (and the chat link) is gone by then.
+    await prisma.$transaction([
+      ...(user.telegramId !== null
+        ? [
+            prisma.telegramOutbox.create({
+              data: { telegramId: user.telegramId, kind: "account_deleted", locale: user.locale },
+            }),
+          ]
+        : []),
+      prisma.user.delete({ where: { id: userId } }),
+    ]);
     return { ok: true };
   }
 
