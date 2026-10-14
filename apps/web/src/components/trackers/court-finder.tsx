@@ -84,7 +84,7 @@ export function CourtFinder({ personId, personName }: { personId?: string; perso
       <div className="space-y-4">
         {state.phase === "searching" && (
           <p className="flex items-center gap-2 text-sm text-slate-600">
-            <Spinner /> {t("pjn.find.searching")}
+            <Spinner className="size-4 text-slate-500" /> {t("pjn.find.searching")}
           </p>
         )}
         {state.phase === "noCourt" && <Alert tone="info">{t("pjn.find.noCourt")}</Alert>}
