@@ -1,7 +1,9 @@
+import type { PersonDto } from "@ojo/core";
 import { ROUTES } from "@ojo/shared";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { LogoutButton } from "@/components/logout-button";
+import { AddTrackerButton } from "@/components/trackers/add-tracker-button";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { getT } from "@/server/i18n";
 
@@ -9,10 +11,14 @@ import { getT } from "@/server/i18n";
 export async function AppShell({
   userLabel,
   showMenu,
+  defaultJurisdiction,
+  people,
   children,
 }: {
   userLabel: string;
   showMenu: boolean;
+  defaultJurisdiction: string | null;
+  people: PersonDto[];
   children: ReactNode;
 }) {
   const { t } = await getT();
@@ -31,8 +37,8 @@ export async function AppShell({
 
   return (
     <div className="min-h-screen md:grid md:grid-cols-[260px_1fr]">
-      {/* Desktop sidebar */}
-      <aside className="hidden border-r border-slate-200 bg-white md:flex md:min-h-screen md:flex-col md:gap-4 md:p-4">
+      {/* Desktop sidebar: pinned to the viewport while the content scrolls */}
+      <aside className="hidden border-r border-slate-200 bg-white md:sticky md:top-0 md:flex md:h-screen md:flex-col md:gap-4 md:self-start md:overflow-y-auto md:p-4">
         {brand}
         <div className="flex-1">{showMenu && <SidebarNav />}</div>
         {account}
@@ -54,8 +60,15 @@ export async function AppShell({
         )}
       </header>
 
-      <main className="min-w-0 space-y-6 px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-4xl space-y-6">{children}</div>
+      <main className="min-w-0 px-4 py-6 md:px-8">
+        <div className="mx-auto max-w-4xl space-y-6">
+          {showMenu && (
+            <div className="flex justify-end">
+              <AddTrackerButton defaultJurisdiction={defaultJurisdiction} people={people} />
+            </div>
+          )}
+          {children}
+        </div>
       </main>
     </div>
   );

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { APP_CONFIG } from "../config/app";
+import { findJurisdiction } from "../config/pjn";
 import type { MessageKey } from "../i18n/ru";
 
 /** Validation messages are i18n keys, translated at the UI boundary. */
@@ -48,6 +49,26 @@ export function composeIsoDate(parts: { day: string; month: string; year: string
   return `${pad(year, 4)}-${pad(month, 2)}-${pad(day, 2)}`;
 }
 
+/** Days in a calendar month; an unknown year is treated as a leap year (Feb → 29). */
+export function daysInMonth(year: number | null, month: number): number {
+  return new Date(Date.UTC(year ?? 2000, month, 0)).getUTCDate();
+}
+
+/**
+ * Birth years offered in the date dropdowns, newest first: from the youngest
+ * allowed account holder down to the oldest plausible age.
+ */
+export function birthYearOptions(
+  today: Date = new Date(),
+  minAgeYears: number = APP_CONFIG.profile.minAccountAgeYears,
+): number[] {
+  const newest = today.getUTCFullYear() - minAgeYears;
+  const oldest = today.getUTCFullYear() - APP_CONFIG.profile.maxAgeYears;
+  const years: number[] = [];
+  for (let year = newest; year >= oldest; year -= 1) years.push(year);
+  return years;
+}
+
 /** Splits `YYYY-MM-DD` back into the three form inputs. */
 export function splitIsoDate(iso: string | null | undefined): { day: string; month: string; year: string } {
   const match = iso ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso) : null;
@@ -66,8 +87,9 @@ export const nameSchema = z
       .regex(NAME_PATTERN, msg("validation.nameInvalid")),
   );
 
-/** Birth date as an ISO string; output is a UTC Date. */
-export const birthDateSchema = z
+/** Birth date as an ISO string (output: UTC Date) with a minimum age; 0 allows children. */
+export const makeBirthDateSchema = (minAgeYears: number) =>
+  z
   .string()
   .min(1, msg("validation.required"))
   .transform((value, ctx) => {
@@ -81,7 +103,7 @@ export const birthDateSchema = z
       ctx.addIssue({ code: "custom", message: "validation.birthDateFuture" });
       return z.NEVER;
     }
-    if (age < APP_CONFIG.profile.minAccountAgeYears) {
+    if (age < minAgeYears) {
       ctx.addIssue({ code: "custom", message: "validation.ageTooYoung" });
       return z.NEVER;
     }
@@ -92,10 +114,22 @@ export const birthDateSchema = z
     return date;
   });
 
+/** Court used to find the user's case by name; empty string means "not chosen". */
+export const courtSchema = z
+  .string()
+  .default("")
+  .refine((value) => value === "" || Boolean(findJurisdiction(value)), msg("validation.jurisdictionInvalid"));
+
+/** Account owner: must be an adult. */
+export const birthDateSchema = makeBirthDateSchema(APP_CONFIG.profile.minAccountAgeYears);
+/** Relative tracked by the owner: any age (children are tracked by a guardian). */
+export const personBirthDateSchema = makeBirthDateSchema(0);
+
 export const profileSchema = z.object({
   firstName: nameSchema,
   lastName: nameSchema,
   birthDate: birthDateSchema,
+  pjnJurisdiction: courtSchema,
 });
 export type ProfileInput = z.infer<typeof profileSchema>;
 
@@ -146,3 +180,12 @@ export const resetPasswordSchema = z
     path: ["passwordConfirm"],
     ...msg("validation.passwordMismatch"),
   });
+
+/** A relative: name, birth date and (optionally) the court used for the name search. */
+export const personSchema = z.object({
+  firstName: nameSchema,
+  lastName: nameSchema,
+  birthDate: personBirthDateSchema,
+  pjnJurisdiction: courtSchema,
+});
+export type PersonInput = z.infer<typeof personSchema>;

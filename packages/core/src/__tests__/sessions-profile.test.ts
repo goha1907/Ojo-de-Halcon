@@ -59,6 +59,7 @@ describe("profile", () => {
       ["birthDate", "", "1987-07-19"],
       ["firstName", "", "Egor"],
       ["lastName", "", "Medvedev"],
+      ["pjnJurisdiction", "", "4"],
       ["birthDate", "1987-07-19", "1987-07-20"],
       ["firstName", "Egor", "Yegor"],
     ]);

@@ -20,12 +20,18 @@ model User {
   firstName             String?
   lastName              String?
   birthDate             DateTime? @db.Date
+  /// PJN jurisdiction (select value) used to find the user's case by name.
+  pjnJurisdiction       String?
   telegramId            BigInt?   @unique
   telegramUsername      String?
   telegramLinkedAt      DateTime?
   locale                String    @default("ru")
   termsAcceptedAt       DateTime
   onboardingCompletedAt DateTime?
+  /// Set when the first tracker is added; the free trial runs from here.
+  trialStartedAt        DateTime?
+  /// Paid access end (payments are not connected yet; set manually).
+  subscriptionUntil     DateTime?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -34,6 +40,8 @@ model User {
   profileChanges   ProfileChange[]
   emailTokens      EmailToken[]
   telegramLinkCode TelegramLinkCode?
+  trackers         Tracker[]
+  people           Person[]
 }
 
 model Session {
@@ -92,6 +100,90 @@ model ProfileChange {
   newValue  String
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum TrackerKind {
+  RENAPER
+  CORREO
+  PJN
+}
+
+enum TrackerStatus {
+  /// PJN case found by name, waiting for the user to confirm it is theirs.
+  PENDING_CONFIRMATION
+  ACTIVE
+  FINISHED
+}
+
+/// One tracked procedure of one user. RENAPER and CORREO items created from the
+/// same trámite number share `linkGroupId`.
+model Tracker {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Relative the case belongs to; null = the account owner.
+  personId      String?
+  person        Person?       @relation(fields: [personId], references: [id], onDelete: Cascade)
+  /// `personId` or "self"; part of the unique key (NULLs are not unique in SQL).
+  personKey     String        @default("self")
+  kind          TrackerKind
+  /// RENAPER/CORREO: trámite number. PJN: "<jurisdiction>:<number>:<year>".
+  reference     String
+  label         String?
+  linkGroupId   String?
+  status        TrackerStatus @default(ACTIVE)
+  lastCheckedAt DateTime?
+  nextCheckAt   DateTime      @default(now())
+  lastError     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  snapshot TrackerSnapshot?
+  events   TrackerEvent[]
+
+  @@unique([userId, personKey, kind, reference])
+  @@index([status, nextCheckAt])
+  @@index([linkGroupId])
+}
+
+/// Latest parsed state of a tracker: header plus the list of stages.
+model TrackerSnapshot {
+  trackerId   String   @id
+  tracker     Tracker  @relation(fields: [trackerId], references: [id], onDelete: Cascade)
+  header      Json
+  steps       Json
+  contentHash String
+  updatedAt   DateTime @updatedAt
+}
+
+/// A detected change; `notifiedAt` is null until the Telegram message is sent.
+model TrackerEvent {
+  id         String    @id @default(cuid())
+  trackerId  String
+  tracker    Tracker   @relation(fields: [trackerId], references: [id], onDelete: Cascade)
+  /// Structured change description; formatted per user locale when sent.
+  payload    Json
+  createdAt  DateTime  @default(now())
+  notifiedAt DateTime?
+
+  @@index([trackerId])
+  @@index([notifiedAt])
+}
+
+/// A relative whose cases the account owner tracks (the owner is the User itself).
+model Person {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName       String
+  lastName        String
+  birthDate       DateTime @db.Date
+  pjnJurisdiction String?
+  createdAt       DateTime @default(now())
+
+  trackers Tracker[]
 
   @@index([userId])
 }

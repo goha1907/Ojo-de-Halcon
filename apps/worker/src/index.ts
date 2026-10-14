@@ -2,6 +2,7 @@ import { createCoreFromEnv } from "@ojo/core";
 import { loadEnv } from "@ojo/shared";
 import { createBot } from "./bot/create-bot";
 import { logger } from "./logger";
+import { startTrackerScheduler } from "./trackers/scheduler";
 
 const PURGE_INTERVAL_MS = 60 * 60 * 1000;
 
@@ -23,8 +24,16 @@ async function main(): Promise<void> {
       );
   }, PURGE_INTERVAL_MS);
 
+  const stopScheduler = startTrackerScheduler({
+    core,
+    send: async (telegramId, text) => {
+      await bot.api.sendMessage(Number(telegramId), text);
+    },
+  });
+
   const shutdown = async () => {
     clearInterval(purge);
+    stopScheduler();
     await bot.stop();
     process.exit(0);
   };

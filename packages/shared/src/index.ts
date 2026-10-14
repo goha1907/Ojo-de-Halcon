@@ -6,3 +6,6 @@ export * from "./domain/auth";
 export * from "./i18n/index";
 export * from "./domain/services";
 export * from "./config/links";
+export * from "./config/pjn";
+export * from "./config/trackers";
+export * from "./domain/trackers";

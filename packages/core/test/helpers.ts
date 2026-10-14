@@ -1,7 +1,13 @@
 import path from "node:path";
 import { config as loadDotenv } from "dotenv";
 import { createPrismaClient } from "@ojo/db";
-import { createCore, type CoreConfig, type MailMessage, type Mailer } from "../src/index";
+import {
+  createCore,
+  type CoreConfig,
+  type MailMessage,
+  type Mailer,
+  type Scraper,
+} from "../src/index";
 
 loadDotenv({ path: path.resolve(import.meta.dirname, "../../../.env") });
 
@@ -26,7 +32,20 @@ export function makeMailbox() {
   return { sent, mailer };
 }
 
+const unusedScraper: Scraper = {
+  tramite: async () => {
+    throw new Error("scraper not stubbed");
+  },
+  pjnParty: async () => {
+    throw new Error("scraper not stubbed");
+  },
+  pjnCase: async () => {
+    throw new Error("scraper not stubbed");
+  },
+};
+
 export function makeCore(options: {
+  scraper?: Partial<Scraper>;
   now?: () => Date;
   verification?: boolean;
   mailer?: Mailer;
@@ -35,6 +54,7 @@ export function makeCore(options: {
     prisma,
     config: { ...testConfig, emailVerificationRequired: options.verification ?? false },
     mailer: options.mailer ?? makeMailbox().mailer,
+    scraper: { ...unusedScraper, ...options.scraper },
     now: options.now ?? (() => new Date()),
   });
 }
@@ -56,6 +76,7 @@ export const adultProfile = {
   firstName: "Egor",
   lastName: "Medvedev",
   birthDate: new Date("1987-07-19T00:00:00Z"),
+  pjnJurisdiction: "4",
 };
 
 export const PASSWORD = "correct horse battery";

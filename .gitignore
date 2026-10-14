@@ -24,3 +24,7 @@ coverage/
 packages/db/src/generated/
 *.tsbuildinfo
 next-env.d.ts
+
+# python sidecar
+.venv/
+__pycache__/

@@ -45,3 +45,12 @@ export const SERVICE_OFFICIAL_LINK: Record<TrackerSection, string> = {
   citizenship_dnm: "citizenship-status",
   citizenship_court: "court-status",
 };
+
+/** URL of the page that hosts a section; null when the section has no page. */
+export function sectionHref(section: TrackerSection): string | null {
+  for (const group of SERVICE_GROUPS) {
+    const item = group.items.find((candidate) => candidate.section === section);
+    if (item) return serviceHref(group.key, item.slug);
+  }
+  return null;
+}

@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@ojo/db";
 import type { Mailer } from "./mailer";
+import type { Scraper } from "./trackers/scraper";
 
 export interface CoreConfig {
   /** Pepper for hashing one-time credentials (SESSION_SECRET). */
@@ -20,6 +21,7 @@ export interface CoreDeps {
   prisma: PrismaClient;
   config: CoreConfig;
   mailer: Mailer;
+  scraper: Scraper;
   /** Injectable clock for tests. */
   now?: () => Date;
 }
@@ -33,6 +35,8 @@ export interface UserDto {
   lastName: string | null;
   /** ISO date `YYYY-MM-DD` or null. */
   birthDate: string | null;
+  /** PJN jurisdiction select value or null. */
+  pjnJurisdiction: string | null;
   profileComplete: boolean;
   telegramLinked: boolean;
   telegramUsername: string | null;

@@ -14,7 +14,16 @@ export type ApiErrorCode =
   | "INVALID_CREDENTIALS"
   | "EMAIL_TAKEN"
   | "INVALID_TOKEN"
-  | "INVALID_PASSWORD";
+  | "INVALID_PASSWORD"
+  | "ALREADY_EXISTS"
+  | "SECTION_BUSY"
+  | "NOT_FOUND"
+  | "SOURCE_DOWN"
+  | "PROFILE_INCOMPLETE"
+  | "NO_COURT"
+  | "PERSON_NOT_FOUND"
+  | "SUBSCRIPTION_REQUIRED"
+  | "LIMIT_REACHED";
 
 const STATUS: Record<ApiErrorCode, number> = {
   VALIDATION: 422,
@@ -27,6 +36,15 @@ const STATUS: Record<ApiErrorCode, number> = {
   EMAIL_TAKEN: 409,
   INVALID_TOKEN: 400,
   INVALID_PASSWORD: 403,
+  ALREADY_EXISTS: 409,
+  SECTION_BUSY: 409,
+  NOT_FOUND: 404,
+  SOURCE_DOWN: 503,
+  PROFILE_INCOMPLETE: 409,
+  NO_COURT: 409,
+  PERSON_NOT_FOUND: 404,
+  SUBSCRIPTION_REQUIRED: 402,
+  LIMIT_REACHED: 409,
 };
 
 export function apiError(code: ApiErrorCode, extra?: Record<string, unknown>) {
@@ -70,4 +88,13 @@ export async function withUser(handler: (user: UserDto) => Promise<Response>): P
   const user = await getCurrentUser();
   if (!user) return apiError("UNAUTHORIZED");
   return handler(user);
+}
+
+/** Per-user fixed-window limit; returns a 429 response when exceeded. */
+export function limitByUser(
+  userId: string,
+  name: string,
+  limit: { windowMs: number; max: number },
+): Response | null {
+  return rateLimit(`${name}:${userId}`, limit).allowed ? null : apiError("RATE_LIMITED");
 }

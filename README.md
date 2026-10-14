@@ -172,6 +172,25 @@ pnpm db:down    # остановить контейнер БД
 Отдельно: `pnpm dev:web`, `pnpm dev:worker`, `pnpm test`, `pnpm lint`, `pnpm typecheck`, `pnpm build`.
 Сайт и API — одно приложение Next.js (`apps/web`, API в `src/app/api`); бот — `apps/worker`.
 
+## Сборщик данных (Python-сайдкар)
+
+RENAPER, Correo Argentino и PJN читает пакет `services/scraper` (Python + Playwright;
+капча PJN решается через `ddddocr`). Worker и web вызывают его как `python -m scraper …`
+и получают JSON. Опрос всех активных дел — раз в 3 часа (константа
+`TRACKER_CONFIG.checkIntervalHours`, пользователю не видна).
+
+Один раз на машине (внутри проекта, ничего не ставится в систему):
+
+```bash
+cd services/scraper
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+playwright install chromium
+```
+
+Пути настраиваются переменными `SCRAPER_*` (см. `.env.example`). При деплое образ
+worker должен содержать Python 3, это venv и браузер (`playwright install --with-deps chromium`).
+
 ## Как добавить новость
 
 Новости — Markdown-файлы в `apps/web/content/news/`. Имя: `YYYY-MM-DD-slug.<язык>.md`

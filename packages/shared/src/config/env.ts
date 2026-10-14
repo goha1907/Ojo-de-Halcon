@@ -16,6 +16,11 @@ const envSchema = z.object({
    * When "true", unverified e-mails cannot use the product. Left "false"
    * until a mail provider is connected: accounts are then created verified.
    */
+  /** Scraper virtualenv interpreter and package dir; relative paths resolve from the repo root. */
+  SCRAPER_PYTHON: z.string().default("services/scraper/.venv/bin/python"),
+  SCRAPER_DIR: z.string().default("services/scraper"),
+  SCRAPER_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(150),
+  SCRAPER_CONCURRENCY: z.coerce.number().int().positive().default(1),
   EMAIL_VERIFICATION_REQUIRED: z
     .enum(["true", "false"])
     .default("false")

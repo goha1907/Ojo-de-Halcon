@@ -1,3 +1,5 @@
+import { AccessCard } from "@/components/settings/access-card";
+import { PeopleCard } from "@/components/settings/people-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { ProfileCard } from "@/components/settings/profile-card";
 import { ServicesCard } from "@/components/settings/services-card";
@@ -8,18 +10,26 @@ import { requireUser } from "@/server/session";
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const { t } = await getT();
-  const services = await getCore().preferences.get(user.id);
+  const { t, locale } = await getT();
+  const core = getCore();
+  const [services, people, access] = await Promise.all([
+    core.preferences.get(user.id),
+    core.people.list(user.id),
+    core.access.get(user.id),
+  ]);
 
   return (
     <>
       <h1 className="text-xl font-semibold text-slate-900">{t("settings.title")}</h1>
       <ProfileCard
         email={user.email}
-        initial={{ firstName: user.firstName, lastName: user.lastName, birthDate: user.birthDate }}
+        emailVerified={user.emailVerified}
+        initial={{ firstName: user.firstName, lastName: user.lastName, birthDate: user.birthDate, pjnJurisdiction: user.pjnJurisdiction }}
       />
+      <PeopleCard people={people} />
       <TelegramCard linked={user.telegramLinked} username={user.telegramUsername} />
       <ServicesCard initial={services} />
+      <AccessCard access={access} t={t} locale={locale} />
       <DeleteAccountCard />
     </>
   );

@@ -10,7 +10,15 @@ import { ApiError, apiRequest } from "@/lib/api-client";
 import { describeApiError } from "@/lib/api-errors";
 import { issuesToFieldErrors } from "@/lib/form-errors";
 
-export function ProfileCard({ initial, email }: { initial: ProfileInitial; email: string }) {
+export function ProfileCard({
+  initial,
+  email,
+  emailVerified,
+}: {
+  initial: ProfileInitial;
+  email: string;
+  emailVerified: boolean;
+}) {
   const t = useT();
   const router = useRouter();
   const profile = useProfileFields(initial);
@@ -43,7 +51,22 @@ export function ProfileCard({ initial, email }: { initial: ProfileInitial; email
   return (
     <Card title={t("settings.profile.title")} description={t("settings.profile.help")}>
       <form onSubmit={onSubmit} noValidate className="space-y-4">
-        <p className="text-sm text-slate-600">{t("settings.profile.email", { email })}</p>
+        <div className="space-y-1.5">
+          <span className="block text-sm font-medium text-slate-800">{t("settings.profile.email")}</span>
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+            <span className="min-w-0 truncate text-slate-900">{email}</span>
+            <span
+              className={
+                emailVerified
+                  ? "inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                  : "inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+              }
+            >
+              <span aria-hidden="true">{emailVerified ? "✓" : "!"}</span>
+              {emailVerified ? t("settings.profile.emailVerified") : t("settings.profile.emailUnverified")}
+            </span>
+          </div>
+        </div>
         {status === "saved" && <Alert tone="success">{t("common.saved")}</Alert>}
         {status === "locked" && <Alert tone="error">{t("settings.profile.locked")}</Alert>}
         {status === "error" && <Alert tone="error">{error}</Alert>}

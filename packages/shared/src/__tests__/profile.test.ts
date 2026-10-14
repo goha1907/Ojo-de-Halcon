@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   ageInYears,
+  birthYearOptions,
   composeIsoDate,
+  daysInMonth,
   emailSchema,
   loginSchema,
   parseIsoDate,
@@ -37,6 +39,23 @@ describe("dates", () => {
     const iso = composeIsoDate({ day: "19", month: "", year: "1987" });
     const result = profileSchema.safeParse({ ...adult, birthDate: iso });
     expect(result.error!.issues[0]!.message).toBe("validation.birthDateInvalid");
+  });
+});
+
+describe("date dropdown helpers", () => {
+  it("knows month lengths including leap years", () => {
+    expect(daysInMonth(2023, 2)).toBe(28);
+    expect(daysInMonth(2024, 2)).toBe(29);
+    expect(daysInMonth(null, 2)).toBe(29);
+    expect(daysInMonth(2024, 4)).toBe(30);
+    expect(daysInMonth(2024, 12)).toBe(31);
+  });
+
+  it("offers years from the youngest allowed to the oldest plausible, newest first", () => {
+    const years = birthYearOptions(new Date("2026-10-13T00:00:00Z"));
+    expect(years[0]).toBe(2008); // 18 years old
+    expect(years[years.length - 1]).toBe(1906); // 120 years old
+    expect(years).toEqual([...years].sort((a, b) => b - a));
   });
 });
 

@@ -31,6 +31,13 @@ export const APP_CONFIG = {
     minAccountAgeYears: 18,
     maxAgeYears: 120,
   },
+  /** Product limits. */
+  limits: {
+    /** Relatives one account may track besides the owner. */
+    maxPeople: 5,
+    /** Free trial length, counted from the first added tracker. */
+    trialDays: 7,
+  },
   rateLimit: {
     /** Sign-in attempts, per client IP. */
     login: { windowMs: 10 * 60_000, max: 20 },
@@ -38,6 +45,8 @@ export const APP_CONFIG = {
     register: { windowMs: 60 * 60_000, max: 10 },
     /** Password reset / verification e-mails, per client IP. */
     email: { windowMs: 60 * 60_000, max: 10 },
+    /** Adding trackers and searching courts (each may start a browser), per user. */
+    trackerAdd: { windowMs: 10 * 60_000, max: 20 },
     /** Creating Telegram link codes and polling their status, per user. */
     telegramLink: { windowMs: 60_000, max: 90 },
   },
@@ -70,4 +79,8 @@ export const API_ROUTES = {
   telegramLink: "/api/telegram/link",
   telegram: "/api/telegram",
   account: "/api/account",
+  trackers: "/api/trackers",
+  pjnSearch: "/api/trackers/pjn/search",
+  pjnConfirm: "/api/trackers/pjn/confirm",
+  people: "/api/people",
 } as const;

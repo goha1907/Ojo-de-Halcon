@@ -1,10 +1,25 @@
-import { ROUTES, SERVICE_OFFICIAL_LINK, findLink, findService, type MessageKey } from "@ojo/shared";
+import {
+  ROUTES,
+  SERVICE_OFFICIAL_LINK,
+  TRACKER_KIND_SECTION,
+  findLink,
+  findService,
+  type MessageKey,
+  type TrackerKindValue,
+} from "@ojo/shared";
 import { Alert, Card } from "@ojo/ui";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CourtFinder } from "@/components/trackers/court-finder";
+import { TrackerCard } from "@/components/trackers/tracker-card";
 import { getCore } from "@/server/core";
 import { getT } from "@/server/i18n";
 import { requireUser } from "@/server/session";
+
+/** Which tracker kind a section shows; sections without one are still "coming soon". */
+const SECTION_KIND = Object.fromEntries(
+  Object.entries(TRACKER_KIND_SECTION).map(([kind, section]) => [section, kind as TrackerKindValue]),
+);
 
 export default async function ServicePage({
   params,
@@ -16,10 +31,23 @@ export default async function ServicePage({
   if (!service) notFound();
 
   const user = await requireUser();
-  const { t } = await getT();
-  const preferences = await getCore().preferences.get(user.id);
+  const { t, locale } = await getT();
+  const core = getCore();
+  const preferences = await core.preferences.get(user.id);
   const official = findLink(SERVICE_OFFICIAL_LINK[service.section]);
   const enabled = preferences[service.section];
+  const kind = SECTION_KIND[service.section];
+  const trackers = kind ? (await core.trackers.list(user.id)).filter((item) => item.kind === kind) : [];
+  const people = kind === "PJN" ? await core.people.list(user.id) : [];
+  const hasCase = (personId: string | null) =>
+    trackers.some((item) => (item.person?.id ?? null) === personId && item.status !== "FINISHED");
+  // everyone who has a court chosen and no case yet gets a "find the case" offer
+  const finders = [
+    ...(hasCase(null) ? [] : [{ personId: undefined, name: undefined }]),
+    ...people
+      .filter((person) => person.pjnJurisdiction && !hasCase(person.id))
+      .map((person) => ({ personId: person.id, name: `${person.firstName} ${person.lastName}` })),
+  ];
 
   return (
     <>
@@ -30,8 +58,35 @@ export default async function ServicePage({
         <h1 className="text-xl font-semibold text-slate-900">{t(`sections.${service.section}` as MessageKey)}</h1>
       </header>
 
-      <Card title={t("service.soon")} description={t("service.soonText")}>
-        <div className="space-y-4">
+      {kind ? (
+        <>
+          {kind === "PJN" &&
+            finders.map((finder) => (
+              <CourtFinder
+                key={finder.personId ?? "self"}
+                {...(finder.personId ? { personId: finder.personId, personName: finder.name } : {})}
+              />
+            ))}
+          {trackers.map((tracker) => (
+            <TrackerCard key={tracker.id} tracker={tracker} t={t} locale={locale} />
+          ))}
+          {trackers.length === 0 && kind !== "PJN" && (
+            <Card title={t("track.empty")} description={t("track.emptyHint")}>
+              {official && (
+                <a
+                  href={official.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-brand-700 underline"
+                >
+                  {t("service.officialSite")}
+                </a>
+              )}
+            </Card>
+          )}
+        </>
+      ) : (
+        <Card title={t("service.soon")} description={t("service.soonText")}>
           {official && (
             <a
               href={official.url}
@@ -42,15 +97,16 @@ export default async function ServicePage({
               {t("service.officialSite")}
             </a>
           )}
-          <Alert tone="info">
-            {t("service.notifications")}:{" "}
-            <strong>{enabled ? t("service.notificationsOn") : t("service.notificationsOff")}</strong>.{" "}
-            <Link href={ROUTES.settings} className="underline">
-              {t("service.changeInSettings")}
-            </Link>
-          </Alert>
-        </div>
-      </Card>
+        </Card>
+      )}
+
+      <Alert tone="info">
+        {t("service.notifications")}:{" "}
+        <strong>{enabled ? t("service.notificationsOn") : t("service.notificationsOff")}</strong>.{" "}
+        <Link href={ROUTES.settings} className="underline">
+          {t("service.changeInSettings")}
+        </Link>
+      </Alert>
     </>
   );
 }

@@ -15,7 +15,7 @@ export class ApiError extends Error {
 
 export async function apiRequest<T>(
   url: string,
-  options: { method?: "GET" | "POST" | "PUT" | "DELETE"; body?: unknown } = {},
+  options: { method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown } = {},
 ): Promise<T> {
   const response = await fetch(url, {
     method: options.method ?? "GET",

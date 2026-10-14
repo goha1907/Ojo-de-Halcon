@@ -26,6 +26,7 @@ export function createProfileService(deps: { prisma: PrismaClient; now: () => Da
     };
     diff("firstName", current.firstName, input.firstName);
     diff("lastName", current.lastName, input.lastName);
+    diff("pjnJurisdiction", current.pjnJurisdiction, input.pjnJurisdiction);
     diff(
       "birthDate",
       current.birthDate ? current.birthDate.toISOString().slice(0, 10) : null,
@@ -36,7 +37,12 @@ export function createProfileService(deps: { prisma: PrismaClient; now: () => Da
     await prisma.$transaction([
       prisma.user.update({
         where: { id: userId },
-        data: { firstName: input.firstName, lastName: input.lastName, birthDate: input.birthDate },
+        data: {
+          firstName: input.firstName,
+          lastName: input.lastName,
+          birthDate: input.birthDate,
+          pjnJurisdiction: input.pjnJurisdiction || null,
+        },
       }),
       prisma.profileChange.createMany({ data: changes.map((change) => ({ userId, ...change })) }),
     ]);
