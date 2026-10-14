@@ -44,7 +44,6 @@ model User {
   emailTokens      EmailToken[]
   telegramLinkCode TelegramLinkCode?
   trackers         Tracker[]
-  people           Person[]
   payments         Payment[]
 }
 
@@ -101,6 +100,10 @@ enum TrackerKind {
   RENAPER
   CORREO
   PJN
+  /// Migraciones: DNI residence resolution (precaria), by file number + birth date.
+  DNM_DNI
+  /// Migraciones: citizenship procedure, by order number + birth date.
+  DNM_CITIZENSHIP
 }
 
 enum TrackerStatus {
@@ -117,18 +120,13 @@ model Tracker {
   id              String        @id @default(cuid())
   userId          String
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// Relative the case belongs to; null = the account owner.
-  personId        String?
-  person          Person?       @relation(fields: [personId], references: [id], onDelete: Cascade)
-  /// `personId` or "self"; part of the unique key (NULLs are not unique in SQL).
-  personKey       String        @default("self")
   /// Since when this slot holds this case (creation or last replacement); starts the cooldown.
   slotSince       DateTime      @default(now())
   /// false: this tracker is paused when a scheduled reduction takes effect.
   keepNext        Boolean       @default(true)
   /// When it was paused; paused trackers are removed after a retention period.
   pausedAt        DateTime?
-  /// The "case added" notification was produced (it waits while the person is muted).
+  /// The "case added" notification was produced (it waits while Telegram is switched off for the case).
   initialNotified Boolean       @default(false)
   kind            TrackerKind
   /// RENAPER/CORREO: trámite number. PJN: "<jurisdiction>:<number>:<year>".
@@ -142,13 +140,15 @@ model Tracker {
   notifyTelegram  Boolean       @default(true)
   /// Notifications of this case go to WhatsApp (the bot does not exist yet).
   notifyWhatsapp  Boolean       @default(false)
+  /// Holder's birth date for Migraciones kinds (entered when adding; falls back to the profile).
+  holderBirthDate DateTime?     @db.Date
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   snapshot TrackerSnapshot?
   events   TrackerEvent[]
 
-  @@unique([userId, personKey, kind, reference])
+  @@unique([userId, kind, reference])
   @@index([status, nextCheckAt])
 }
 
@@ -160,6 +160,24 @@ model TrackerSnapshot {
   steps       Json
   contentHash String
   updatedAt   DateTime @updatedAt
+}
+
+/// Anonymous tally of the statuses and stages seen at the sources (no user, case or number):
+/// the product learns which statuses exist, which end a case and which are borderline.
+model StatusObservation {
+  id          String   @id @default(cuid())
+  /// TrackerKind value the status came from.
+  kind        String
+  /// "status" (state of the case) or "step" (title of a stage).
+  field       String
+  value       String
+  /// Times it appeared as a change in some case.
+  count       Int      @default(1)
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([kind, field, value])
+  @@index([kind, field])
 }
 
 /// A detected change; `notifiedAt` is null until the Telegram message is sent.
@@ -176,25 +194,6 @@ model TrackerEvent {
 
   @@index([trackerId])
   @@index([notifiedAt])
-}
-
-/// A relative whose cases the account owner tracks (the owner is the User itself).
-model Person {
-  id              String    @id @default(cuid())
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  firstName       String
-  lastName        String
-  /// Optional: only needed by some sources (e.g. Migraciones citizenship).
-  birthDate       DateTime? @db.Date
-  pjnJurisdiction String?
-  /// false: updates of this person are not sent to the owner's Telegram.
-  notifyTelegram  Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-
-  trackers Tracker[]
-
-  @@index([userId])
 }
 
 /// Telegram messages to send after the account (or the link) is gone, so they

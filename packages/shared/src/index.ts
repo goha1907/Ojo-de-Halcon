@@ -8,6 +8,7 @@ export * from "./domain/services";
 export * from "./config/links";
 export * from "./config/pjn";
 export * from "./config/trackers";
+export * from "./config/final-statuses";
 export * from "./domain/trackers";
 export * from "./config/email";
 export * from "./config/pricing";

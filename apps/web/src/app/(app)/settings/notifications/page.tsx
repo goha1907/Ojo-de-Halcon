@@ -28,7 +28,6 @@ export default async function SettingsNotificationsPage() {
                   })())
                 : item.reference,
             label: item.label,
-            person: item.person?.name ?? null,
             telegram: item.notifyTelegram,
             whatsapp: item.notifyWhatsapp,
           }))}

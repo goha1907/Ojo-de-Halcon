@@ -21,20 +21,14 @@ const envSchema = z.object({
   SCRAPER_DIR: z.string().default("services/scraper"),
   SCRAPER_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(150),
   SCRAPER_CONCURRENCY: z.coerce.number().int().positive().default(1),
+  /** Optional proxy for Migraciones only; read by the scraper process from the environment. */
+  MIGRACIONES_PROXY: z.string().optional(),
   /**
    * "true": the settings page shows test buttons that grant a subscription
    * without payment. Defaults to on outside production; refused in production
    * unless explicitly forced, so a real deployment never gives access away.
    */
   PAYMENTS_STUB: z.enum(["true", "false"]).optional(),
-  /**
-   * "true": relatives (extra people, paid slots) are available. The code stays
-   * in place but is dormant by default: one user, one tracker per section.
-   */
-  FEATURE_RELATIVES: z
-    .enum(["true", "false"])
-    .default("false")
-    .transform((value) => value === "true"),
   EMAIL_VERIFICATION_REQUIRED: z
     .enum(["true", "false"])
     .default("false")

@@ -22,7 +22,7 @@ type State =
  * profile name and asks whether it is the right one. Only the carátula is read
  * until the user confirms.
  */
-export function CourtFinder({ personId, personName }: { personId?: string; personName?: string }) {
+export function CourtFinder() {
   const t = useT();
   const router = useRouter();
   const [state, setState] = useState<State>({ phase: "searching" });
@@ -34,7 +34,7 @@ export function CourtFinder({ personId, personName }: { personId?: string; perso
     try {
       const result = await apiRequest<{ candidates: PjnCandidate[] }>(API_ROUTES.pjnSearch, {
         method: "POST",
-        body: { personId: personId ?? null },
+        body: {},
       });
       setState(result.candidates.length ? { phase: "found", candidates: result.candidates } : { phase: "none" });
     } catch (error) {
@@ -44,7 +44,7 @@ export function CourtFinder({ personId, personName }: { personId?: string; perso
         setState({ phase: "error", message: t("track.error.subscription") });
       } else setState({ phase: "error", message: describeApiError(error, t) });
     }
-  }, [t, personId]);
+  }, [t]);
 
   useEffect(() => {
     if (started.current) return;
@@ -64,7 +64,6 @@ export function CourtFinder({ personId, personName }: { personId?: string; perso
           jurisdiction: candidate.jurisdiction,
           number: candidate.number,
           year: candidate.year,
-          ...(personId ? { personId } : {}),
         },
       });
       router.refresh();
@@ -80,7 +79,7 @@ export function CourtFinder({ personId, personName }: { personId?: string; perso
   }
 
   return (
-    <Card title={personName ? `${t("pjn.find.title")} — ${personName}` : t("pjn.find.title")}>
+    <Card title={t("pjn.find.title")}>
       <div className="space-y-4">
         {state.phase === "searching" && (
           <p className="flex items-center gap-2 text-sm text-slate-600">

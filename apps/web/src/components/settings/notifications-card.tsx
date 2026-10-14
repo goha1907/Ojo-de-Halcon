@@ -14,8 +14,6 @@ export interface NotificationCase {
   kind: TrackerKindValue;
   reference: string;
   label: string | null;
-  /** Relative the case belongs to; null = the account owner. */
-  person: string | null;
   telegram: boolean;
   whatsapp: boolean;
 }
@@ -122,10 +120,7 @@ function SectionRows({
         <tr key={item.id} className="border-b border-slate-100">
           <td className="py-2.5 pr-4">
             <div className="font-medium text-slate-900">{item.label ?? `№ ${item.reference}`}</div>
-            <div className="text-xs text-slate-500">
-              {item.label ? `№ ${item.reference}` : ""}
-              {item.person ? `${item.label ? " · " : ""}${item.person}` : ""}
-            </div>
+            <div className="text-xs text-slate-500">{item.label ? `№ ${item.reference}` : ""}</div>
           </td>
           <td className="px-2 text-center">
             <input

@@ -1,10 +1,11 @@
 "use client";
 
-import { tramiteNumberSchema } from "@ojo/shared";
+import { composeIsoDate, splitIsoDate, tramiteNumberSchema } from "@ojo/shared";
 import { Alert, Button, TextField } from "@ojo/ui";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useT } from "@/components/providers/i18n-provider";
+import { BirthDateField } from "@/components/profile/birth-date-field";
 import { ApiError, apiRequest } from "@/lib/api-client";
 import { describeApiError } from "@/lib/api-errors";
 
@@ -17,18 +18,22 @@ export function FixNumberForm({
   current,
   mode = "typo",
   bare = false,
+  birthDate,
 }: {
   id: string;
   current: string;
   mode?: "typo" | "replace";
   /** No frame, title or hint: the surrounding block explains it. */
   bare?: boolean;
+  /** Migraciones cases are checked with the holder's birth date: ISO (or "" = unknown) shows its field. */
+  birthDate?: string | null;
 }) {
   const t = useT();
   const router = useRouter();
   const [number, setNumber] = useState(current);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [birth, setBirth] = useState(splitIsoDate(birthDate ?? null));
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -40,7 +45,11 @@ export function FixNumberForm({
     }
     setBusy(true);
     try {
-      await apiRequest(`/api/trackers/${id}`, { method: "PATCH", body: { number: parsed.data } });
+      const date = birthDate === undefined ? null : composeIsoDate(birth);
+      await apiRequest(`/api/trackers/${id}`, {
+        method: "PATCH",
+        body: { number: parsed.data, ...(date ? { birthDate: date } : {}) },
+      });
       router.refresh();
     } catch (e) {
       setError(
@@ -68,15 +77,29 @@ export function FixNumberForm({
         </>
       )}
       {error && <Alert tone="error">{error}</Alert>}
-      <TextField
-        label={t("track.field.tramite")}
-        inputMode="numeric"
-        value={mode === "replace" && number === current ? "" : number}
-        onChange={(e) => setNumber(e.target.value)}
-      />
-      <Button type="submit" loading={busy}>
-        {mode === "replace" ? t("track.replace.save") : t("track.fix.save")}
-      </Button>
+      <div className={bare ? "flex items-end gap-3" : "space-y-3"}>
+        <div className={bare ? "min-w-0 flex-1" : undefined}>
+          <TextField
+            label={t("track.field.tramite")}
+            inputMode="numeric"
+            value={mode === "replace" && number === current ? "" : number}
+            onChange={(e) => setNumber(e.target.value)}
+          />
+        </div>
+        {birthDate === undefined && (
+          <Button type="submit" loading={busy}>
+            {mode === "replace" ? t("track.replace.save") : t("track.fix.save")}
+          </Button>
+        )}
+      </div>
+      {birthDate !== undefined && (
+        <>
+          <BirthDateField label={t("track.dnm.birthDate")} value={birth} onChange={setBirth} />
+          <Button type="submit" loading={busy}>
+            {mode === "replace" ? t("track.replace.save") : t("track.fix.save")}
+          </Button>
+        </>
+      )}
     </form>
   );
 }

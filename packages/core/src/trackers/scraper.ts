@@ -6,6 +6,8 @@ export interface ScrapedTramite {
   header: Record<string, string>;
   steps: TrackerStep[];
   finished: boolean;
+  /** Migraciones only: the holder's name, shown once for confirmation and never stored. */
+  holder?: string;
 }
 
 export interface PjnPartyRow {
@@ -28,6 +30,8 @@ export interface Scraper {
   renaper(number: string): Promise<ScrapedTramite>;
   /** Correo Argentino DNI shipment of a trámite number (independent of RENAPER). */
   correo(number: string): Promise<ScrapedTramite>;
+  /** Migraciones (DNM): needs the holder's birth date as DD/MM/YYYY next to the number. */
+  dnm(input: { kind: "DNM_DNI" | "DNM_CITIZENSHIP"; number: string; birthDate: string }): Promise<ScrapedTramite>;
   pjnParty(input: { jurisdiction: string; name: string }): Promise<PjnPartyRow[]>;
   pjnCase(input: {
     jurisdiction: string;
@@ -76,9 +80,12 @@ export function createProcessScraper(options: ProcessScraperOptions): Scraper {
     else running -= 1;
   }
 
-  function exec(args: string[]): Promise<unknown> {
+  function exec(args: string[], env?: Record<string, string>): Promise<unknown> {
     return new Promise((resolve, reject) => {
-      const child = spawn(options.python, ["-m", "scraper", ...args], { cwd: options.cwd });
+      const child = spawn(options.python, ["-m", "scraper", ...args], {
+        cwd: options.cwd,
+        env: env ? { ...process.env, ...env } : process.env,
+      });
       let out = "";
       const timer = setTimeout(() => child.kill("SIGKILL"), options.timeoutMs);
       child.stdout.on("data", (chunk: Buffer) => (out += chunk.toString("utf8")));
@@ -98,10 +105,10 @@ export function createProcessScraper(options: ProcessScraperOptions): Scraper {
     });
   }
 
-  async function call<T>(args: string[]): Promise<T> {
+  async function call<T>(args: string[], env?: Record<string, string>): Promise<T> {
     await acquire();
     try {
-      const result = (await exec(args)) as { ok: boolean; error?: string; message?: string } & T;
+      const result = (await exec(args, env)) as { ok: boolean; error?: string; message?: string } & T;
       if (!result.ok) throw new ScraperError(result.error ?? "failed", result.message);
       return result;
     } finally {
@@ -112,6 +119,11 @@ export function createProcessScraper(options: ProcessScraperOptions): Scraper {
   return {
     renaper: (number) => call<ScrapedTramite>(["renaper", "--number", number]),
     correo: (number) => call<ScrapedTramite>(["correo", "--number", number]),
+    // the birth date travels in the environment of the child, never in its argument list
+    dnm: ({ kind, number, birthDate }) =>
+      call<ScrapedTramite>([kind === "DNM_DNI" ? "dnm-dni" : "dnm-citizenship", "--number", number], {
+        SCRAPER_BIRTH_DATE: birthDate,
+      }),
     async pjnParty({ jurisdiction, name }) {
       const result = await call<{ results: PjnPartyRow[] }>([
         "pjn-party",

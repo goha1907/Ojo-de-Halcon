@@ -5,7 +5,6 @@ import {
   birthYearOptions,
   composeIsoDate,
   daysInMonth,
-  personSchema,
   profileSchema,
   splitIsoDate,
   type ProfileInput,
@@ -30,7 +29,7 @@ export interface ProfileInitial {
 }
 
 /** Shared state + validation for the profile inputs (onboarding and settings). */
-export function useProfileFields(initial: ProfileInitial, options: { relative?: boolean } = {}) {
+export function useProfileFields(initial: ProfileInitial) {
   const { t } = useI18n();
   const [values, setValues] = useState<ProfileValues>({
     firstName: initial.firstName ?? "",
@@ -52,7 +51,7 @@ export function useProfileFields(initial: ProfileInitial, options: { relative?: 
 
   /** Returns the payload when valid, otherwise shows the errors and returns null. */
   function validate(): typeof payload | null {
-    const parsed = (options.relative ? personSchema : profileSchema).safeParse(payload);
+    const parsed = profileSchema.safeParse(payload);
     if (!parsed.success) {
       setErrors(issuesToFieldErrors(parsed.error.issues, t));
       return null;
@@ -61,13 +60,13 @@ export function useProfileFields(initial: ProfileInitial, options: { relative?: 
     return payload;
   }
 
-  return { values, setValues, errors, setErrors, isEmpty, validate, relative: options.relative ?? false };
+  return { values, setValues, errors, setErrors, isEmpty, validate };
 }
 
 export type ProfileFieldsState = ReturnType<typeof useProfileFields>;
 
 /** Month names in the interface language, capitalized (Intl, so no hardcoded lists). */
-function localizedMonthNames(locale: string): string[] {
+export function localizedMonthNames(locale: string): string[] {
   const format = new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" });
   return Array.from({ length: 12 }, (_, month) => {
     const name = format.format(new Date(Date.UTC(2000, month, 1)));
@@ -79,10 +78,7 @@ export function ProfileFields({ state }: { state: ProfileFieldsState }) {
   const { t, locale } = useI18n();
   const { values, setValues, errors } = state;
   const monthNames = useMemo(() => localizedMonthNames(locale), [locale]);
-  const years = useMemo(
-    () => birthYearOptions(new Date(), state.relative ? 0 : undefined),
-    [state.relative],
-  );
+  const years = useMemo(() => birthYearOptions(new Date()), []);
   const courts = useMemo(
     () => PJN_JURISDICTIONS.map((item) => ({ value: item.value, label: `${item.code} — ${item.name}` })),
     [],

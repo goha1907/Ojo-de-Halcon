@@ -24,6 +24,8 @@ export interface NotificationInput {
 
 /** Header field that best describes the current state of each kind. */
 export const STATUS_FIELD: Record<TrackerKindValue, string> = {
+  DNM_DNI: "status",
+  DNM_CITIZENSHIP: "status",
   RENAPER: "status",
   CORREO: "status",
   PJN: "sit_actual",

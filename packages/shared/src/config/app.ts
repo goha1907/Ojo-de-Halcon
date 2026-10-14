@@ -35,8 +35,6 @@ export const APP_CONFIG = {
   news: { pageSize: 5 },
   /** Product limits. */
   limits: {
-    /** Relatives one account may track besides the owner. */
-    maxPeople: 5,
     /** Longest custom name of a tracked case. */
     labelMaxLength: 60,
     /** Most cases one subscription may hold (sanity cap on purchases). */
@@ -122,6 +120,7 @@ export const API_ROUTES = {
   pjnSearch: "/api/trackers/pjn/search",
   pjnConfirm: "/api/trackers/pjn/confirm",
   pjnPreview: "/api/trackers/pjn/preview",
+  dnmPreview: "/api/trackers/dnm/preview",
   people: "/api/people",
   billingStub: "/api/billing/stub",
   billingQuote: "/api/billing/quote",

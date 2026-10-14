@@ -34,8 +34,6 @@ export function startTrackerScheduler(deps: SchedulerDeps): () => void {
   const OUTBOX_TEXT: Record<string, MessageKey> = {
     account_deleted: "bot.accountDeleted",
     unlinked: "bot.unlinked",
-    person_added: "bot.personAdded",
-    person_removed: "bot.personRemoved",
     case_finished: "bot.caseFinished",
   };
 

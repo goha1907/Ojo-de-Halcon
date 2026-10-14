@@ -320,100 +320,17 @@ describe("trackers: notifications", () => {
   });
 });
 
-describe("people and trial", () => {
-  const person = {
-    firstName: "Ana",
-    lastName: "Medvedeva",
-    birthDate: new Date("2015-05-01T00:00:00Z"),
-    pjnJurisdiction: "4",
-  };
-
-  it("requires a subscription for relatives, then tracks them separately", async () => {
-    const core = makeCore();
-    const userId = await newUser(core);
-    expect(await core.people.add(userId, person)).toEqual({ ok: false, reason: "SUBSCRIPTION_REQUIRED" });
-    await subscribe(userId);
-    const added = await core.people.add(userId, person);
-    expect(added.ok).toBe(true);
-    if (!added.ok) return;
-    // a child is allowed (no 18+ rule for relatives)
-    expect(added.person.birthDate).toBe("2015-05-01");
-
-    const own = await core.trackers.addTramite(userId, "RENAPER", "755824304");
-    expect(own.ok).toBe(true);
-    // with a subscription the relative's case is allowed next to the owner's
-    expect(await core.trackers.addTramite(userId, "RENAPER", "111111111", added.person.id)).toMatchObject({
-      ok: true,
-    });
-    // without it the trial covers one case only
-    const second = await core.people.add(userId, { ...person, firstName: "Luis" });
-    if (!second.ok) throw new Error("second person failed");
-    await prisma.user.update({ where: { id: userId }, data: { subscriptionUntil: null } });
-    expect(await core.trackers.addTramite(userId, "RENAPER", "999999999", second.person.id)).toMatchObject({
-      ok: false,
-      reason: "SUBSCRIPTION_REQUIRED",
-    });
-  });
-
-  it("blocks people during the trial, until a subscription exists", async () => {
+describe("trial", () => {
+  it("covers one case, a subscription as many as were paid for", async () => {
     const core = makeCore();
     const userId = await newUser(core);
     await core.trackers.addTramite(userId, "RENAPER", "755824304");
-    expect(await core.people.add(userId, person)).toEqual({ ok: false, reason: "SUBSCRIPTION_REQUIRED" });
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: { subscriptionUntil: new Date(Date.now() + 30 * 86_400_000), paidCases: 5 },
-    });
-    expect(await core.people.add(userId, person)).toMatchObject({ ok: true });
-  });
-
-  it("caps relatives at five", async () => {
-    const core = makeCore();
-    const userId = await newUser(core);
-    await subscribe(userId);
-    for (let i = 0; i < 5; i += 1) {
-      expect(await core.people.add(userId, { ...person, firstName: `P${i}` })).toMatchObject({ ok: true });
-    }
-    expect(await core.people.add(userId, person)).toEqual({ ok: false, reason: "LIMIT_REACHED" });
-  });
-
-  it("keeps one case per section separately for each person", async () => {
-    const core = makeCore();
-    const userId = await newUser(core);
-    await prisma.user.update({
-      where: { id: userId },
-      data: { subscriptionUntil: new Date(Date.now() + 30 * 86_400_000), paidCases: 5 },
-    });
-    const added = await core.people.add(userId, person);
-    if (!added.ok) throw new Error("person failed");
-    expect(await core.trackers.addTramite(userId, "RENAPER", "755824304")).toMatchObject({ ok: true });
-    expect(await core.trackers.addTramite(userId, "RENAPER", "755824304", added.person.id)).toMatchObject({
-      ok: true,
-    });
-    const list = await core.trackers.list(userId);
-    expect(list.filter((item) => item.person?.id === added.person.id)).toHaveLength(1);
-    expect(list).toHaveLength(2);
-  });
-
-  it("does not touch other users' people and removes cases with the person", async () => {
-    const core = makeCore();
-    const owner = await newUser(core);
-    const other = await newUser(core, "other@example.com");
-    await prisma.user.update({
-      where: { id: owner },
-      data: { subscriptionUntil: new Date(Date.now() + 30 * 86_400_000), paidCases: 5 },
-    });
-    const added = await core.people.add(owner, person);
-    if (!added.ok) throw new Error("person failed");
-    expect(await core.trackers.addTramite(other, "RENAPER", "1234567", added.person.id)).toMatchObject({
+    expect(await core.trackers.addTramite(userId, "CORREO", "755824304")).toMatchObject({
       ok: false,
-      reason: "PERSON_NOT_FOUND",
+      reason: "SUBSCRIPTION_REQUIRED",
     });
-    await core.trackers.addTramite(owner, "RENAPER", "755824304", added.person.id);
-    expect(await core.people.remove(other, added.person.id)).toBe(false);
-    expect(await core.people.remove(owner, added.person.id)).toBe(true);
-    expect(await prisma.tracker.count({ where: { userId: owner } })).toBe(0);
+    await subscribe(userId);
+    expect(await core.trackers.addTramite(userId, "CORREO", "755824304")).toMatchObject({ ok: true });
   });
 
   it("pauses checks when the trial is over", async () => {
@@ -542,52 +459,7 @@ describe("ordered notifications and the Telegram digest", () => {
   });
 });
 
-describe("muted relatives", () => {
-  it("keeps a muted person's updates and digest out of Telegram", async () => {
-    const core = makeCore();
-    const userId = await newUser(core);
-    await subscribe(userId);
-    await prisma.user.update({ where: { id: userId }, data: { telegramId: 55n } });
-    const added = await core.people.add(userId, {
-      firstName: "Ana",
-      lastName: "Perez",
-      birthDate: new Date("2015-05-01T00:00:00Z"),
-      pjnJurisdiction: "",
-      notifyTelegram: false,
-    });
-    if (!added.ok) throw new Error("person failed");
-    const tracked = await core.trackers.addTramite(userId, "RENAPER", "755824304", added.person.id);
-    if (!tracked.ok) throw new Error("add failed");
-    await prisma.trackerSnapshot.create({
-      data: {
-        trackerId: tracked.tracker.id,
-        header: {},
-        steps: [{ date: "1/10/2026", title: "X", detail: "" }],
-        contentHash: "h",
-      },
-    });
-    await prisma.trackerEvent.create({
-      data: { trackerId: tracked.tracker.id, payload: { step: null, header: {} } },
-    });
-
-    expect(await core.trackers.pendingNotifications()).toHaveLength(0);
-    expect(await core.trackers.latestSteps(userId)).toHaveLength(0);
-
-    // turned back on: the digest includes the person again
-    await core.people.setNotify(userId, added.person.id, true);
-    expect(await core.trackers.latestSteps(userId)).toHaveLength(1);
-  });
-});
-
-describe("case added and relative notices", () => {
-  const draft = (notifyTelegram: boolean) => ({
-    firstName: "Ana",
-    lastName: "Perez",
-    birthDate: new Date("2015-05-01T00:00:00Z"),
-    pjnJurisdiction: "",
-    notifyTelegram,
-  });
-
+describe("case added notices", () => {
   async function withTelegram(core: ReturnType<typeof makeCore>) {
     const userId = await newUser(core);
     await subscribe(userId);
@@ -595,46 +467,30 @@ describe("case added and relative notices", () => {
     return userId;
   }
 
-  it("queues a message when a relative is added and when one is removed", async () => {
-    const core = makeCore();
-    const userId = await withTelegram(core);
-    const added = await core.people.add(userId, draft(true));
-    if (!added.ok) throw new Error("add failed");
-    expect(await core.people.remove(userId, added.person.id)).toBe(true);
-
-    const rows = await prisma.telegramOutbox.findMany({ orderBy: { createdAt: "asc" } });
-    expect(rows.map((row) => [row.kind, row.payload])).toEqual([
-      ["person_added", { name: "Ana Perez" }],
-      ["person_removed", { name: "Ana Perez" }],
-    ]);
-  });
-
-  it("reports a new case at once when the person is not muted", async () => {
+  it("reports a new case at once", async () => {
     const core = makeCore({ scraper: { renaper: async () => renaperAnswer() } });
     const userId = await withTelegram(core);
-    const added = await core.people.add(userId, draft(true));
-    if (!added.ok) throw new Error("add failed");
-    await core.trackers.addTramite(userId, "RENAPER", "755824304", added.person.id);
+    await core.trackers.addTramite(userId, "RENAPER", "755824304");
     await core.trackers.runDue();
     const pending = await core.trackers.pendingNotifications();
     expect(pending).toHaveLength(1);
     expect(pending[0]!.payload.initial).toBe(true);
-    expect(pending[0]!.who).toBe("Ana Perez");
+    expect(pending[0]!.who).toBe("Egor Medvedev");
   });
 
-  it("holds the report while the person is muted and sends it at the next refresh after unmuting", async () => {
+  it("holds the report while Telegram is off for the case and sends it at the next refresh after switching on", async () => {
     let clock = new Date("2026-10-14T10:00:00Z");
     const core = makeCore({ now: () => clock, scraper: { renaper: async () => renaperAnswer() } });
     const userId = await withTelegram(core);
-    const added = await core.people.add(userId, draft(false));
+    const added = await core.trackers.addTramite(userId, "RENAPER", "755824304");
     if (!added.ok) throw new Error("add failed");
-    await core.trackers.addTramite(userId, "RENAPER", "755824304", added.person.id);
+    await core.trackers.setNotify(userId, added.tracker.id, false);
 
     await core.trackers.runDue();
-    expect(await prisma.trackerEvent.count()).toBe(0); // silent while muted
+    expect(await prisma.trackerEvent.count()).toBe(0); // silent while off
     expect((await prisma.tracker.findFirstOrThrow()).initialNotified).toBe(false);
 
-    await core.people.setNotify(userId, added.person.id, true);
+    await core.trackers.setNotify(userId, added.tracker.id, true);
     expect(await prisma.trackerEvent.count()).toBe(0); // nothing is sent by toggling alone
 
     clock = new Date(clock.getTime() + (TRACKER_CONFIG.checkIntervalHours + 1) * HOUR);
@@ -642,47 +498,6 @@ describe("case added and relative notices", () => {
     const events = await prisma.trackerEvent.findMany();
     expect(events).toHaveLength(1);
     expect((events[0]!.payload as { initial?: boolean }).initial).toBe(true);
-  });
-});
-
-describe("Telegram order: owner first, then relatives", () => {
-  const relative = (firstName: string) => ({
-    firstName,
-    lastName: "Perez",
-    birthDate: new Date("2015-05-01T00:00:00Z"),
-    pjnJurisdiction: "",
-    notifyTelegram: true,
-  });
-
-  it("lists the owner's cases in menu order before each relative's", async () => {
-    const core = makeCore({
-      scraper: {
-        renaper: async () => renaperAnswer(),
-        correo: async () => renaperAnswer({ steps: [{ date: "1/10/2026", title: "C", detail: "" }] }),
-      },
-    });
-    const userId = await newUser(core);
-    await subscribe(userId);
-    const first = await core.people.add(userId, relative("Ana"));
-    const second = await core.people.add(userId, relative("Luis"));
-    if (!first.ok || !second.ok) throw new Error("people failed");
-
-    // added in a deliberately scrambled order
-    await core.trackers.addTramite(userId, "CORREO", "100000001", second.person.id);
-    await core.trackers.addTramite(userId, "RENAPER", "100000002", first.person.id);
-    await core.trackers.addTramite(userId, "CORREO", "100000003");
-    await core.trackers.addTramite(userId, "RENAPER", "100000004");
-    await core.trackers.addTramite(userId, "RENAPER", "100000005", second.person.id);
-    await core.trackers.runDue(20);
-
-    const digest = await core.trackers.latestSteps(userId);
-    expect(digest.map((item) => [item.who, item.section])).toEqual([
-      ["Egor Medvedev", "dni_production"],
-      ["Egor Medvedev", "dni_post"],
-      ["Ana Perez", "dni_production"],
-      ["Luis Perez", "dni_production"],
-      ["Luis Perez", "dni_post"],
-    ]);
   });
 });
 
@@ -701,8 +516,226 @@ describe("digest respects the per-case switches", () => {
   });
 });
 
+describe("Migraciones trackers", () => {
+  const answer: ScrapedTramite = {
+    found: true,
+    header: { status: "PRECARIA RENOVADA", statusDate: "2026-03-16", office: "ENTRE RIOS" },
+    steps: [{ date: "2026-03-16", title: "PRECARIA RENOVADA", detail: "" }],
+    finished: false,
+  };
+
+  async function withBirthDate(core: ReturnType<typeof makeCore>, birthDate: string | null) {
+    const userId = await newUser(core);
+    await subscribe(userId);
+    await prisma.user.update({ where: { id: userId }, data: { birthDate: birthDate ? new Date(birthDate) : null } });
+    return userId;
+  }
+
+  it("needs the holder's birth date and sends it as DD/MM/YYYY", async () => {
+    const seen: { number: string; birthDate: string; kind: string }[] = [];
+    const core = makeCore({
+      scraper: {
+        dnm: async (input) => {
+          seen.push(input);
+          return answer;
+        },
+      },
+    });
+    const userId = await withBirthDate(core, null);
+    expect(await core.trackers.addTramite(userId, "DNM_DNI", "1129912025")).toEqual({
+      ok: false,
+      reason: "BIRTH_DATE_REQUIRED",
+    });
+
+    await prisma.user.update({ where: { id: userId }, data: { birthDate: new Date("1990-03-05") } });
+    expect(await core.trackers.addTramite(userId, "DNM_DNI", "1129912025")).toMatchObject({ ok: true });
+    expect(await core.trackers.runDue()).toBe(1);
+    expect(seen).toEqual([{ kind: "DNM_DNI", number: "1129912025", birthDate: "05/03/1990" }]);
+    expect((await core.trackers.list(userId))[0]).toMatchObject({ kind: "DNM_DNI", status: "ACTIVE" });
+  });
+
+  it("uses the birth date typed for the case over the profile and lets it be corrected", async () => {
+    const seen: string[] = [];
+    const core = makeCore({
+      scraper: {
+        dnm: async (input) => {
+          seen.push(input.birthDate);
+          return answer;
+        },
+      },
+    });
+    const userId = await withBirthDate(core, "1990-03-05");
+    const added = await core.trackers.addTramite(userId, "DNM_DNI", "1129912025", null, new Date("1985-12-31"));
+    if (!added.ok) throw new Error("add failed");
+    expect(added.tracker.holderBirthDate).toBe("1985-12-31");
+    await core.trackers.runDue();
+    expect(seen).toEqual(["31/12/1985"]);
+
+    // never read successfully? it can still be corrected; here data arrived, so it cannot
+    expect(await core.trackers.replaceNumber(userId, added.tracker.id, "1129912025", new Date("1990-03-05"))).toBe(
+      "NOT_ALLOWED",
+    );
+  });
+
+  it("shows only who the case belongs to before it is added, then stores that same read", async () => {
+    let calls = 0;
+    const core = makeCore({
+      scraper: {
+        dnm: async () => {
+          calls += 1;
+          return {
+            ...answer,
+            holder: "PEREZ ANA",
+            header: { ...answer.header, office: "ENTRE RIOS", expediente: "50003732026" },
+          };
+        },
+      },
+    });
+    const userId = await withBirthDate(core, "1990-03-05");
+    const preview = await core.trackers.previewDnm(userId, "DNM_DNI", "1129912025");
+    // identity only: no status, no steps
+    expect(preview).toEqual({
+      ok: true,
+      header: { holder: "PEREZ ANA", office: "ENTRE RIOS", expediente: "50003732026" },
+    });
+    expect(await prisma.tracker.count({ where: { userId } })).toBe(0);
+
+    const added = await core.trackers.addTramite(userId, "DNM_DNI", "1129912025");
+    expect(added).toMatchObject({ ok: true });
+    // the preview read was stored: the card is filled without a second request
+    expect(calls).toBe(1);
+    const [tracker] = await core.trackers.list(userId);
+    expect(tracker!.steps).toHaveLength(1);
+    expect(tracker!.header.status).toBe("PRECARIA RENOVADA");
+  });
+
+  it("frees the slot when the DNI file is resolved and tallies statuses without any personal data", async () => {
+    let state = "EN TRAMITE";
+    const core = makeCore({
+      scraper: {
+        dnm: async () => ({
+          ...answer,
+          header: { ...answer.header, state },
+          finished: state === "RESUELTO",
+        }),
+      },
+    });
+    const userId = await withBirthDate(core, "1990-03-05");
+    await prisma.user.update({ where: { id: userId }, data: { paidCases: 1 } });
+    await core.trackers.addTramite(userId, "DNM_DNI", "1129912025");
+    await core.trackers.runDue();
+    expect(await core.billing.state(userId)).toMatchObject({ activeCases: 1, freeCases: 0 });
+
+    state = "RESUELTO";
+    await prisma.tracker.updateMany({ where: { userId }, data: { nextCheckAt: new Date() } });
+    await core.trackers.runDue();
+    expect(await core.billing.state(userId)).toMatchObject({ activeCases: 0, freeCases: 1, finishedCases: 1 });
+
+    const stats = await core.trackers.statusStats("DNM_DNI");
+    expect(stats.map((row) => [row.field, row.value, row.count])).toEqual(
+      expect.arrayContaining([
+        ["status", "EN TRAMITE", 1],
+        ["status", "RESUELTO", 1],
+        ["step", "PRECARIA RENOVADA", 1],
+      ]),
+    );
+    // nothing links an observation to a user or a number
+    expect(Object.keys(stats[0]!).sort()).toEqual(["count", "field", "firstSeenAt", "id", "kind", "lastSeenAt", "value"]);
+  });
+
+  it("offers a closed case, which is added as finished without a free slot or a notice", async () => {
+    const core = makeCore({
+      scraper: {
+        dnm: async () => ({ ...answer, header: { ...answer.header, state: "RESUELTO" }, finished: true }),
+      },
+    });
+    const userId = await withBirthDate(core, "1990-03-05");
+    await prisma.user.update({ where: { id: userId }, data: { paidCases: 0, telegramId: 99n } });
+
+    const preview = await core.trackers.previewDnm(userId, "DNM_DNI", "1129912025");
+    expect(preview).toMatchObject({ ok: true, header: { closed: "true", state: "RESUELTO" } });
+
+    const added = await core.trackers.addTramite(userId, "DNM_DNI", "1129912025");
+    expect(added).toMatchObject({ ok: true });
+    expect((await core.trackers.list(userId))[0]!.status).toBe("FINISHED");
+    expect(await prisma.telegramOutbox.count()).toBe(0);
+  });
+
+  it("reports a rejected number/birth date in the preview", async () => {
+    const core = makeCore({
+      scraper: {
+        dnm: async () => {
+          throw new ScraperError("mismatch");
+        },
+      },
+    });
+    const userId = await withBirthDate(core, "1990-03-05");
+    expect(await core.trackers.previewDnm(userId, "DNM_CITIZENSHIP", "2275808")).toEqual({
+      ok: false,
+      reason: "MISMATCH",
+    });
+  });
+
+  it("keeps the case when the source rejects number and birth date, and retries on the regular cadence", async () => {
+    const core = makeCore({
+      scraper: {
+        dnm: async () => {
+          throw new ScraperError("mismatch");
+        },
+      },
+    });
+    const userId = await withBirthDate(core, "1990-03-05");
+    await core.trackers.addTramite(userId, "DNM_CITIZENSHIP", "2275808");
+    await core.trackers.runDue();
+    const tracker = await prisma.tracker.findFirstOrThrow({ where: { userId } });
+    expect(tracker.lastError).toBe("mismatch");
+    const waitMs = tracker.nextCheckAt.getTime() - Date.now();
+    expect(waitMs).toBeGreaterThan(TRACKER_CONFIG.retryAfterMinutes * 60_000);
+  });
+});
+
+describe("final statuses end a case", () => {
+  it("finishes a RENAPER case at Embalado and a court case at Archívese", async () => {
+    const core = makeCore({
+      scraper: {
+        renaper: async () => renaperAnswer({ header: { status: "Embalado" } }),
+        pjnCase: async () => ({
+          header: { expediente: "CNE 7900/2026", dependencia: "J", sit_actual: "ARCHIVESE", caratula: "X" },
+          actuaciones: [],
+        }),
+      },
+    });
+    const userId = await newUser(core);
+    await subscribe(userId);
+    await core.trackers.addTramite(userId, "RENAPER", "755824304");
+    await core.trackers.addPjn(userId, { jurisdiction: "4", number: "7900", year: "2026" });
+    await core.trackers.runDue(10);
+    const byKind = Object.fromEntries((await core.trackers.list(userId)).map((item) => [item.kind, item.status]));
+    expect(byKind).toEqual({ RENAPER: "FINISHED", PJN: "FINISHED" });
+  });
+
+  it("finishes a Correo case when the latest stage is delivery", async () => {
+    const core = makeCore({
+      scraper: {
+        correo: async () =>
+          renaperAnswer({
+            steps: [
+              { date: "2026-10-10", title: "EN VIAJE", detail: "" },
+              { date: "2026-10-12", title: "ENTREGADO", detail: "" },
+            ],
+          }),
+      },
+    });
+    const userId = await newUser(core);
+    await subscribe(userId);
+    await core.trackers.addTramite(userId, "CORREO", "755824304");
+    await core.trackers.runDue();
+    expect((await core.trackers.list(userId))[0]!.status).toBe("FINISHED");
+  });
+});
+
 describe("notification switches per case", () => {
-  it("starts on, belongs to the owner of the case and follows a muted relative", async () => {
+  it("starts on and belongs to the owner of the case", async () => {
     const core = makeCore({ scraper: { renaper: async () => renaperAnswer() } });
     const userId = await newUser(core);
     await subscribe(userId);
@@ -714,95 +747,12 @@ describe("notification switches per case", () => {
     expect(await core.trackers.setNotify(stranger, own.tracker.id, false)).toBe(false);
     expect(await core.trackers.setNotify(userId, own.tracker.id, false)).toBe(true);
     expect((await core.trackers.list(userId))[0]!.notifyTelegram).toBe(false);
-
-    const person = await core.people.add(userId, {
-      firstName: "Ana",
-      lastName: "Perez",
-      birthDate: null,
-      pjnJurisdiction: "",
-      notifyTelegram: true,
-    });
-    if (!person.ok) throw new Error("person failed");
-    const relative = await core.trackers.addTramite(userId, "CORREO", "755824304", person.person.id);
-    if (!relative.ok) throw new Error("add failed");
-    await core.people.setNotify(userId, person.person.id, false);
-    expect((await core.trackers.list(userId)).find((item) => item.id === relative.tracker.id)!.notifyTelegram).toBe(false);
-  });
-});
-
-describe("relative without birth date or court", () => {
-  it("is accepted and can be completed later", async () => {
-    const { personSchema } = await import("@ojo/shared");
-    const parsed = personSchema.parse({ firstName: "Ana", lastName: "Perez", birthDate: "", pjnJurisdiction: "" });
-    expect(parsed.birthDate).toBeNull();
-    // a partly filled date is still an error
-    expect(personSchema.safeParse({ firstName: "Ana", lastName: "Perez", birthDate: "2015-05-", pjnJurisdiction: "" }).success).toBe(false);
-
-    const core = makeCore();
-    const userId = await newUser(core);
-    await subscribe(userId);
-    const added = await core.people.add(userId, parsed);
-    if (!added.ok) throw new Error("add failed");
-    expect(added.person.birthDate).toBeNull();
-    expect(added.person.pjnJurisdiction).toBeNull();
-
-    const updated = await core.people.update(userId, added.person.id, {
-      ...parsed,
-      birthDate: new Date("2015-05-01T00:00:00Z"),
-      pjnJurisdiction: "4",
-    });
-    expect(updated).toMatchObject({ ok: true, person: { birthDate: "2015-05-01", pjnJurisdiction: "4" } });
-  });
-});
-
-describe("relatives switched off (default)", () => {
-  it("keeps the feature dormant: one user, nothing for relatives", async () => {
-    const core = makeCore({ relatives: false });
-    const userId = await newUser(core);
-    await core.billing.checkout(userId, 2);
-    expect(
-      await core.people.add(userId, {
-        firstName: "Ana",
-        lastName: "Perez",
-        birthDate: null,
-        pjnJurisdiction: "",
-        notifyTelegram: true,
-      }),
-    ).toEqual({ ok: false, reason: "FEATURE_DISABLED" });
-    // buying more cases is a separate, enabled feature
-    expect(await core.billing.checkout(userId, 3)).toMatchObject({ ok: true });
-    expect(await core.trackers.addTramite(userId, "RENAPER", "755824304")).toMatchObject({ ok: true });
-  });
-
-  it("hides and does not check relatives' cases that exist in the database", async () => {
-    const on = makeCore();
-    const userId = await newUser(on);
-    await subscribe(userId);
-    const added = await on.people.add(userId, {
-      firstName: "Ana",
-      lastName: "Perez",
-      birthDate: null,
-      pjnJurisdiction: "",
-      notifyTelegram: true,
-    });
-    if (!added.ok) throw new Error("person failed");
-    await on.trackers.addTramite(userId, "RENAPER", "755824304", added.person.id);
-    await on.trackers.addTramite(userId, "CORREO", "755824304");
-
-    const off = makeCore({ relatives: false, scraper: { correo: async () => renaperAnswer() } });
-    expect(await off.people.list(userId)).toEqual([]);
-    expect((await off.trackers.list(userId)).map((item) => item.kind)).toEqual(["CORREO"]);
-    expect(await off.trackers.runDue()).toBe(1);
-    expect(await off.trackers.addTramite(userId, "RENAPER", "999999999", added.person.id)).toMatchObject({
-      ok: false,
-      reason: "PERSON_NOT_FOUND",
-    });
   });
 });
 
 describe("cases: the subscription is priced per tracked case", () => {
   it("lets as many cases in as were paid for, in any section", async () => {
-    const core = makeCore({ relatives: false });
+    const core = makeCore();
     const userId = await newUser(core);
     await core.billing.checkout(userId, 2);
     expect(await core.trackers.addTramite(userId, "RENAPER", "100000001")).toMatchObject({ ok: true });
@@ -827,7 +777,7 @@ describe("cases: the subscription is priced per tracked case", () => {
   });
 
   it("stops at the configured maximum and refuses fewer cases than paid", async () => {
-    const core = makeCore({ relatives: false });
+    const core = makeCore();
     const userId = await newUser(core);
     expect(await core.billing.checkout(userId, 101)).toEqual({ ok: false, reason: "LIMIT_REACHED" });
     await core.billing.checkout(userId, 3);
@@ -835,7 +785,7 @@ describe("cases: the subscription is priced per tracked case", () => {
   });
 
   it("frees a slot when a case is finished", async () => {
-    const core = makeCore({ relatives: false });
+    const core = makeCore();
     const userId = await newUser(core);
     await core.billing.checkout(userId, 1);
     const first = await core.trackers.addTramite(userId, "RENAPER", "100000001");
@@ -847,7 +797,6 @@ describe("cases: the subscription is priced per tracked case", () => {
 
   it("tells the owner when a case is finished and its slot is free", async () => {
     const core = makeCore({
-      relatives: false,
       scraper: { renaper: async () => renaperAnswer({ finished: true }) },
     });
     const userId = await newUser(core);
@@ -861,7 +810,7 @@ describe("cases: the subscription is priced per tracked case", () => {
   });
 
   it("takes a case out of the subscription at the period end and keeps it as history", async () => {
-    const core = makeCore({ relatives: false });
+    const core = makeCore();
     const userId = await newUser(core);
     await core.billing.checkout(userId, 3);
     const ids: string[] = [];
@@ -909,7 +858,7 @@ describe("cases: the subscription is priced per tracked case", () => {
   });
 
   it("cancels the whole subscription and takes the cancellation back", async () => {
-    const core = makeCore({ relatives: false });
+    const core = makeCore();
     const userId = await newUser(core);
     await core.billing.checkout(userId, 2);
     await core.trackers.addTramite(userId, "RENAPER", "100000001");
@@ -925,7 +874,7 @@ describe("cases: the subscription is priced per tracked case", () => {
 
   it("restarts after the period ended with the cases that stayed", async () => {
     let clock = new Date("2026-10-14T10:00:00Z");
-    const core = makeCore({ relatives: false, now: () => clock });
+    const core = makeCore({ now: () => clock });
     const userId = await newUser(core);
     await core.billing.checkout(userId, 3);
     const first = await core.trackers.addTramite(userId, "RENAPER", "100000001");
@@ -941,26 +890,9 @@ describe("cases: the subscription is priced per tracked case", () => {
   });
 });
 
-describe("relatives need no seats of their own", () => {
-  it("adds a relative with a subscription alone", async () => {
-    const core = makeCore();
-    const userId = await newUser(core);
-    await core.billing.checkout(userId, 1);
-    expect(
-      await core.people.add(userId, {
-        firstName: "Ana",
-        lastName: "Perez",
-        birthDate: null,
-        pjnJurisdiction: "",
-        notifyTelegram: true,
-      }),
-    ).toMatchObject({ ok: true });
-  });
-});
-
 describe("replacing and releasing a case", () => {
   it("fixes a mistyped number only while nothing was ever read for it", async () => {
-    const core = makeCore({ relatives: false, scraper: { renaper: async () => renaperAnswer() } });
+    const core = makeCore({ scraper: { renaper: async () => renaperAnswer() } });
     const userId = await newUser(core);
     const added = await core.trackers.addTramite(userId, "RENAPER", "100000001");
     if (!added.ok) throw new Error("add failed");
@@ -973,7 +905,6 @@ describe("replacing and releasing a case", () => {
     // slotSince comes from the database clock, so the fake clock must start at the real now
     let clock = new Date(Date.now() + 60_000);
     const core = makeCore({
-      relatives: false,
       now: () => clock,
       scraper: { renaper: async () => renaperAnswer() },
     });
@@ -1004,7 +935,6 @@ describe("replacing and releasing a case", () => {
 
   it("does not treat an unpaid status as a reason to replace: the payment may still be fixed", async () => {
     const core = makeCore({
-      relatives: false,
       scraper: {
         renaper: async () =>
           renaperAnswer({
@@ -1023,7 +953,6 @@ describe("replacing and releasing a case", () => {
   it("frees the slot of a confirmed court case only after the cooldown", async () => {
     let clock = new Date("2026-10-14T10:00:00Z");
     const core = makeCore({
-      relatives: false,
       now: () => clock,
       scraper: {
         pjnCase: async (input) =>
@@ -1044,7 +973,7 @@ describe("replacing and releasing a case", () => {
   });
 
   it("names the case by number in notifications and the digest", async () => {
-    const core = makeCore({ relatives: false, scraper: { renaper: async () => renaperAnswer() } });
+    const core = makeCore({ scraper: { renaper: async () => renaperAnswer() } });
     const userId = await newUser(core);
     await core.trackers.addTramite(userId, "RENAPER", "755824304");
     await core.trackers.runDue();
@@ -1110,9 +1039,9 @@ describe("custom name of a case", () => {
       addTrackerRequestSchema.safeParse({ kind: "RENAPER", number: "755824304", label: "x".repeat(61) }).success,
     ).toBe(false);
 
-    const core = makeCore({ relatives: false });
+    const core = makeCore();
     const userId = await newUser(core);
-    const added = await core.trackers.addTramite(userId, "RENAPER", "755824304", null, "Мама");
+    const added = await core.trackers.addTramite(userId, "RENAPER", "755824304", "Мама");
     if (!added.ok) throw new Error("add failed");
     expect(added.tracker.label).toBe("Мама");
     expect(new Date(added.tracker.addedAt).getTime()).toBeGreaterThan(Date.now() - 60_000);
@@ -1121,7 +1050,7 @@ describe("custom name of a case", () => {
 
 describe("renaming and removing a case that has not started", () => {
   it("renames any time", async () => {
-    const core = makeCore({ relatives: false });
+    const core = makeCore();
     const userId = await newUser(core);
     const added = await core.trackers.addTramite(userId, "RENAPER", "755824304");
     if (!added.ok) throw new Error("add failed");
@@ -1133,7 +1062,7 @@ describe("renaming and removing a case that has not started", () => {
   });
 
   it("can be removed only while nothing was read; afterwards the 30-day rule applies", async () => {
-    const core = makeCore({ relatives: false, scraper: { renaper: async () => renaperAnswer() } });
+    const core = makeCore({ scraper: { renaper: async () => renaperAnswer() } });
     const userId = await newUser(core);
     const added = await core.trackers.addTramite(userId, "RENAPER", "755824304");
     if (!added.ok) throw new Error("add failed");
@@ -1148,7 +1077,7 @@ describe("renaming and removing a case that has not started", () => {
   });
 
   it("allows deleting a never-read number at once and frees the slot", async () => {
-    const core = makeCore({ relatives: false });
+    const core = makeCore();
     const userId = await newUser(core);
     const added = await core.trackers.addTramite(userId, "RENAPER", "755824304");
     if (!added.ok) throw new Error("add failed");

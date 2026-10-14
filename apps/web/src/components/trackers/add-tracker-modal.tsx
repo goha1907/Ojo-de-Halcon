@@ -1,11 +1,13 @@
 "use client";
 
-import type { PersonDto } from "@ojo/core";
 import {
   API_ROUTES,
   APP_CONFIG,
   PJN_DEFAULT_JURISDICTION,
   PJN_JURISDICTIONS,
+  composeIsoDate,
+  isDnmKind,
+  splitIsoDate,
   settingsHref,
   TRACKER_KINDS,
   TRACKER_KIND_SECTION,
@@ -20,6 +22,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 import { useT } from "@/components/providers/i18n-provider";
+import { BirthDateField } from "@/components/profile/birth-date-field";
 import { ApiError, apiRequest } from "@/lib/api-client";
 import { describeApiError } from "@/lib/api-errors";
 import { issuesToFieldErrors } from "@/lib/form-errors";
@@ -36,29 +39,30 @@ interface Props {
   onClose: () => void;
   /** Court chosen in the profile, preselected for court cases. */
   defaultJurisdiction: string | null;
-  /** Relatives the case can be added for (the owner is always the first option). */
-  people: PersonDto[];
   /** Set when the plan does not allow another case; the form is replaced by an offer. */
   lock: "trial" | "expired" | null;
   /** Used / paid cases of a subscription (null: no subscription); when all are taken the form is replaced by an offer to buy more. */
   usage: { used: number; limit: number } | null;
+  /** Profile birth date (ISO) offered for Migraciones kinds; can be changed per case. */
+  defaultBirthDate: string | null;
 }
 
 const ERROR_KEYS: Record<string, MessageKey> = {
   ALREADY_EXISTS: "track.error.exists",
   NO_FREE_SLOT: "track.error.noFreeSlot",
+  BIRTH_DATE_REQUIRED: "track.error.birthRequired",
+  MISMATCH: "track.mismatch",
   SUBSCRIPTION_REQUIRED: "track.error.subscription",
-  PERSON_NOT_FOUND: "track.error.person",
   NOT_FOUND: "track.error.notFound",
   SOURCE_DOWN: "track.error.sourceDown",
 };
 
 /** One window for adding any tracker (the "+ Tracking" button lives in the header). */
-export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKind, people, lock, usage, fixedKind = false }: Props) {
+export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKind, lock, usage, defaultBirthDate, fixedKind = false }: Props) {
   const t = useT();
   const router = useRouter();
   const [kind, setKind] = useState<TrackerKindValue>(initialKind ?? "RENAPER");
-  const [personId, setPersonId] = useState("");
+  const [birthDate, setBirthDate] = useState(splitIsoDate(defaultBirthDate));
   const [step, setStep] = useState<"form" | "confirm">("form");
   const [found, setFound] = useState<Record<string, string> | null>(null);
   const [label, setLabel] = useState("");
@@ -77,13 +81,6 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
     () => PJN_JURISDICTIONS.map((item) => ({ value: item.value, label: `${item.code} — ${item.name}` })),
     [],
   );
-  const personOptions = useMemo(
-    () => [
-      { value: "", label: t("track.person.me") },
-      ...people.map((person) => ({ value: person.id, label: `${person.firstName} ${person.lastName}` })),
-    ],
-    [people, t],
-  );
   const isCourt = kind === "PJN";
   const slots = usage;
   // every paid case is taken: offer to buy more instead of the form
@@ -100,8 +97,10 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
   }
 
   function buildPayload() {
-    const extra = { ...(personId ? { personId } : {}), ...(label.trim() ? { label: label.trim() } : {}) };
-    return isCourt ? { kind, jurisdiction, number, year, ...extra } : { kind, number, ...extra };
+    const extra = label.trim() ? { label: label.trim() } : {};
+    if (isCourt) return { kind, jurisdiction, number, year, ...extra };
+    const birth = composeIsoDate(birthDate);
+    return isDnmKind(kind) && birth ? { kind, number, birthDate: birth, ...extra } : { kind, number, ...extra };
   }
 
   /** Step one: validate; a court case is looked up so its header can be shown, a number is read back. */
@@ -115,17 +114,23 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
       return;
     }
     setErrors({});
-    if (!isCourt) {
+    if (!isCourt && !isDnmKind(kind)) {
       setStep("confirm");
       return;
     }
     setLoading(true);
     try {
-      const { kind: _kind, label: _label, ...caseInput } = payload as Record<string, string>;
-      const result = await apiRequest<{ header: Record<string, string> }>(API_ROUTES.pjnPreview, {
-        method: "POST",
-        body: caseInput,
-      });
+      // the source is asked first, so the user sees what is found before agreeing
+      const { label: _label, ...caseInput } = payload as Record<string, string>;
+      const result = isCourt
+        ? await apiRequest<{ header: Record<string, string> }>(API_ROUTES.pjnPreview, {
+            method: "POST",
+            body: (({ kind: _kind, ...rest }) => rest)(caseInput),
+          })
+        : await apiRequest<{ header: Record<string, string> }>(API_ROUTES.dnmPreview, {
+            method: "POST",
+            body: caseInput,
+          });
       setFound(result.header);
       setStep("confirm");
     } catch (error) {
@@ -183,20 +188,6 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
       ) : (
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         {formError && <Alert tone="error">{formError}</Alert>}
-        {people.length > 0 && (
-          <SelectField
-            label={t("track.field.person")}
-            value={personId}
-            options={personOptions}
-            onChange={(e) => {
-              const next = e.target.value;
-              setPersonId(next);
-              // a relative's own court is preselected
-              const court = people.find((person) => person.id === next)?.pjnJurisdiction;
-              setJurisdiction(next ? (court ?? PJN_DEFAULT_JURISDICTION) : (defaultJurisdiction ?? PJN_DEFAULT_JURISDICTION));
-            }}
-          />
-        )}
         {!fixedKind && (
           <SelectField
             label={t("track.kind")}
@@ -231,22 +222,32 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
               {label.trim() && (
                 <p className="text-sm text-slate-600">{t("track.step.name", { name: label.trim() })}</p>
               )}
-              {isCourt && found ? (
+              {(isCourt || isDnmKind(kind)) && found ? (
                 <>
-                  <h3 className="text-base font-semibold text-slate-900">{t("track.step.confirmCase")}</h3>
+                  <h3 className="text-base font-semibold text-slate-900">
+                    {isCourt ? t("track.step.confirmCase") : t("track.dnm.confirmTitle")}
+                  </h3>
                   <dl className="space-y-2 rounded-lg border border-slate-200 p-3 text-sm">
                     {Object.entries(found)
-                      .filter(([, value]) => value)
+                      .filter(([key, value]) => value && key !== "closed")
                       .map(([key, value]) => (
                         <div key={key}>
                           <dt className="text-xs uppercase tracking-wide text-slate-500">
-                            {t(`track.header.${key}` as MessageKey)}
+                            {isCourt
+                              ? t(`track.header.${key}` as MessageKey)
+                              : t(`track.dnm.${key}` as MessageKey)}
                           </dt>
                           <dd className="text-slate-900">{value}</dd>
                         </div>
                       ))}
                   </dl>
-                  <Alert tone="info">{t("track.step.confirmCaseText")}</Alert>
+                  {found.closed ? (
+                    <Alert tone="info">{t("track.dnm.closed", { state: found.state ?? "" })}</Alert>
+                  ) : (
+                    <Alert tone="info">
+                      {isCourt ? t("track.step.confirmCaseText") : t("track.dnm.confirmText")}
+                    </Alert>
+                  )}
                 </>
               ) : (
                 <>
@@ -266,7 +267,13 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
                   {t("track.step.back")}
                 </Button>
                 <Button loading={loading} onClick={() => void onConfirm()}>
-                  {isCourt ? t("track.step.addCase") : t("track.step.addNumber")}
+                  {isCourt
+                    ? t("track.step.addCase")
+                    : found?.closed
+                      ? t("track.dnm.addClosed")
+                      : isDnmKind(kind)
+                        ? t("track.dnm.add")
+                        : t("track.step.addNumber")}
                 </Button>
               </div>
             </div>
@@ -288,6 +295,17 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
           error={errors.number}
           onChange={(e) => setNumber(e.target.value)}
         />
+        {isDnmKind(kind) && (
+          <div className="space-y-1.5">
+            <BirthDateField
+              label={t("track.dnm.birthDate")}
+              value={birthDate}
+              error={errors.birthDate}
+              onChange={setBirthDate}
+            />
+            <p className="text-xs text-slate-500">{t("track.dnm.birthHint")}</p>
+          </div>
+        )}
         {isCourt && (
           <TextField
             label={t("track.field.caseYear")}
@@ -311,7 +329,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
             {t("common.cancel")}
           </Button>
           <Button type="submit" loading={loading}>
-            {isCourt ? t("track.step.find") : t("track.step.next")}
+            {isCourt ? t("track.step.find") : isDnmKind(kind) ? t("track.dnm.find") : t("track.step.next")}
           </Button>
         </div>
           </>

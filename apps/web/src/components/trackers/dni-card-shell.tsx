@@ -1,13 +1,18 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { API_ROUTES, APP_CONFIG } from "@ojo/shared";
 import { cn } from "@ojo/ui";
-import { LabelEditor } from "./label-editor";
+import { useRouter } from "next/navigation";
+import { useRef, useState, type ReactNode } from "react";
+import { useT } from "@/components/providers/i18n-provider";
+import { apiRequest } from "@/lib/api-client";
 
 interface Props {
   id: string;
+  /** The user's own name of the tracking, if any. */
   label: string | null;
-  title: ReactNode;
+  /** The official number shown next to the name. */
+  number: string;
   /** Short status shown in the folded header. */
   summary: ReactNode;
   renameTitle: string;
@@ -17,10 +22,42 @@ interface Props {
   children: ReactNode;
 }
 
-/** Folding frame of a DNI card: clickable header with a rename button, body below. */
-export function DniCardShell({ id, label, title, summary, renameTitle, toggleTitle, strip, children }: Props) {
+const ICON_BUTTON = "rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50";
+const ICON_NEUTRAL = `${ICON_BUTTON} border-slate-200 bg-white text-slate-700 hover:bg-slate-50`;
+const ICON_PRIMARY = `${ICON_BUTTON} border-brand-600 bg-brand-600 text-white hover:bg-brand-700`;
+
+/** Folding frame of a tracking card: clickable header with an in-place rename, body below. */
+export function DniCardShell({ id, label, number, summary, renameTitle, toggleTitle, strip, children }: Props) {
+  const t = useT();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(label ?? "");
+  const [busy, setBusy] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+
+  function startEdit() {
+    setValue(label ?? "");
+    setEditing(true);
+    // focus after the input is rendered
+    setTimeout(() => input.current?.select(), 0);
+  }
+
+  async function save() {
+    if (busy) return;
+    if (value.trim() === (label ?? "")) {
+      setEditing(false);
+      return;
+    }
+    setBusy(true);
+    try {
+      await apiRequest(`${API_ROUTES.trackers}/${id}/label`, { method: "PUT", body: { label: value } });
+      setEditing(false);
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -29,46 +66,84 @@ export function DniCardShell({ id, label, title, summary, renameTitle, toggleTit
         tabIndex={0}
         aria-expanded={open}
         title={toggleTitle}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => !editing && setOpen((current) => !current)}
         onKeyDown={(event) => {
-          if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+          if (!editing && event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
             event.preventDefault();
-            setOpen((value) => !value);
+            setOpen((current) => !current);
           }
         }}
         className={cn(
-          "flex cursor-pointer select-none flex-wrap items-center gap-3 px-5 py-3.5 hover:bg-slate-50",
+          "flex select-none flex-wrap items-center gap-3 px-5 py-3.5",
+          editing ? "cursor-default" : "cursor-pointer hover:bg-slate-50",
         )}
       >
         <span aria-hidden="true" className={cn("w-3.5 text-slate-400 transition-transform", !open && "-rotate-90")}>
           ▾
         </span>
-        <div className="min-w-[12rem] flex-1 text-base font-bold text-slate-900">{title}</div>
-        <span className="whitespace-nowrap text-xs text-slate-500">{summary}</span>
-        <button
-          type="button"
-          title={renameTitle}
-          aria-label={renameTitle}
-          onClick={(event) => {
-            event.stopPropagation();
-            setOpen(true);
-            setEditing((value) => !value);
-          }}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-        >
-          ✎
-        </button>
-      </div>
-      {open && (
-        <div className="border-t border-slate-200">
-          {editing && (
-            <div className="border-b border-slate-200 px-5 py-4">
-              <LabelEditor id={id} current={label} />
-            </div>
+        <div className="flex min-w-[12rem] flex-1 items-baseline gap-2 text-base font-bold text-slate-900">
+          {editing ? (
+            <input
+              ref={input}
+              value={value}
+              maxLength={APP_CONFIG.limits.labelMaxLength}
+              placeholder={t("track.label.title")}
+              aria-label={t("track.label.title")}
+              disabled={busy}
+              onClick={(event) => event.stopPropagation()}
+              onChange={(event) => setValue(event.target.value)}
+              onKeyDown={(event) => {
+                event.stopPropagation();
+                if (event.key === "Enter") void save();
+                if (event.key === "Escape") setEditing(false);
+              }}
+              className="w-full min-w-0 max-w-sm rounded-lg border border-slate-300 px-2.5 py-1 text-base font-bold text-slate-900 focus-visible:outline-2 focus-visible:outline-brand-600"
+            />
+          ) : (
+            label && <span>{label}</span>
           )}
-          {children}
+          <small className="whitespace-nowrap font-medium text-slate-500">№ {number}</small>
         </div>
-      )}
+        {!editing && <span className="whitespace-nowrap text-xs text-slate-500">{summary}</span>}
+        {editing ? (
+          <div className="flex gap-2" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              title={t("track.label.save")}
+              aria-label={t("track.label.save")}
+              disabled={busy}
+              onClick={() => void save()}
+              className={ICON_PRIMARY}
+            >
+              ✓
+            </button>
+            <button
+              type="button"
+              title={t("common.cancel")}
+              aria-label={t("common.cancel")}
+              disabled={busy}
+              onClick={() => setEditing(false)}
+              className={ICON_NEUTRAL}
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            title={renameTitle}
+            aria-label={renameTitle}
+            onClick={(event) => {
+              event.stopPropagation();
+              startEdit();
+            }}
+            className={ICON_NEUTRAL}
+          >
+            ✎
+          </button>
+        )}
+      </div>
+      {open && <div className="border-t border-slate-200">{children}</div>}
       <div className="border-t border-slate-200 px-5 py-2.5 empty:hidden">{strip}</div>
     </section>
   );

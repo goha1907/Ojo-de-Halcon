@@ -2,7 +2,6 @@ import { createAccountService } from "./accounts/account-service";
 import { createSessionService } from "./auth/session-service";
 import { createAccessService } from "./access/access-service";
 import { createBillingService } from "./billing/billing-service";
-import { createPeopleService } from "./people/people-service";
 import { createProfileService } from "./profile/profile-service";
 import { createTelegramService } from "./telegram/telegram-service";
 import { createTrackerService } from "./trackers/tracker-service";
@@ -20,9 +19,7 @@ export function createCore(deps: CoreDeps) {
       prisma,
       scraper,
       now,
-      relativesEnabled: config.relativesEnabled,
     }),
-    people: createPeopleService({ prisma, now, enabled: config.relativesEnabled }),
     access: createAccessService({ prisma, now }),
     billing: createBillingService({ prisma, now }),
   };
@@ -54,7 +51,6 @@ export type {
 } from "./trackers/tracker-service";
 export type { AccessPlan, AccessState } from "./access/access-service";
 export { resolveAccess } from "./access/access-service";
-export type { PeopleService, PersonDto, PersonResult } from "./people/people-service";
 export type {
   BillingService,
   BillingStateDto,

@@ -1,5 +1,5 @@
 import type { TrackerDto } from "@ojo/core";
-import { parsePjnReference, type TranslateFn } from "@ojo/shared";
+import { isDnmKind, parsePjnReference, type TranslateFn } from "@ojo/shared";
 import { Alert, cn } from "@ojo/ui";
 import { daysSince } from "@/lib/days";
 import { DniCardShell } from "./dni-card-shell";
@@ -30,6 +30,7 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
   const now = new Date();
   const isRenaper = tracker.kind === "RENAPER";
   const isCourt = tracker.kind === "PJN";
+  const isDnm = isDnmKind(tracker.kind);
   const h = tracker.header;
   const court = isCourt ? parsePjnReference(tracker.reference) : null;
   // the number shown next to the name: the court file number, or the trámite number
@@ -42,9 +43,9 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
     return count === null ? "" : ` · ${t("track.dni.days", { count })}`;
   };
 
-  const status = isRenaper ? h.status : isCourt ? h.sit_actual : latest?.title;
-  const statusDate = isRenaper ? h.statusDate : latest?.date;
-  const stageText = isRenaper ? h.stageText : isCourt ? undefined : latest?.detail;
+  const status = isRenaper || isDnm ? h.status : isCourt ? h.sit_actual : latest?.title;
+  const statusDate = isRenaper || isDnm ? h.statusDate : latest?.date;
+  const stageText = isRenaper ? h.stageText : isCourt || isDnm ? undefined : latest?.detail;
   const added = t("track.card.added", {
     date: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(tracker.addedAt)),
   });
@@ -56,6 +57,10 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
   const alert =
     tracker.lastError === "not_found" ? (
       <Alert tone="info">{t("track.notFoundYet")}</Alert>
+    ) : tracker.lastError === "mismatch" ? (
+      <Alert tone="error">{t("track.mismatch")}</Alert>
+    ) : tracker.lastError === "birth_date_missing" ? (
+      <Alert tone="error">{t("track.error.birthRequired")}</Alert>
     ) : tracker.lastError ? (
       <Alert tone="error">{t("track.lastError")}</Alert>
     ) : null;
@@ -64,12 +69,7 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
     <DniCardShell
       id={tracker.id}
       label={tracker.label}
-      title={
-        <>
-          {tracker.label ?? ""}
-          <small className={cn("font-medium text-slate-500", tracker.label && "ml-2")}>№ {caseNumber}</small>
-        </>
-      }
+      number={caseNumber}
       summary={
         status ? (
           <>
@@ -97,6 +97,7 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
           )}
           <div className="flex flex-wrap items-start gap-x-3 gap-y-3 text-xs text-slate-500">
             <span>{added}</span>
+            {deletable && !isCourt && <p className="ml-auto">{t("track.notStarted.hint")}</p>}
             <ReplaceSection tracker={tracker} t={t} locale={locale} />
           </div>
         </div>
@@ -112,15 +113,21 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
       {unread ? (
         <div className="space-y-4 px-5 py-4">
           <p className="text-sm text-slate-600">{t("track.notStarted.text")}</p>
-          <div className="max-w-md">
-            <FixNumberForm id={tracker.id} current={tracker.reference} mode="typo" bare />
+          <div className="max-w-xl">
+            <FixNumberForm
+              id={tracker.id}
+              current={tracker.reference}
+              mode="typo"
+              bare
+              {...(isDnm ? { birthDate: tracker.holderBirthDate ?? "" } : {})}
+            />
           </div>
         </div>
       ) : (
       <div className="grid md:grid-cols-[1.1fr_1fr]">
         <div className="space-y-3 px-5 py-4">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t(isRenaper ? "track.dni.titleRenaper" : isCourt ? "track.court.title" : "track.dni.titleCorreo")}
+            {t(isRenaper ? "track.dni.titleRenaper" : isCourt ? "track.court.title" : isDnm ? "track.dnm.title" : "track.dni.titleCorreo")}
           </h4>
           {status ? (
             <>
@@ -140,12 +147,25 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
                 </div>
               )}
               {isCourt && (
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3">
                   {h.expediente && <Tile label={t("track.header.expediente")}>{h.expediente}</Tile>}
                   {h.dependencia && <Tile label={t("track.header.dependencia")}>{h.dependencia}</Tile>}
                   {h.caratula && (
-                    <Tile label={t("track.header.caratula")} wide>
+                    <Tile label={t("track.header.caratula")}>
                       <span className="font-medium">{h.caratula}</span>
+                    </Tile>
+                  )}
+                </div>
+              )}
+              {isDnm && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {h.state && <Tile label={t("track.dnm.state")}>{h.state}</Tile>}
+                  {h.nationality && <Tile label={t("track.dnm.nationality")}>{h.nationality}</Tile>}
+                  {h.office && <Tile label={t("track.dnm.office")}>{h.office}</Tile>}
+                  {h.disposition && <Tile label={t("track.dnm.disposition")}>{h.disposition}</Tile>}
+                  {h.next && (
+                    <Tile label={t("track.dnm.next")} wide>
+                      <span className="font-medium">{h.next}</span>
                     </Tile>
                   )}
                 </div>

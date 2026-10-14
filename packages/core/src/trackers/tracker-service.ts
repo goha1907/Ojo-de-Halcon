@@ -7,6 +7,9 @@ import {
   TRACKER_KIND_SECTION,
   caratulaMatchesName,
   findJurisdiction,
+  isDnmKind,
+  isFinalStatus,
+  type DnmKind,
   parseExpediente,
   parsePjnReference,
   pjnReference,
@@ -16,7 +19,7 @@ import {
   type TrackerStep,
 } from "@ojo/shared";
 import { resolveAccess } from "../access/access-service";
-import { ScraperError, type Scraper } from "./scraper";
+import { ScraperError, type Scraper, type ScrapedTramite } from "./scraper";
 
 export interface TrackerDto {
   id: string;
@@ -29,8 +32,8 @@ export interface TrackerDto {
   /** Where notifications of this case go. */
   notifyTelegram: boolean;
   notifyWhatsapp: boolean;
-  /** Relative the case belongs to; null = the account owner. */
-  person: { id: string; name: string } | null;
+  /** Birth date the case is checked with (Migraciones kinds), ISO; null = the profile's. */
+  holderBirthDate: string | null;
   /** When the slot started holding this case (added, or last replaced). */
   addedAt: string;
   /** The case may be replaced now (cooldown over, or the number was never read). */
@@ -57,8 +60,9 @@ export interface PjnCandidate {
 type AddFailure =
   | "ALREADY_EXISTS"
   | "NO_FREE_SLOT"
+  | "BIRTH_DATE_REQUIRED"
   | "SUBSCRIPTION_REQUIRED"
-  | "PERSON_NOT_FOUND";
+  | "MISMATCH";
 
 export type AddResult =
   | { ok: true; tracker: TrackerDto }
@@ -68,13 +72,17 @@ export type PjnStartResult =
   | { ok: true; tracker: TrackerDto }
   | { ok: false; reason: AddFailure | "NOT_FOUND" | "SOURCE_DOWN" };
 
+export type DnmPreviewResult =
+  | { ok: true; header: TrackerHeaderFields }
+  | { ok: false; reason: AddFailure | "SOURCE_DOWN" };
+
 export type PjnPreviewResult =
   | { ok: true; header: TrackerHeaderFields }
   | { ok: false; reason: AddFailure | "NOT_FOUND" | "SOURCE_DOWN" };
 
 export type PjnSearchResult =
   | { ok: true; candidates: PjnCandidate[] }
-  | { ok: false; reason: "PROFILE_INCOMPLETE" | "NO_COURT" | "SOURCE_DOWN" | "PERSON_NOT_FOUND" };
+  | { ok: false; reason: "PROFILE_INCOMPLETE" | "NO_COURT" | "SOURCE_DOWN" };
 
 /** One notification = one change. A check that finds several new stages creates several events. */
 export interface EventPayload {
@@ -89,9 +97,8 @@ export interface EventPayload {
 export interface DigestItem {
   kind: TrackerKindValue;
   section: string;
-  /** Whose case it is: the relative's name, or the account owner's (null when unknown). */
+  /** Whose account it is (null when unknown). */
   who: string | null;
-  isRelative: boolean;
   /** Identifies the case in messages: trámite number or court file number. */
   caseId: string;
   header: TrackerHeaderFields;
@@ -104,7 +111,7 @@ export interface PendingNotification {
   telegramId: bigint;
   locale: string;
   kind: TrackerKindValue;
-  /** Whose case it is: the relative's name, or the account owner's (null when unknown). */
+  /** Whose account it is (null when unknown). */
   who: string | null;
   /** Identifies the case in messages: trámite number or court file number. */
   caseId: string;
@@ -153,6 +160,26 @@ function isMeaningfulChange(
   return stagesChanged || knownFieldChanged;
 }
 
+/** Header field holding the state of a case, per kind (the stage titles are recorded as well). */
+const STATE_FIELD: Partial<Record<TrackerKindValue, string>> = {
+  DNM_DNI: "state",
+  DNM_CITIZENSHIP: "status",
+  RENAPER: "status",
+  PJN: "sit_actual",
+};
+const OBSERVATION_MAX_LENGTH = 200;
+
+/** Does the read case show a final status of its kind (the state field, or the latest Correo stage)? */
+function reachedFinalStatus(
+  kind: TrackerKindValue,
+  data: { header: TrackerHeaderFields; steps: TrackerStep[] },
+): boolean {
+  const field = STATE_FIELD[kind];
+  if (field && isFinalStatus(kind, data.header[field])) return true;
+  const latest = data.steps[data.steps.length - 1];
+  return kind === "CORREO" && latest !== undefined && isFinalStatus(kind, latest.title);
+}
+
 /** Replacement rule: a slot may change its case every `replaceCooldownDays` (a never-read number is a typo). */
 function replaceState(
   tracker: Tracker & { snapshot: TrackerSnapshot | null },
@@ -170,17 +197,10 @@ export function createTrackerService(deps: {
   prisma: PrismaClient;
   scraper: Scraper;
   now: () => Date;
-  /** Relatives are switched on; when off only the owner's own trackers are visible and checked. */
-  relativesEnabled: boolean;
 }) {
-  const { prisma, scraper, now, relativesEnabled } = deps;
-  /** Prisma filter hiding relatives' trackers while the feature is dormant. */
-  const ownerOnly = relativesEnabled ? {} : { personId: null };
+  const { prisma, scraper, now } = deps;
 
-  type TrackerWithSnapshot = Tracker & {
-    snapshot: TrackerSnapshot | null;
-    person?: { id: string; firstName: string; lastName: string } | null;
-  };
+  type TrackerWithSnapshot = Tracker & { snapshot: TrackerSnapshot | null };
 
   function toDto(tracker: TrackerWithSnapshot): TrackerDto {
     const kind = tracker.kind as TrackerKindValue;
@@ -193,9 +213,7 @@ export function createTrackerService(deps: {
       keptInSubscription: tracker.keepNext,
       notifyTelegram: tracker.notifyTelegram,
       notifyWhatsapp: tracker.notifyWhatsapp,
-      person: tracker.person
-        ? { id: tracker.person.id, name: `${tracker.person.firstName} ${tracker.person.lastName}` }
-        : null,
+      holderBirthDate: tracker.holderBirthDate ? tracker.holderBirthDate.toISOString().slice(0, 10) : null,
       addedAt: tracker.slotSince.toISOString(),
       ...replaceState(tracker, now()),
       header: (tracker.snapshot?.header ?? {}) as TrackerHeaderFields,
@@ -207,8 +225,8 @@ export function createTrackerService(deps: {
 
   async function list(userId: string): Promise<TrackerDto[]> {
     const rows = await prisma.tracker.findMany({
-      where: { userId, ...ownerOnly },
-      include: { snapshot: true, person: true },
+      where: { userId },
+      include: { snapshot: true },
       orderBy: { createdAt: "asc" },
     });
     return rows.map(toDto);
@@ -233,19 +251,14 @@ export function createTrackerService(deps: {
     return occupied === 0 ? "OK" : "SUBSCRIPTION_REQUIRED";
   }
 
-  /** The person must belong to the user; null/undefined means the owner. */
-  async function resolvePerson(
-    userId: string,
-    personId: string | null | undefined,
-  ): Promise<
-    { ok: true; personId: string | null; personKey: string; notifyTelegram: boolean } | { ok: false }
-  > {
-    if (!personId) return { ok: true, personId: null, personKey: "self", notifyTelegram: true };
-    if (!relativesEnabled) return { ok: false };
-    const person = await prisma.person.findFirst({ where: { id: personId, userId } });
-    return person
-      ? { ok: true, personId: person.id, personKey: person.id, notifyTelegram: person.notifyTelegram }
-      : { ok: false };
+  /** The date Migraciones is asked with (DD/MM/YYYY): the case's own, else the owner's profile. */
+  async function dnmBirthDate(tracker: Tracker): Promise<string | null> {
+    const date =
+      tracker.holderBirthDate ??
+      (await prisma.user.findUnique({ where: { id: tracker.userId }, select: { birthDate: true } }))?.birthDate;
+    if (!date) return null;
+    const iso = date.toISOString().slice(0, 10);
+    return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
   }
 
   /**
@@ -255,40 +268,131 @@ export function createTrackerService(deps: {
    */
   async function addTramite(
     userId: string,
-    kind: Extract<TrackerKindValue, "RENAPER" | "CORREO">,
+    kind: Exclude<TrackerKindValue, "PJN">,
     reference: string,
-    personId?: string | null,
     label?: string | null,
+    birthDate?: Date | null,
   ): Promise<AddResult> {
-    const person = await resolvePerson(userId, personId);
-    if (!person.ok) return { ok: false, reason: "PERSON_NOT_FOUND" };
-    const { personKey } = person;
+    // Migraciones verifies the number together with the holder's birth date: the one
+    // typed when adding, or else the holder's profile.
+    let holderBirthDate: Date | null = null;
+    if (isDnmKind(kind)) {
+      holderBirthDate =
+        birthDate ??
+        (await prisma.user.findUnique({ where: { id: userId }, select: { birthDate: true } }))?.birthDate ??
+        null;
+      if (!holderBirthDate) return { ok: false, reason: "BIRTH_DATE_REQUIRED" };
+    }
     const existing = await prisma.tracker.findFirst({
-      where: { userId, personKey, kind, reference, status: { not: "FINISHED" } },
+      where: { userId, kind, reference, status: { not: "FINISHED" } },
     });
     if (existing) return { ok: false, reason: "ALREADY_EXISTS" };
-    const gate = await addGate(userId);
-    if (gate !== "OK") return { ok: false, reason: gate };
-
+    const remembered = isDnmKind(kind) && holderBirthDate ? takeDnmRead(userId, kind, reference, holderBirthDate) : null;
+    // a case that is already closed occupies no slot, so no free slot is needed to keep it in the history
+    const closed = remembered !== null && (remembered.finished || reachedFinalStatus(kind, remembered));
+    if (!closed) {
+      const gate = await addGate(userId);
+      if (gate !== "OK") return { ok: false, reason: gate };
+    }
     const tracker = await prisma.tracker.upsert({
-      where: { userId_personKey_kind_reference: { userId, personKey, kind, reference } },
+      where: { userId_kind_reference: { userId, kind, reference } },
       create: {
         userId,
-        personId: person.personId,
-        personKey,
-        notifyTelegram: person.notifyTelegram,
         kind,
         reference,
         label: label ?? null,
+        holderBirthDate,
         nextCheckAt: now(),
       },
-      update: { status: "ACTIVE", nextCheckAt: now(), lastError: null, label: label ?? null },
+      update: {
+        status: "ACTIVE",
+        nextCheckAt: now(),
+        lastError: null,
+        label: label ?? null,
+        ...(holderBirthDate ? { holderBirthDate } : {}),
+      },
     });
+    // the case was read in the preview step: store that read now, so the card is filled at once
+    if (remembered) {
+      // added already closed: no "your case is finished" notice for something the user just saw
+      await applyResult(
+        tracker,
+        { header: remembered.header, steps: remembered.steps, finished: closed },
+        { announceFinish: false },
+      );
+    }
     const full = await prisma.tracker.findUniqueOrThrow({
       where: { id: tracker.id },
-      include: { snapshot: true, person: true },
+      include: { snapshot: true },
     });
     return { ok: true, tracker: toDto(full) };
+  }
+
+  /**
+   * Step one of adding a Migraciones case: asks the source and returns only who the case belongs
+   * to (name, office/nationality, file number). The steps stay hidden until the user confirms.
+   */
+  async function previewDnm(
+    userId: string,
+    kind: DnmKind,
+    reference: string,
+    birthDate?: Date | null,
+  ): Promise<DnmPreviewResult> {
+    const existing = await prisma.tracker.findFirst({
+      where: { userId, kind, reference, status: { not: "FINISHED" } },
+    });
+    if (existing) return { ok: false, reason: "ALREADY_EXISTS" };
+    const holderBirthDate =
+      birthDate ??
+      (await prisma.user.findUnique({ where: { id: userId }, select: { birthDate: true } }))?.birthDate ??
+      null;
+    if (!holderBirthDate) return { ok: false, reason: "BIRTH_DATE_REQUIRED" };
+    try {
+      const iso = holderBirthDate.toISOString().slice(0, 10);
+      const result = await scraper.dnm({
+        kind,
+        number: reference,
+        birthDate: `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`,
+      });
+      // a closed case takes no slot; an open one needs a free one (or the trial)
+      const closed = result.finished || reachedFinalStatus(kind, result);
+      if (!closed) {
+        const gate = await addGate(userId);
+        if (gate !== "OK") return { ok: false, reason: gate };
+      }
+      rememberDnmRead(userId, kind, reference, holderBirthDate, result);
+      const { header } = result;
+      const identity: TrackerHeaderFields = {};
+      if (closed) {
+        identity.closed = "true";
+        if (header.state) identity.state = header.state;
+      }
+      if (result.holder) identity.holder = result.holder;
+      for (const key of ["office", "nationality", "expediente"]) {
+        if (header[key]) identity[key] = header[key]!;
+      }
+      return { ok: true, header: identity };
+    } catch (error) {
+      if (error instanceof ScraperError && error.code === "mismatch") return { ok: false, reason: "MISMATCH" };
+      return { ok: false, reason: "SOURCE_DOWN" };
+    }
+  }
+
+  /** Reads made in the preview step, reused when the user confirms (no second request). */
+  const dnmReads = new Map<string, { result: ScrapedTramite; at: number }>();
+  const dnmKey = (userId: string, kind: string, reference: string, birth: Date) =>
+    `${userId}:${kind}:${reference}:${birth.toISOString().slice(0, 10)}`;
+  function rememberDnmRead(userId: string, kind: string, reference: string, birth: Date, result: ScrapedTramite) {
+    for (const [key, entry] of dnmReads) {
+      if (entry.at < now().getTime() - PREVIEW_TTL_MS) dnmReads.delete(key);
+    }
+    dnmReads.set(dnmKey(userId, kind, reference, birth), { result, at: now().getTime() });
+  }
+  function takeDnmRead(userId: string, kind: string, reference: string, birth: Date): ScrapedTramite | null {
+    const key = dnmKey(userId, kind, reference, birth);
+    const entry = dnmReads.get(key);
+    dnmReads.delete(key);
+    return entry && entry.at >= now().getTime() - PREVIEW_TTL_MS ? entry.result : null;
   }
 
   /**
@@ -301,16 +405,16 @@ export function createTrackerService(deps: {
     userId: string,
     trackerId: string,
     newReference: string,
+    birthDate?: Date | null,
   ): Promise<"OK" | "NOT_ALLOWED" | "ALREADY_EXISTS"> {
     const tracker = await prisma.tracker.findFirst({
-      where: { id: trackerId, userId, kind: { in: ["RENAPER", "CORREO"] }, status: "ACTIVE" },
+      where: { id: trackerId, userId, kind: { in: ["RENAPER", "CORREO", "DNM_DNI", "DNM_CITIZENSHIP"] }, status: "ACTIVE" },
       include: { snapshot: true },
     });
     if (!tracker || !replaceState(tracker, now()).canReplace) return "NOT_ALLOWED";
     const duplicate = await prisma.tracker.findFirst({
       where: {
         userId,
-        personKey: tracker.personKey,
         kind: tracker.kind,
         reference: newReference,
         id: { not: tracker.id },
@@ -324,6 +428,7 @@ export function createTrackerService(deps: {
         where: { id: tracker.id },
         data: {
           reference: newReference,
+          ...(birthDate && isDnmKind(tracker.kind) ? { holderBirthDate: birthDate } : {}),
           lastError: null,
           lastCheckedAt: null,
           initialNotified: false,
@@ -368,12 +473,17 @@ export function createTrackerService(deps: {
     return result.count === 1;
   }
 
+  /** Anonymous tally of seen statuses and stages, most frequent first (for product analytics). */
+  async function statusStats(kind?: TrackerKindValue) {
+    return prisma.statusObservation.findMany({
+      where: kind ? { kind } : {},
+      orderBy: [{ kind: "asc" }, { field: "asc" }, { count: "desc" }],
+    });
+  }
+
   /** Searches the court registry by the profile name and keeps results that match it. */
-  async function findPjnByProfile(userId: string, personId?: string | null): Promise<PjnSearchResult> {
-    const user = personId
-      ? await prisma.person.findFirst({ where: { id: personId, userId } })
-      : await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-    if (!user) return { ok: false, reason: "PERSON_NOT_FOUND" };
+  async function findPjnByProfile(userId: string): Promise<PjnSearchResult> {
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
     if (!user.firstName || !user.lastName) return { ok: false, reason: "PROFILE_INCOMPLETE" };
     if (!user.pjnJurisdiction || !findJurisdiction(user.pjnJurisdiction)) {
       return { ok: false, reason: "NO_COURT" };
@@ -389,7 +499,7 @@ export function createTrackerService(deps: {
       const tracked = new Set(
         (
           await prisma.tracker.findMany({
-            where: { userId, personKey: personId ?? "self", kind: "PJN" },
+            where: { userId, kind: "PJN" },
             select: { reference: true },
           })
         ).map((item) => item.reference),
@@ -406,7 +516,7 @@ export function createTrackerService(deps: {
         });
         if (tracked.has(reference)) continue;
         // the search already returned the header: reuse it when the user confirms
-        rememberPreview(previewKey(userId, personId ? personId : "self", reference), {
+        rememberPreview(previewKey(userId, reference), {
           expediente: row.expediente,
           dependencia: row.dependencia,
           sit_actual: row.situacion,
@@ -430,8 +540,7 @@ export function createTrackerService(deps: {
   /** Headers read in the preview step, reused when the user confirms (no second captcha). */
   const previews = new Map<string, { header: TrackerHeaderFields; at: number }>();
   const PREVIEW_TTL_MS = 15 * 60_000;
-  const previewKey = (userId: string, personKey: string, reference: string) =>
-    `${userId}:${personKey}:${reference}`;
+  const previewKey = (userId: string, reference: string) => `${userId}:${reference}`;
   function rememberPreview(key: string, header: TrackerHeaderFields): void {
     const cutoff = now().getTime() - PREVIEW_TTL_MS;
     for (const [stored, entry] of previews) if (entry.at < cutoff) previews.delete(stored);
@@ -447,22 +556,15 @@ export function createTrackerService(deps: {
   async function pjnPreflight(
     userId: string,
     input: { jurisdiction: string; number: string; year: string },
-    personId: string | null | undefined,
-  ): Promise<
-    | { ok: true; personId: string | null; personKey: string; reference: string; notifyTelegram: boolean }
-    | { ok: false; reason: AddFailure }
-  > {
-    const person = await resolvePerson(userId, personId);
-    if (!person.ok) return { ok: false, reason: "PERSON_NOT_FOUND" };
-    const { personKey } = person;
+  ): Promise<{ ok: true; reference: string } | { ok: false; reason: AddFailure }> {
     const reference = pjnReference(input);
     const existing = await prisma.tracker.findUnique({
-      where: { userId_personKey_kind_reference: { userId, personKey, kind: "PJN", reference } },
+      where: { userId_kind_reference: { userId, kind: "PJN", reference } },
     });
     if (existing && existing.status !== "FINISHED") return { ok: false, reason: "ALREADY_EXISTS" };
     const gate = await addGate(userId);
     if (gate !== "OK") return { ok: false, reason: gate };
-    return { ok: true, personId: person.personId, personKey, reference, notifyTelegram: person.notifyTelegram };
+    return { ok: true, reference };
   }
 
   async function readCaseHeader(input: {
@@ -486,39 +588,34 @@ export function createTrackerService(deps: {
   async function previewPjn(
     userId: string,
     input: { jurisdiction: string; number: string; year: string },
-    personId?: string | null,
   ): Promise<PjnPreviewResult> {
-    const checked = await pjnPreflight(userId, input, personId);
+    const checked = await pjnPreflight(userId, input);
     if (!checked.ok) return checked;
     const read = await readCaseHeader(input);
     if (!read.ok) return read;
-    rememberPreview(previewKey(userId, checked.personKey, checked.reference), read.header);
+    rememberPreview(previewKey(userId, checked.reference), read.header);
     return { ok: true, header: read.header };
   }
 
   async function createPjn(
     userId: string,
     input: { jurisdiction: string; number: string; year: string },
-    personId: string | null | undefined,
     status: "ACTIVE" | "PENDING_CONFIRMATION",
     label?: string | null,
   ): Promise<PjnStartResult> {
-    const checked = await pjnPreflight(userId, input, personId);
+    const checked = await pjnPreflight(userId, input);
     if (!checked.ok) return checked;
-    const { personKey, reference } = checked;
-    let header = takePreview(previewKey(userId, personKey, reference));
+    const { reference } = checked;
+    let header = takePreview(previewKey(userId, reference));
     if (!header) {
       const read = await readCaseHeader(input);
       if (!read.ok) return read;
       header = read.header;
     }
     const tracker = await prisma.tracker.upsert({
-      where: { userId_personKey_kind_reference: { userId, personKey, kind: "PJN", reference } },
+      where: { userId_kind_reference: { userId, kind: "PJN", reference } },
       create: {
         userId,
-        personId: checked.personId,
-        personKey,
-        notifyTelegram: checked.notifyTelegram,
         kind: "PJN",
         reference,
         status,
@@ -542,7 +639,7 @@ export function createTrackerService(deps: {
     });
     const full = await prisma.tracker.findUniqueOrThrow({
       where: { id: tracker.id },
-      include: { snapshot: true, person: true },
+      include: { snapshot: true },
     });
     return { ok: true, tracker: toDto(full) };
   }
@@ -551,19 +648,17 @@ export function createTrackerService(deps: {
   async function addPjn(
     userId: string,
     input: { jurisdiction: string; number: string; year: string },
-    personId?: string | null,
     label?: string | null,
   ): Promise<PjnStartResult> {
-    return createPjn(userId, input, personId, "ACTIVE", label);
+    return createPjn(userId, input, "ACTIVE", label);
   }
 
   /** Older flow: the case waits for confirmation on its tab (kept for existing rows and tests). */
   async function startPjn(
     userId: string,
     input: { jurisdiction: string; number: string; year: string },
-    personId?: string | null,
   ): Promise<PjnStartResult> {
-    return createPjn(userId, input, personId, "PENDING_CONFIRMATION");
+    return createPjn(userId, input, "PENDING_CONFIRMATION");
   }
 
   /** The user confirmed the case is theirs: it becomes active and is fully parsed next. */
@@ -608,13 +703,36 @@ export function createTrackerService(deps: {
   async function applyResult(
     tracker: Tracker,
     data: { header: TrackerHeaderFields; steps: TrackerStep[]; finished: boolean },
+    options: { announceFinish?: boolean } = {},
   ): Promise<void> {
     const hash = contentHash(data.header, data.steps);
+    // a source may say a case is over by itself, or its status may be a final one (see FINAL_STATUSES)
+    const finished = data.finished || reachedFinalStatus(tracker.kind as TrackerKindValue, data);
     const previous = await prisma.trackerSnapshot.findUnique({ where: { trackerId: tracker.id } });
     const known = new Set(((previous?.steps ?? []) as unknown as TrackerStep[]).map(stepKey));
     const newSteps = data.steps.filter((step) => !known.has(stepKey(step)));
 
+    // Tally what appeared (anonymous): a new state of the case and every new stage title.
+    const kind = tracker.kind as TrackerKindValue;
+    const observed: { field: "status" | "step"; value: string }[] = [];
+    const stateField = STATE_FIELD[kind];
+    const state = stateField ? (data.header[stateField] ?? "").trim() : "";
+    const previousHeader = (previous?.header ?? {}) as TrackerHeaderFields;
+    if (state && (previous === null || previousHeader[stateField!] !== data.header[stateField!])) {
+      observed.push({ field: "status", value: state });
+    }
+    for (const step of newSteps) {
+      if (step.title.trim()) observed.push({ field: "step", value: step.title.trim() });
+    }
+
     const operations: Prisma.PrismaPromise<unknown>[] = [
+      ...observed.map(({ field, value }) =>
+        prisma.statusObservation.upsert({
+          where: { kind_field_value: { kind, field, value: value.slice(0, OBSERVATION_MAX_LENGTH) } },
+          create: { kind, field, value: value.slice(0, OBSERVATION_MAX_LENGTH) },
+          update: { count: { increment: 1 }, lastSeenAt: now() },
+        }),
+      ),
       prisma.trackerSnapshot.upsert({
         where: { trackerId: tracker.id },
         create: {
@@ -631,12 +749,12 @@ export function createTrackerService(deps: {
           lastCheckedAt: now(),
           nextCheckAt: new Date(now().getTime() + TRACKER_CONFIG.checkIntervalHours * HOUR_MS),
           lastError: null,
-          status: data.finished ? "FINISHED" : "ACTIVE",
+          status: finished ? "FINISHED" : "ACTIVE",
         },
       }),
     ];
     // The source reports the case as completed: tell the owner the slot is free again.
-    if (data.finished && tracker.status !== "FINISHED") {
+    if (finished && tracker.status !== "FINISHED" && options.announceFinish !== false) {
       const owner = await prisma.user.findUnique({
         where: { id: tracker.userId },
         select: { telegramId: true, locale: true, subscriptionUntil: true },
@@ -712,7 +830,7 @@ export function createTrackerService(deps: {
         // "not found yet" is normal for a new number: check again on the regular cadence
         nextCheckAt: new Date(
           now().getTime() +
-            (code === "not_found"
+            (code === "not_found" || code === "mismatch"
               ? TRACKER_CONFIG.checkIntervalHours * HOUR_MS
               : TRACKER_CONFIG.retryAfterMinutes * 60_000),
         ),
@@ -722,10 +840,17 @@ export function createTrackerService(deps: {
 
   async function checkTramite(tracker: Tracker): Promise<void> {
     try {
-      const part =
-        tracker.kind === "RENAPER"
-          ? await scraper.renaper(tracker.reference)
-          : await scraper.correo(tracker.reference);
+      let part;
+      if (isDnmKind(tracker.kind)) {
+        const birthDate = await dnmBirthDate(tracker);
+        if (!birthDate) throw new ScraperError("birth_date_missing");
+        part = await scraper.dnm({ kind: tracker.kind, number: tracker.reference, birthDate });
+      } else {
+        part =
+          tracker.kind === "RENAPER"
+            ? await scraper.renaper(tracker.reference)
+            : await scraper.correo(tracker.reference);
+      }
       await applyResult(tracker, { header: part.header, steps: part.steps, finished: part.finished });
     } catch (error) {
       await recordFailure(tracker, error);
@@ -756,7 +881,6 @@ export function createTrackerService(deps: {
     const due = await prisma.tracker.findMany({
       where: {
         status: "ACTIVE",
-        ...ownerOnly,
         nextCheckAt: { lte: now() },
         // no paid access and the trial is over: tracking is paused
         user: {
@@ -789,21 +913,18 @@ export function createTrackerService(deps: {
     const staleBefore = new Date(now().getTime() - CLAIM_TIMEOUT_MS);
     const events = await prisma.trackerEvent.findMany({
       where: {
-        tracker: ownerOnly,
         notifiedAt: null,
         OR: [{ claimedAt: null }, { claimedAt: { lt: staleBefore } }],
       },
       orderBy: { createdAt: "asc" },
       take: limit,
       include: {
-        tracker: { include: { person: true, user: true } },
+        tracker: { include: { user: true } },
       },
     });
     const order = SERVICE_GROUPS.flatMap((group) => group.items.map((item) => item.section as string));
     const entries: {
       item: PendingNotification;
-      relative: boolean;
-      addedAt: number;
       section: number;
       createdAt: number;
     }[] = [];
@@ -827,8 +948,6 @@ export function createTrackerService(deps: {
       });
       if (claim.count !== 1) continue;
       entries.push({
-        relative: tracker.person !== null,
-        addedAt: tracker.person?.createdAt.getTime() ?? 0,
         section: order.indexOf(section),
         createdAt: event.createdAt.getTime(),
         item: {
@@ -836,9 +955,7 @@ export function createTrackerService(deps: {
         telegramId: user.telegramId,
         locale: user.locale,
         kind: tracker.kind as TrackerKindValue,
-        who: tracker.person
-          ? `${tracker.person.firstName} ${tracker.person.lastName}`
-          : [user.firstName, user.lastName].filter(Boolean).join(" ") || null,
+        who: [user.firstName, user.lastName].filter(Boolean).join(" ") || null,
         caseId: caseIdentifier(
           tracker.kind as TrackerKindValue,
           tracker.reference,
@@ -850,21 +967,14 @@ export function createTrackerService(deps: {
         },
       });
     }
-    // The owner's updates first, then each relative's (in the order they were
-    // added); inside a person by menu order. Updates of one case keep their time order.
-    entries.sort(
-      (a, b) =>
-        Number(a.relative) - Number(b.relative) ||
-        a.addedAt - b.addedAt ||
-        a.section - b.section ||
-        a.createdAt - b.createdAt,
-    );
+    // By menu order; updates of one case keep their time order.
+    entries.sort((a, b) => a.section - b.section || a.createdAt - b.createdAt);
     return entries.map((entry) => entry.item);
   }
 
   /**
    * Latest stage of every case, in the order of the left menu (DNI first, then
-   * citizenship; owner before relatives). Sent once when Telegram is linked.
+   * citizenship). Sent once when Telegram is linked.
    */
   async function latestSteps(userId: string): Promise<DigestItem[]> {
     const owner = await prisma.user.findUniqueOrThrow({
@@ -875,12 +985,11 @@ export function createTrackerService(deps: {
     const rows = await prisma.tracker.findMany({
       where: {
         userId,
-        ...ownerOnly,
         status: { notIn: ["PENDING_CONFIRMATION", "PAUSED"] },
         // cases switched off for Telegram are left out of the digest
         notifyTelegram: true,
       },
-      include: { snapshot: true, person: true },
+      include: { snapshot: true },
     });
     const order = SERVICE_GROUPS.flatMap((group) => group.items.map((item) => item.section as string));
     const sorted = rows
@@ -890,8 +999,7 @@ export function createTrackerService(deps: {
         const item: DigestItem = {
           kind,
           section: TRACKER_KIND_SECTION[kind] as string,
-          who: row.person ? `${row.person.firstName} ${row.person.lastName}` : ownerName,
-          isRelative: row.person !== null,
+          who: ownerName,
           caseId: caseIdentifier(
             kind,
             row.reference,
@@ -900,16 +1008,11 @@ export function createTrackerService(deps: {
           header: (row.snapshot?.header ?? {}) as TrackerHeaderFields,
           step: steps.length ? steps[steps.length - 1]! : null,
         };
-        return { item, personAddedAt: row.person?.createdAt.getTime() ?? 0 };
+        return item;
       })
-      // the owner first (menu order), then each relative in the order they were added
-      .sort(
-        (a, b) =>
-          Number(a.item.isRelative) - Number(b.item.isRelative) ||
-          a.personAddedAt - b.personAddedAt ||
-          order.indexOf(a.item.section) - order.indexOf(b.item.section),
-      );
-    return sorted.map((entry) => entry.item);
+      // menu order
+      .sort((a, b) => order.indexOf(a.section) - order.indexOf(b.section));
+    return sorted;
   }
 
   async function markNotified(eventId: string): Promise<void> {
@@ -922,6 +1025,8 @@ export function createTrackerService(deps: {
   return {
     list,
     addTramite,
+    previewDnm,
+    statusStats,
     findPjnByProfile,
     previewPjn,
     addPjn,

@@ -3,11 +3,18 @@ import { APP_CONFIG } from "../config/app";
 import { TRACKER_CONFIG } from "../config/trackers";
 import { findJurisdiction } from "../config/pjn";
 import type { MessageKey } from "../i18n/ru";
-import { normalizeSpaces } from "./profile";
+import { normalizeSpaces, holderBirthDateSchema } from "./profile";
 
 const msg = (key: MessageKey) => ({ message: key });
 
-export const TRACKER_KINDS = ["RENAPER", "CORREO", "PJN"] as const;
+export const TRACKER_KINDS = ["DNM_DNI", "RENAPER", "CORREO", "DNM_CITIZENSHIP", "PJN"] as const;
+
+/** Kinds read from Migraciones: they also need the holder's birth date. */
+export const DNM_KINDS = ["DNM_DNI", "DNM_CITIZENSHIP"] as const;
+export type DnmKind = (typeof DNM_KINDS)[number];
+export function isDnmKind(kind: string): kind is DnmKind {
+  return (DNM_KINDS as readonly string[]).includes(kind);
+}
 export type TrackerKindValue = (typeof TRACKER_KINDS)[number];
 
 export const TRACKER_STATUSES = ["PENDING_CONFIRMATION", "ACTIVE", "FINISHED", "PAUSED"] as const;
@@ -25,8 +32,10 @@ export type TrackerHeaderFields = Record<string, string>;
 
 /** Service (notification switch) a tracker kind belongs to. */
 export const TRACKER_KIND_SECTION = {
+  DNM_DNI: "dni_approval",
   RENAPER: "dni_production",
   CORREO: "dni_post",
+  DNM_CITIZENSHIP: "citizenship_dnm",
   PJN: "citizenship_court",
 } as const satisfies Record<TrackerKindValue, string>;
 
@@ -74,6 +83,12 @@ export const pjnCaseSchema = z.object({
 export type PjnCaseInput = z.infer<typeof pjnCaseSchema>;
 
 export const addTrackerSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("DNM_DNI"), number: tramiteNumberSchema, birthDate: holderBirthDateSchema.optional() }),
+  z.object({
+    kind: z.literal("DNM_CITIZENSHIP"),
+    number: tramiteNumberSchema,
+    birthDate: holderBirthDateSchema.optional(),
+  }),
   z.object({ kind: z.literal("RENAPER"), number: tramiteNumberSchema }),
   z.object({ kind: z.literal("CORREO"), number: tramiteNumberSchema }),
   z.object({ kind: z.literal("PJN") }).merge(pjnCaseSchema),
@@ -91,7 +106,6 @@ export const trackerLabelSchema = z
 export const addTrackerRequestSchema = z.intersection(
   addTrackerSchema,
   z.object({
-    personId: z.string().min(1).nullish(),
     label: trackerLabelSchema.optional(),
   }),
 );

@@ -1,4 +1,3 @@
-import type { PersonDto } from "@ojo/core";
 import type { AccessState } from "@ojo/core";
 import { ROUTES } from "@ojo/shared";
 import Link from "next/link";
@@ -15,22 +14,23 @@ export async function AppShell({
   userLabel,
   showMenu,
   defaultJurisdiction,
-  people,
   access,
   addLock,
   usage,
+  defaultBirthDate,
   sectionCounts,
   children,
 }: {
   userLabel: string;
   showMenu: boolean;
   defaultJurisdiction: string | null;
-  people: PersonDto[];
   access: AccessState;
   /** Why adding is blocked right now (null = allowed). */
   addLock: "trial" | "expired" | null;
   /** Paid cases in use / paid; null without a subscription. */
   usage: { used: number; limit: number } | null;
+  /** Profile birth date (ISO), offered when adding Migraciones cases. */
+  defaultBirthDate: string | null;
   /** Cases per section id, shown in the menu. */
   sectionCounts: Record<string, number>;
   children: ReactNode;
@@ -87,9 +87,9 @@ export async function AppShell({
       {/* The single "add tracker" modal of the page; all + buttons open it */}
       {showMenu && <AddTrackerHost
           defaultJurisdiction={defaultJurisdiction}
-          people={people}
           lock={addLock}
           usage={usage}
+          defaultBirthDate={defaultBirthDate}
         />}
     </div>
   );

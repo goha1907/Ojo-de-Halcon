@@ -161,17 +161,26 @@ def _delivered(steps: list[dict]) -> bool:
     return any("entregad" in f"{s['title']} {s['detail']}".lower() for s in steps)
 
 
+def combined_steps(parsed: dict) -> list[dict]:
+    """RENAPER stages followed by the postal ones its answer carries (the post office part)."""
+    return list(parsed["renaper_steps"]) + list(parsed["postal_steps"])
+
+
 def renaper_status(number: str, playwright) -> dict:
-    """RENAPER tab: header, RENAPER stages only. Independent of the post office."""
+    """RENAPER card: header and every stage, including the postal movement RENAPER reports.
+
+    The postal stages stay in this card, so following a card to the door needs one case, not two.
+    Whether the case is over is decided by its status (see FINAL_STATUSES in the shared config),
+    not by the hand-over to the post office.
+    """
     parsed = parse_renaper(fetch_renaper(number, playwright))
     if parsed is None:
         raise SourceError("not_found")
     return {
         "found": True,
         "header": parsed["header"],
-        "steps": parsed["renaper_steps"],
-        # handed over to the post office or already delivered
-        "finished": bool(parsed["in_correo"] or parsed["delivered"]),
+        "steps": combined_steps(parsed),
+        "finished": False,
     }
 
 

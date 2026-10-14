@@ -13,8 +13,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!mustVerify && !user.onboardingDone) redirect(ROUTES.onboarding);
 
   const core = getCore();
-  const [people, access, trackers, billing] = await Promise.all([
-    core.people.list(user.id),
+  const [access, trackers, billing] = await Promise.all([
     core.access.get(user.id),
     core.trackers.list(user.id),
     core.billing.state(user.id),
@@ -37,10 +36,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AppShell userLabel={user.firstName ?? user.email} showMenu={!mustVerify}
       defaultJurisdiction={user.pjnJurisdiction}
-      people={people}
       access={access}
       addLock={addLock}
       usage={usage}
+      defaultBirthDate={user.birthDate}
       sectionCounts={sectionCounts}
     >
       {mustVerify ? <VerifyPending email={user.email} /> : children}

@@ -17,5 +17,25 @@ services:
       timeout: 3s
       retries: 10
 
+  # Optional egress through Cloudflare WARP (free): some networks cannot reach the Migraciones
+  # site directly. Start with `docker compose --profile proxy up -d warp`, then set
+  # MIGRACIONES_PROXY=socks5h://127.0.0.1:1080 in .env. Only requests to Migraciones use it.
+  warp:
+    image: caomingjun/warp@sha256:3bb9768a3cf0025aa93be7f83072771323afa9bbe8f3a8a95ffd0cb7ab9f1701
+    profiles: ["proxy"]
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "0"
+      net.ipv4.conf.all.src_valid_mark: "1"
+    ports:
+      - "127.0.0.1:${WARP_PORT:-1080}:1080"
+    volumes:
+      - ojo_warp:/var/lib/cloudflare-warp
+
 volumes:
   ojo_pgdata:
+  ojo_warp:

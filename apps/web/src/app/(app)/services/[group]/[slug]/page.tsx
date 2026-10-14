@@ -40,17 +40,8 @@ export default async function ServicePage({
   const billing = kind ? await core.billing.state(user.id) : null;
   const access = await core.access.get(user.id);
   const subscription = { active: access.plan === "subscription", periodEnd: access.until };
-  const people = kind === "PJN" ? await core.people.list(user.id) : [];
-  // any tracker counts, finished ones too: the case is already known and is not offered again
-  const hasCase = (personId: string | null) =>
-    trackers.some((item) => (item.person?.id ?? null) === personId);
-  // everyone who has a court chosen and no case yet gets a "find the case" offer
-  const finders = [
-    ...(hasCase(null) ? [] : [{ personId: undefined, name: undefined }]),
-    ...people
-      .filter((person) => person.pjnJurisdiction && !hasCase(person.id))
-      .map((person) => ({ personId: person.id, name: `${person.firstName} ${person.lastName}` })),
-  ];
+  // with no court case yet the user is offered to find theirs by the profile name
+  const offerFinder = kind === "PJN" && trackers.length === 0;
 
   return (
     <>
@@ -72,19 +63,10 @@ export default async function ServicePage({
 
       {kind ? (
         <>
-          {kind === "PJN" &&
-            finders.map((finder) => (
-              <CourtFinder
-                key={finder.personId ?? "self"}
-                {...(finder.personId ? { personId: finder.personId, personName: finder.name } : {})}
-              />
-            ))}
-          {/* the owner's cases first, then relatives in the order they were added */}
-          {[...trackers]
-            .sort((a, b) => Number(a.person !== null) - Number(b.person !== null))
-            .map((tracker) => (
-              <DniCard key={tracker.id} tracker={tracker} t={t} locale={locale} subscription={subscription} />
-            ))}
+          {offerFinder && <CourtFinder />}
+          {trackers.map((tracker) => (
+            <DniCard key={tracker.id} tracker={tracker} t={t} locale={locale} subscription={subscription} />
+          ))}
           {trackers.length === 0 && kind !== "PJN" && (
             <Card title={t("track.empty")} description={t("track.emptyHint")}>
               {official && (

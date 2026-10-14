@@ -1,4 +1,4 @@
-import { tramiteNumberSchema } from "@ojo/shared";
+import { holderBirthDateSchema, tramiteNumberSchema } from "@ojo/shared";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiError, parseBody, withUser } from "@/server/api";
@@ -19,7 +19,7 @@ export async function DELETE(_request: Request, context: Context) {
   });
 }
 
-const correctSchema = z.object({ number: tramiteNumberSchema });
+const correctSchema = z.object({ number: tramiteNumberSchema, birthDate: holderBirthDateSchema.optional() });
 
 /** Replaces the number of a RENAPER/Correo slot (typo, re-issued number, or cooldown over). */
 export async function PATCH(request: Request, context: Context) {
@@ -27,7 +27,7 @@ export async function PATCH(request: Request, context: Context) {
   return withUser(async (user) => {
     const body = await parseBody(request, correctSchema);
     if (!body.ok) return body.response;
-    const result = await getCore().trackers.replaceNumber(user.id, id, body.data.number);
+    const result = await getCore().trackers.replaceNumber(user.id, id, body.data.number, body.data.birthDate ?? null);
     if (result === "ALREADY_EXISTS") return apiError("ALREADY_EXISTS");
     if (result === "NOT_ALLOWED") return apiError("FORBIDDEN");
     return NextResponse.json({ ok: true });

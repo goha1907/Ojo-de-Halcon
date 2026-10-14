@@ -18,14 +18,14 @@ export async function POST(request: Request) {
       const result = await trackers.addPjn(
         user.id,
         { jurisdiction: input.jurisdiction, number: input.number, year: input.year },
-        input.personId,
         input.label,
       );
       if (!result.ok) return apiError(result.reason);
       return NextResponse.json({ ok: true, tracker: result.tracker });
     }
 
-    const result = await trackers.addTramite(user.id, input.kind, input.number, input.personId, input.label);
+    const birthDate = "birthDate" in input ? (input.birthDate ?? null) : null;
+    const result = await trackers.addTramite(user.id, input.kind, input.number, input.label, birthDate);
     if (!result.ok) return apiError(result.reason);
     return NextResponse.json({ ok: true, tracker: result.tracker });
   });
