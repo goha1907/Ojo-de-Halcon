@@ -69,7 +69,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       action: t("dash.attn.subscribe"),
     });
   }
-  if (subscribed && daysLeft !== null && daysLeft <= SOON_DAYS) {
+  if (subscribed && !billing.renews && untilMs !== null) {
+    attention.push({
+      key: "cancelled",
+      tone: "info",
+      text: t("dash.attn.cancelled", { date: day(untilMs) }),
+      href: settingsHref("subscription"),
+      action: t("billing.resumeAll"),
+    });
+  } else if (subscribed && daysLeft !== null && daysLeft <= SOON_DAYS) {
     attention.push({
       key: "ending",
       tone: "info",
@@ -233,7 +241,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </tbody>
               </table>
             </div>
-            {pages > 1 && (
               <nav aria-label={t("dash.table.pages")} className="flex flex-wrap items-center justify-between gap-3 text-sm">
                 <span className="text-slate-500">
                   {t("dash.table.range", {
@@ -273,7 +280,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   )}
                 </div>
               </nav>
-            )}
           </div>
         )}
       </Card>

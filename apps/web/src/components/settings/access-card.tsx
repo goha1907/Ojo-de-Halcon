@@ -1,6 +1,6 @@
 "use client";
 
-import type { AccessState, BillingStateDto, PaymentDto } from "@ojo/core";
+import type { AccessState, BillingStateDto, PaymentDto, PaymentMethod } from "@ojo/core";
 import { API_ROUTES, SETTINGS_SECTIONS, casesPrice, type MessageKey } from "@ojo/shared";
 import { Alert, Button, Card, TextField } from "@ojo/ui";
 import { useRouter } from "next/navigation";
@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { apiRequest } from "@/lib/api-client";
 import { describeApiError } from "@/lib/api-errors";
+import { PaymentModal } from "@/components/payments/payment-modal";
 import { StatTile } from "@/components/stat-tile";
 import { SubscriptionSummary } from "@/components/subscription/summary";
 import { formatMoney } from "@/lib/money";
@@ -21,13 +22,14 @@ const PLAN_KEY: Record<AccessState["plan"], MessageKey> = {
   subscription: "settings.access.subscription",
 };
 
-type StubAction = "cancel" | "resetTrial";
-
 interface Props {
   access: AccessState;
   billing: BillingStateDto;
   payments: PaymentDto[];
-  stubEnabled: boolean;
+  /** Payment methods a provider offers right now (empty: payments are not connected yet). */
+  methods: PaymentMethod[];
+  /** The test provider is in use: payments are simulated. */
+  testMode: boolean;
   /** Number picked on the landing page (cases to buy), if any. */
   initialCount?: number;
   /** Days left of the running period. */
@@ -35,13 +37,14 @@ interface Props {
 }
 
 /** Subscription page: purchase, slot analytics, amounts and dates, payment log, test buttons. */
-export function AccessCard({ access, billing, payments, stubEnabled, initialCount, daysLeft }: Props) {
+export function AccessCard({ access, billing, payments, methods, testMode, initialCount, daysLeft }: Props) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [logPage, setLogPage] = useState(1);
   const logPages = Math.max(1, Math.ceil(payments.length / LOG_PAGE_SIZE));
   const [error, setError] = useState("");
+  const [paying, setPaying] = useState(false);
   const subscribed = access.plan === "subscription";
   // a running subscription grows by the entered number; without one the number is the whole subscription
   const [count, setCount] = useState(() => {
@@ -63,7 +66,8 @@ export function AccessCard({ access, billing, payments, stubEnabled, initialCoun
   const price = subscribed ? casesPrice(target) - casesPrice(billing.paidCases) : casesPrice(target);
   // what the subscription holds now: shown while the typed number is not usable
   const currentTotal = subscribed ? billing.paidCases : billing.keptCases;
-  const cancelledAll = subscribed && billing.activeCases > 0 && billing.keptCases === 0;
+  // cancelled = it will not renew; the cases keep running until the paid period ends
+  const cancelled = subscribed && !billing.renews;
 
   async function run(name: string, action: () => Promise<unknown>) {
     setBusy(name);
@@ -82,41 +86,6 @@ export function AccessCard({ access, billing, payments, stubEnabled, initialCoun
     <div id={SETTINGS_SECTIONS.subscription} className="space-y-6">
       {error && <Alert tone="error">{error}</Alert>}
 
-      <Card title={subscribed ? t("settings.sub.buyTitleMore") : t("settings.sub.buyTitleNew")} description={t(PLAN_KEY[access.plan], { date: access.until ? day(access.until) : "" })}>
-        {stubEnabled ? (
-          <div className="space-y-3">
-            <div className="max-w-xs">
-              <TextField
-                label={subscribed ? t("settings.sub.addLabel") : t("billing.buy.label")}
-                type="number"
-                min={minCount}
-                max={maxCount}
-                value={Number.isNaN(count) ? "" : String(count)}
-                onChange={(e) => setCount(e.target.value === "" ? Number.NaN : Number(e.target.value))}
-              />
-            </div>
-            <p className="text-sm text-slate-600">{t("settings.sub.total", { count: valid ? target : currentTotal })}</p>
-            <Button
-              disabled={!valid}
-              loading={busy === "buy"}
-              onClick={() =>
-                void run("buy", () =>
-                  apiRequest(API_ROUTES.billingCheckout, { method: "POST", body: { cases: target } }),
-                )
-              }
-            >
-              {subscribed
-                ? t("billing.buy.more", { count: valid ? count : 0, amount: money(valid ? price : 0) })
-                : t("billing.buy.start", { count: valid ? count : 0, amount: money(valid ? price : 0) })}
-            </Button>
-            {subscribed && <p className="text-xs text-slate-500">{t("billing.buy.moreHelp")}</p>}
-            <p className="text-xs text-slate-500">{t("billing.buy.limit", { max: billing.maxCases })}</p>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-500">{t("billing.paymentSoon")}</p>
-        )}
-      </Card>
-
       {subscribed && (
         <Card title={t("settings.sub.slots")}>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
@@ -126,6 +95,136 @@ export function AccessCard({ access, billing, payments, stubEnabled, initialCoun
             <StatTile label={t("settings.sub.disabledNext")} value={billing.cancelledCases} tone="removing" />
             <StatTile label={t("settings.sub.finished")} value={billing.finishedCases} tone="finished" />
             <StatTile label={t("settings.sub.paused")} value={billing.pausedCases} />
+          </div>
+        </Card>
+      )}
+
+      <Card
+        title={subscribed ? t("settings.sub.addTitle") : t("settings.sub.buyTitleNew")}
+        description={subscribed ? undefined : t(PLAN_KEY[access.plan], { date: access.until ? day(access.until) : "" })}
+      >
+        <div className="space-y-5">
+          {methods.length === 0 ? (
+            <Alert tone="info">{t("pay.unavailable")}</Alert>
+          ) : (
+            <div className="grid gap-5 md:grid-cols-2">
+              <div className="space-y-2">
+                <TextField
+                  label={subscribed ? t("settings.sub.addLabel") : t("billing.buy.label")}
+                  type="number"
+                  min={minCount}
+                  max={maxCount}
+                  value={Number.isNaN(count) ? "" : String(count)}
+                  onChange={(e) => setCount(e.target.value === "" ? Number.NaN : Number(e.target.value))}
+                />
+                <p className="text-xs text-slate-500">{t("billing.buy.limit", { max: billing.maxCases })}</p>
+                {subscribed && <p className="text-xs text-slate-500">{t("billing.buy.moreHelp")}</p>}
+              </div>
+              <div className="space-y-3 rounded-xl bg-slate-50 p-4 text-sm">
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-500">{t("settings.sub.nowHave")}</span>
+                  <span className="font-medium text-slate-900">{currentTotal}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-500">{t("settings.sub.willHave")}</span>
+                  <span className="font-medium text-slate-900">{valid ? target : currentTotal}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3 border-t border-slate-200 pt-3">
+                  <span className="text-slate-600">{t("settings.sub.toPay")}</span>
+                  <span className="text-xl font-bold text-slate-900">{money(valid ? price : 0)}</span>
+                </div>
+                <Button fullWidth disabled={!valid || price <= 0} onClick={() => setPaying(true)}>
+                  {t("settings.sub.buyNow")}
+                </Button>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </Card>
+
+      {paying && (
+      <PaymentModal
+        open
+        onClose={() => setPaying(false)}
+        onPaid={() => router.refresh()}
+        targetCases={valid ? target : currentTotal}
+        addCases={valid ? (subscribed ? count : target) : 0}
+        amount={valid ? price : 0}
+        currency={billing.currency}
+        subscribed={subscribed}
+        methods={methods}
+        testMode={testMode}
+      />
+      )}
+
+      {subscribed && until && (
+        <Card
+          title={t("settings.sub.manageTitle")}
+          description={t(PLAN_KEY[access.plan], { date: day(until) })}
+        >
+          <div className="space-y-5">
+            <div className="space-y-1">
+                {cancelled ? (
+                  <>
+                    <p className="text-sm font-medium text-amber-700">{t("billing.cancelledAll", { date: day(until) })}</p>
+                    <Button
+                      variant="secondary"
+                      loading={busy === "resume"}
+                      onClick={() =>
+                        void run("resume", () =>
+                          apiRequest(API_ROUTES.billingSubscription, { method: "PUT", body: { renew: true } }),
+                        )
+                      }
+                    >
+                      {t("billing.resumeAll")}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="ghost"
+                      loading={busy === "cancel-subscription"}
+                      onClick={() =>
+                        void run("cancel-subscription", () =>
+                          apiRequest(API_ROUTES.billingSubscription, { method: "PUT", body: { renew: false } }),
+                        )
+                      }
+                    >
+                      {t("billing.cancelAll")}
+                    </Button>
+                    <p className="text-xs text-slate-500">{t("billing.cancelAllHelp", { date: day(until) })}</p>
+                  </>
+                )}
+              </div>
+
+            {testMode && (
+              <details className="border-t border-slate-100 pt-3 text-sm">
+                <summary className="cursor-pointer text-slate-500">{t("settings.access.testActions")}</summary>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {subscribed && billing.renews && billing.keptCases > 0 && (
+                    <Button
+                      variant="ghost"
+                      loading={busy === "renew"}
+                      onClick={() => void run("renew", () => apiRequest(API_ROUTES.billingRenew, { method: "POST" }))}
+                    >
+                      {t("billing.renew", { amount: money(billing.nextPeriodPrice) })}
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    loading={busy === "cancel"}
+                    onClick={() =>
+                      void run("cancel", () =>
+                        apiRequest(API_ROUTES.billingStub, { method: "POST", body: { action: "cancel" } }),
+                      )
+                    }
+                  >
+                    {t("settings.access.stubCancel")}
+                  </Button>
+                </div>
+              </details>
+            )}
           </div>
         </Card>
       )}
@@ -141,79 +240,11 @@ export function AccessCard({ access, billing, payments, stubEnabled, initialCoun
               withPlaces={false}
               withLastPayment={false}
             />
-
-            {billing.activeCases > 0 && (
-              <div className="space-y-1">
-                {cancelledAll ? (
-                  <>
-                    <p className="text-sm font-medium text-amber-700">{t("billing.cancelledAll", { date: day(until) })}</p>
-                    <Button
-                      variant="secondary"
-                      loading={busy === "resumeAll"}
-                      onClick={() =>
-                        void run("resumeAll", () =>
-                          apiRequest(API_ROUTES.billingSubscription, { method: "PUT", body: { kept: true } }),
-                        )
-                      }
-                    >
-                      {t("billing.resumeAll")}
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      variant="ghost"
-                      loading={busy === "cancelAll"}
-                      onClick={() =>
-                        void run("cancelAll", () =>
-                          apiRequest(API_ROUTES.billingSubscription, { method: "PUT", body: { kept: false } }),
-                        )
-                      }
-                    >
-                      {t("billing.cancelAll")}
-                    </Button>
-                    <p className="text-xs text-slate-500">{t("billing.cancelAllHelp", { date: day(until) })}</p>
-                  </>
-                )}
-              </div>
-            )}
           </div>
         ) : (
           <p className="text-sm text-slate-500">{t("settings.sub.noSubscription")}</p>
         )}
       </Card>
-
-      {stubEnabled && (
-        <Alert tone="info">
-          <div className="space-y-3">
-            <p>
-              <strong>{t("settings.access.stubTitle")}.</strong> {t("settings.access.stubHelp")}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {subscribed && billing.keptCases > 0 && (
-                <Button
-                  loading={busy === "renew"}
-                  onClick={() => void run("renew", () => apiRequest(API_ROUTES.billingRenew, { method: "POST" }))}
-                >
-                  {t("billing.renew", { amount: money(billing.nextPeriodPrice) })}
-                </Button>
-              )}
-              {(["cancel", "resetTrial"] as StubAction[]).map((action) => (
-                <Button
-                  key={action}
-                  variant="secondary"
-                  loading={busy === action}
-                  onClick={() =>
-                    void run(action, () => apiRequest(API_ROUTES.billingStub, { method: "POST", body: { action } }))
-                  }
-                >
-                  {action === "cancel" ? t("settings.access.stubCancel") : t("settings.access.stubReset")}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </Alert>
-      )}
 
       <Card title={t("billing.history")}>
         {payments.length === 0 ? (
@@ -232,7 +263,6 @@ export function AccessCard({ access, billing, payments, stubEnabled, initialCoun
                 </li>
               ))}
             </ul>
-            {logPages > 1 && (
               <nav aria-label={t("dash.table.pages")} className="flex flex-wrap items-center justify-between gap-3 text-sm">
                 <span className="text-slate-500">
                   {t("dash.table.range", {
@@ -273,7 +303,6 @@ export function AccessCard({ access, billing, payments, stubEnabled, initialCoun
                   </button>
                 </div>
               </nav>
-            )}
           </div>
         )}
       </Card>

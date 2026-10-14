@@ -978,19 +978,28 @@ describe("cases: the subscription is priced per tracked case", () => {
     expect((await core.trackers.list(userId)).find((item) => item.id === ids[1])!.status).toBe("ACTIVE");
   });
 
-  it("cancels the whole subscription and takes the cancellation back", async () => {
+  it("cancelling the subscription only stops renewal: cases and marks are untouched", async () => {
     const core = makeCore();
     const userId = await newUser(core);
     await core.billing.checkout(userId, 2);
-    await core.trackers.addTramite(userId, "RENAPER", "100000001");
+    const first = await core.trackers.addTramite(userId, "RENAPER", "100000001");
     await core.trackers.addTramite(userId, "CORREO", "100000001");
+    if (!first.ok) throw new Error("add failed");
+    // one case is marked for removal: it only changes what the next period costs
+    await core.billing.setKept(userId, first.tracker.id, false);
+    const before = await core.billing.state(userId);
+    expect(before).toMatchObject({ renews: true, keptCases: 1, cancelledCases: 1, nextPeriodPrice: casesPrice(1) });
 
-    await core.billing.setSubscriptionKept(userId, false);
-    expect(await core.billing.state(userId)).toMatchObject({ keptCases: 0, cancelledCases: 2, nextPeriodPrice: 0 });
-    expect(await core.billing.renew(userId)).toEqual({ ok: false, reason: "NO_CASES" });
+    expect(await core.billing.setRenewal(userId, false)).toEqual({ ok: true });
+    const cancelled = await core.billing.state(userId);
+    expect(cancelled).toMatchObject({ renews: false, activeCases: 2, keptCases: 1, cancelledCases: 1 });
+    expect((await core.trackers.list(userId)).map((item) => item.status)).toEqual(["ACTIVE", "ACTIVE"]);
+    // nothing renews, so there is nothing to simulate
+    expect(await core.billing.renew(userId)).toEqual({ ok: false, reason: "CANCELLED" });
 
-    await core.billing.setSubscriptionKept(userId, true);
-    expect(await core.billing.state(userId)).toMatchObject({ keptCases: 2, nextPeriodPrice: casesPrice(2) });
+    // returning it before the period ends restores renewal and changes nothing else
+    expect(await core.billing.setRenewal(userId, true)).toEqual({ ok: true });
+    expect(await core.billing.state(userId)).toMatchObject({ ...before });
   });
 
   it("restarts after the period ended with the cases that stayed", async () => {

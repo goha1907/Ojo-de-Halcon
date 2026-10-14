@@ -131,7 +131,8 @@ export function ClosedCases({ closed }: { closed: ClosedCase[] }) {
 
 function ClosedSection({ title, rows }: { title: string; rows: ClosedCase[] }) {
   const t = useT();
-  const [open, setOpen] = useState(true);
+  // finished cases are history: folded until someone looks
+  const [open, setOpen] = useState(false);
   return (
     <>
       <tr>

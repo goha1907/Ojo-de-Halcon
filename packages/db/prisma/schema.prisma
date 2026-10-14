@@ -36,6 +36,8 @@ model User {
   subscriptionUntil     DateTime?
   /// Cases the subscription pays for in the running period (free slots = paidCases - active cases).
   paidCases             Int       @default(0)
+  /// When the subscription was cancelled (it will not renew); null = it renews. Cases are untouched.
+  subscriptionCancelledAt DateTime?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -46,6 +48,7 @@ model User {
   trackers         Tracker[]
   payments         Payment[]
   feedback         FeedbackMessage[]
+  paymentIntents   PaymentIntent[]
 }
 
 model Session {
@@ -163,6 +166,34 @@ model TrackerSnapshot {
   updatedAt   DateTime @updatedAt
 }
 
+/// One attempt to pay: the amount is fixed when it is created and the purchase is applied once,
+/// when the provider reports success (by polling or by webhook).
+model PaymentIntent {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  expiresAt     DateTime
+  completedAt   DateTime?
+  /// mercadopago_qr | card
+  method        String
+  provider      String
+  /// The provider's own id of the payment.
+  providerRef   String?
+  /// PENDING | PROCESSING | SUCCEEDED | FAILED | CANCELLED | EXPIRED
+  status        String    @default("PENDING")
+  failureReason String?
+  /// Whole units of `currency`.
+  amount        Int
+  currency      String
+  /// Cases the subscription holds after this payment.
+  targetCases   Int
+
+  @@index([userId, createdAt])
+  @@index([status, expiresAt])
+}
+
 /// Anonymous tally of the statuses and stages seen at the sources (no user, case or number):
 /// the product learns which statuses exist, which end a case and which are borderline.
 model StatusObservation {
@@ -262,6 +293,10 @@ model Payment {
   casesDelta Int      @default(0)
   /// Payment provider; "stub" until real billing is connected.
   provider   String
+  /// How it was paid: mercadopago_qr | card (null for renewals made without a checkout).
+  method     String?
+  /// The checkout that produced it.
+  intentId   String?  @unique
   createdAt  DateTime @default(now())
 
   @@index([userId, createdAt])

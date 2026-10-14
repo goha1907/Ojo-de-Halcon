@@ -40,6 +40,11 @@ export function createCoreFromEnv(env: Env, mailer: Mailer = createConsoleMailer
       linkCodeBytes: APP_CONFIG.auth.linkCodeBytes,
       sessionTokenBytes: APP_CONFIG.auth.sessionTokenBytes,
       emailTokenBytes: APP_CONFIG.auth.emailTokenBytes,
+      payments: {
+        stubEnabled: env.PAYMENTS_STUB,
+        stubProcessingSeconds: APP_CONFIG.payments.stubProcessingSeconds,
+        intentTtlMinutes: APP_CONFIG.payments.intentTtlMinutes,
+      },
     },
   });
 }

@@ -59,14 +59,18 @@ export function SubscriptionSummary({
       <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
         {item(t("settings.sub.started"), day(start), "started")}
         {item(
-          t("settings.sub.nextCharge"),
+          billing.renews ? t("settings.sub.nextCharge") : t("settings.sub.validUntil"),
           `${day(until)} (${t("dash.sub.daysLeft", { count: Math.max(0, daysLeft) })})`,
           "next",
         )}
         {item(t("settings.sub.sum"), money(billing.currentPrice), "sum")}
         {item(
           t("settings.sub.nextAmount"),
-          billing.keptCases > 0 ? money(billing.nextPeriodPrice) : t("billing.cases.nextNone"),
+          !billing.renews
+            ? t("billing.cases.cancelledNext")
+            : billing.keptCases > 0
+              ? money(billing.nextPeriodPrice)
+              : t("billing.cases.nextNone"),
           "nextAmount",
         )}
         {withPlaces && item(t("dash.sub.free"), String(billing.freeCases), "free")}

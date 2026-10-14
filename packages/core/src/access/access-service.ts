@@ -45,7 +45,10 @@ export function createAccessService(deps: { prisma: PrismaClient; now: () => Dat
    */
   async function stub(userId: string, action: "cancel" | "resetTrial"): Promise<AccessState> {
     if (action === "cancel") {
-      await prisma.user.update({ where: { id: userId }, data: { subscriptionUntil: null } });
+      await prisma.user.update({
+        where: { id: userId },
+        data: { subscriptionUntil: null, subscriptionCancelledAt: null },
+      });
     } else {
       await prisma.user.update({ where: { id: userId }, data: { trialStartedAt: now() } });
     }

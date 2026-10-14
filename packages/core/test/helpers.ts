@@ -24,6 +24,7 @@ export const testConfig: CoreConfig = {
   linkCodeBytes: 18,
   sessionTokenBytes: 32,
   emailTokenBytes: 32,
+  payments: { stubEnabled: true, stubProcessingSeconds: 5, intentTtlMinutes: 15 },
 };
 
 export function makeMailbox() {
@@ -77,7 +78,7 @@ export function tokenFromMail(message: MailMessage): string {
 
 export async function resetDb(): Promise<void> {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "TelegramOutbox", "StatusObservation", "FeedbackMessage", "TrialLedger", "ProfileChange", "TelegramLinkCode", "EmailToken", "Session", "User" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "TelegramOutbox", "StatusObservation", "FeedbackMessage", "PaymentIntent", "TrialLedger", "ProfileChange", "TelegramLinkCode", "EmailToken", "Session", "User" RESTART IDENTITY CASCADE',
   );
 }
 

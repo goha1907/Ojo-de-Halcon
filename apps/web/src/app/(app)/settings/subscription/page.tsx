@@ -31,7 +31,8 @@ export default async function SettingsSubscriptionPage({
         access={access}
         billing={billing}
         payments={payments}
-        stubEnabled={getEnv().PAYMENTS_STUB}
+        methods={core.payments.methods()}
+        testMode={getEnv().PAYMENTS_STUB}
         daysLeft={access.until ? Math.ceil((new Date(access.until).getTime() - nowMs()) / 86_400_000) : 0}
         {...(Number.isFinite(requested) && requested > 0 ? { initialCount: requested } : {})}
       />

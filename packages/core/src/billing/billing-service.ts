@@ -31,6 +31,8 @@ export interface BillingStateDto {
   /** Cases left out of the subscription; kept for history. */
   pausedCases: number;
   maxCases: number;
+  /** The subscription will not renew (cancelled); the cases keep running until the period ends. */
+  renews: boolean;
   currency: string;
   /** Price of the running period for the paid cases. */
   currentPrice: number;
@@ -51,7 +53,7 @@ export type CheckoutResult =
   | { ok: true; quote: QuoteDto }
   | { ok: false; reason: "INVALID_CASES" | "LIMIT_REACHED" };
 
-export type RenewResult = { ok: true; quote: QuoteDto } | { ok: false; reason: "NO_CASES" };
+export type RenewResult = { ok: true; quote: QuoteDto } | { ok: false; reason: "NO_CASES" | "CANCELLED" };
 
 export type TrackerBillingResult =
   | { ok: true }
@@ -85,7 +87,7 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
   async function load(userId: string) {
     return prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { subscriptionUntil: true, paidCases: true },
+      select: { subscriptionUntil: true, paidCases: true, subscriptionCancelledAt: true },
     });
   }
 
@@ -106,6 +108,7 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
       finishedCases: count.finished,
       pausedCases: count.paused,
       maxCases: APP_CONFIG.limits.maxCases,
+      renews: user.subscriptionCancelledAt === null,
       currency: PRICING.currency,
       currentPrice: casesPrice(paid),
       nextPeriodPrice: casesPrice(count.kept),
@@ -151,7 +154,11 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
    * provider's confirmation; the stub calls it directly. Slots exist only after this
    * succeeds, so nothing is added before payment.
    */
-  async function checkout(userId: string, targetCases: number): Promise<CheckoutResult> {
+  async function checkout(
+    userId: string,
+    targetCases: number,
+    paid?: { provider: string; method: string; intentId: string; amount: number },
+  ): Promise<CheckoutResult> {
     const priced = await quote(userId, targetCases);
     if (!priced.ok) return priced;
     const { quote: q } = priced;
@@ -160,16 +167,24 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
       ...(q.mode === "new_period" ? [pauseCancelled(userId)] : []),
       prisma.user.update({
         where: { id: userId },
-        data: { subscriptionUntil: new Date(q.periodEnd), paidCases: q.casesAfter },
+        data: {
+          subscriptionUntil: new Date(q.periodEnd),
+          paidCases: q.casesAfter,
+          // a new period is a new subscription: it renews
+          ...(q.mode === "new_period" ? { subscriptionCancelledAt: null } : {}),
+        },
       }),
       prisma.payment.create({
         data: {
           userId,
-          amount: q.amount,
+          // what was really paid (fixed when the checkout was created)
+          amount: paid?.amount ?? q.amount,
           currency: q.currency,
           kind: q.mode === "new_period" ? "subscription" : "cases",
           casesDelta: q.addCases,
-          provider: PROVIDER,
+          provider: paid?.provider ?? PROVIDER,
+          method: paid?.method ?? null,
+          intentId: paid?.intentId ?? null,
         },
       }),
     ]);
@@ -182,6 +197,7 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
    */
   async function renew(userId: string): Promise<RenewResult> {
     const [user, count] = await Promise.all([load(userId), counts(userId)]);
+    if (user.subscriptionCancelledAt !== null) return { ok: false, reason: "CANCELLED" };
     if (count.kept === 0) return { ok: false, reason: "NO_CASES" };
     const from = isRunning(user.subscriptionUntil) ? user.subscriptionUntil! : now();
     const until = new Date(from.getTime() + APP_CONFIG.limits.subscriptionDays * DAY_MS);
@@ -231,13 +247,18 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
     return result.count === 1 ? { ok: true } : { ok: false, reason: "NOT_FOUND" };
   }
 
-  /** Marks every tracked case for removal, or takes all the marks back. */
-  async function setSubscriptionKept(userId: string, kept: boolean): Promise<TrackerBillingResult> {
+  /**
+   * Cancels the subscription (it will not renew) or returns it. Nothing happens to the cases: they
+   * keep running until the paid period ends, and returning the subscription before that moment
+   * just restores renewal. Marks on cases are a separate matter: they only feed the calculation
+   * of the current and the next amount.
+   */
+  async function setRenewal(userId: string, renews: boolean): Promise<TrackerBillingResult> {
     const user = await load(userId);
     if (!isRunning(user.subscriptionUntil)) return { ok: false, reason: "SUBSCRIPTION_REQUIRED" };
-    await prisma.tracker.updateMany({
-      where: { userId, status: { in: [...OCCUPYING] } },
-      data: { keepNext: kept },
+    await prisma.user.update({
+      where: { id: userId },
+      data: { subscriptionCancelledAt: renews ? null : now() },
     });
     return { ok: true };
   }
@@ -275,7 +296,7 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
     }));
   }
 
-  return { state, quote, checkout, renew, setKept, setSubscriptionKept, resume, history };
+  return { state, quote, checkout, renew, setKept, setRenewal, resume, history };
 }
 
 export type BillingService = ReturnType<typeof createBillingService>;

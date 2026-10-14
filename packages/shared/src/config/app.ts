@@ -31,6 +31,15 @@ export const APP_CONFIG = {
     minAccountAgeYears: 18,
     maxAgeYears: 120,
   },
+  /** Payments. */
+  payments: {
+    /** An unpaid checkout is given up after this long. */
+    intentTtlMinutes: 15,
+    /** How often the open checkout asks whether it was paid. */
+    pollIntervalMs: 2000,
+    /** The test provider "processes" a payment this long before it succeeds. */
+    stubProcessingSeconds: 6,
+  },
   /** News list on the landing page. */
   news: { pageSize: 5 },
   /** Product limits. */
@@ -55,6 +64,8 @@ export const APP_CONFIG = {
     email: { windowMs: 60 * 60_000, max: 10 },
     /** Adding trackers and searching courts (each may start a browser), per user. */
     trackerAdd: { windowMs: 10 * 60_000, max: 20 },
+    /** Creating and polling checkouts, per user. */
+    payment: { windowMs: 10 * 60_000, max: 60 },
     /** Feedback messages from the landing page, per client IP. */
     feedback: { windowMs: 60 * 60_000, max: 5 },
     /** Creating Telegram link codes and polling their status, per user. */
@@ -126,8 +137,7 @@ export const API_ROUTES = {
   feedback: "/api/feedback",
   people: "/api/people",
   billingStub: "/api/billing/stub",
-  billingQuote: "/api/billing/quote",
-  billingCheckout: "/api/billing/checkout",
+  paymentIntents: "/api/payments/intents",
   billingRenew: "/api/billing/renew",
   billingCases: "/api/billing/cases",
   billingSubscription: "/api/billing/subscription",

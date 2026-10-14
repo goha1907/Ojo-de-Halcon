@@ -15,6 +15,12 @@ export interface CoreConfig {
   linkCodeBytes: number;
   sessionTokenBytes: number;
   emailTokenBytes: number;
+  payments: {
+    /** The test provider is available (never in production unless forced). */
+    stubEnabled: boolean;
+    stubProcessingSeconds: number;
+    intentTtlMinutes: number;
+  };
 }
 
 export interface CoreDeps {
