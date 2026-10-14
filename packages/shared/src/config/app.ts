@@ -120,7 +120,7 @@ export const API_ROUTES = {
   pjnSearch: "/api/trackers/pjn/search",
   pjnConfirm: "/api/trackers/pjn/confirm",
   pjnPreview: "/api/trackers/pjn/preview",
-  dnmPreview: "/api/trackers/dnm/preview",
+  trackerPreview: "/api/trackers/preview",
   people: "/api/people",
   billingStub: "/api/billing/stub",
   billingQuote: "/api/billing/quote",

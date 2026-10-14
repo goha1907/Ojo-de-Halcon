@@ -100,11 +100,13 @@ export function CourtFinder() {
                   <p className="font-medium text-slate-900">{candidate.expediente}</p>
                   <p className="text-slate-700">{candidate.caratula}</p>
                   <p className="mb-3 text-slate-500">{candidate.dependencia}</p>
+                  {candidate.closed && <Alert tone="info">{t("pjn.find.closed")}</Alert>}
                   <Button
+                    className={candidate.closed ? "mt-3" : undefined}
                     loading={busyId === `${candidate.number}/${candidate.year}`}
                     onClick={() => void confirm(candidate)}
                   >
-                    {t("pjn.find.confirm")}
+                    {candidate.closed ? t("track.dnm.addClosed") : t("pjn.find.confirm")}
                   </Button>
                 </li>
               ))}

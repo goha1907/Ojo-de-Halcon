@@ -47,6 +47,17 @@ interface Props {
   defaultBirthDate: string | null;
 }
 
+/** Labels of the identifying fields shown for a trámite found at its source. */
+const IDENTITY_LABELS: Record<string, MessageKey> = {
+  holder: "track.dnm.holder",
+  office: "track.dnm.office",
+  nationality: "track.dnm.nationality",
+  expediente: "track.dnm.expediente",
+  state: "track.dnm.state",
+  type: "track.dni.type",
+  description: "track.dni.description",
+};
+
 const ERROR_KEYS: Record<string, MessageKey> = {
   ALREADY_EXISTS: "track.error.exists",
   NO_FREE_SLOT: "track.error.noFreeSlot",
@@ -114,10 +125,6 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
       return;
     }
     setErrors({});
-    if (!isCourt && !isDnmKind(kind)) {
-      setStep("confirm");
-      return;
-    }
     setLoading(true);
     try {
       // the source is asked first, so the user sees what is found before agreeing
@@ -127,7 +134,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
             method: "POST",
             body: (({ kind: _kind, ...rest }) => rest)(caseInput),
           })
-        : await apiRequest<{ header: Record<string, string> }>(API_ROUTES.dnmPreview, {
+        : await apiRequest<{ header: Record<string, string> }>(API_ROUTES.trackerPreview, {
             method: "POST",
             body: caseInput,
           });
@@ -222,7 +229,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
               {label.trim() && (
                 <p className="text-sm text-slate-600">{t("track.step.name", { name: label.trim() })}</p>
               )}
-              {(isCourt || isDnmKind(kind)) && found ? (
+              {found && (isCourt || Object.keys(found).some((key) => key !== "closed")) ? (
                 <>
                   <h3 className="text-base font-semibold text-slate-900">
                     {isCourt ? t("track.step.confirmCase") : t("track.dnm.confirmTitle")}
@@ -235,14 +242,16 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
                           <dt className="text-xs uppercase tracking-wide text-slate-500">
                             {isCourt
                               ? t(`track.header.${key}` as MessageKey)
-                              : t(`track.dnm.${key}` as MessageKey)}
+                              : t((IDENTITY_LABELS[key] ?? "track.dnm.state") as MessageKey)}
                           </dt>
                           <dd className="text-slate-900">{value}</dd>
                         </div>
                       ))}
                   </dl>
                   {found.closed ? (
-                    <Alert tone="info">{t("track.dnm.closed", { state: found.state ?? "" })}</Alert>
+                    <Alert tone="info">
+                      {t("track.dnm.closed", { state: found.state ?? found.sit_actual ?? "" })}
+                    </Alert>
                   ) : (
                     <Alert tone="info">
                       {isCourt ? t("track.step.confirmCaseText") : t("track.dnm.confirmText")}
@@ -267,11 +276,11 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
                   {t("track.step.back")}
                 </Button>
                 <Button loading={loading} onClick={() => void onConfirm()}>
-                  {isCourt
-                    ? t("track.step.addCase")
-                    : found?.closed
-                      ? t("track.dnm.addClosed")
-                      : isDnmKind(kind)
+                  {found?.closed
+                    ? t("track.dnm.addClosed")
+                    : isCourt
+                      ? t("track.step.addCase")
+                      : found && Object.keys(found).length > 0
                         ? t("track.dnm.add")
                         : t("track.step.addNumber")}
                 </Button>
@@ -329,7 +338,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
             {t("common.cancel")}
           </Button>
           <Button type="submit" loading={loading}>
-            {isCourt ? t("track.step.find") : isDnmKind(kind) ? t("track.dnm.find") : t("track.step.next")}
+            {isCourt ? t("track.step.find") : t("track.dnm.find")}
           </Button>
         </div>
           </>

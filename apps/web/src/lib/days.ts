@@ -9,3 +9,8 @@ export function daysSince(text: string | undefined, now: Date): number | null {
   const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   return Math.max(0, Math.round((today - from) / DAY_MS));
 }
+
+/** The current time (a function of its own so server pages do not call the clock while rendering). */
+export function nowMs(): number {
+  return Date.now();
+}

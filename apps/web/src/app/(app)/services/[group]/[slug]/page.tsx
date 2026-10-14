@@ -13,6 +13,8 @@ import { notFound } from "next/navigation";
 import { AddTrackerButton } from "@/components/trackers/add-tracker-button";
 import { CourtFinder } from "@/components/trackers/court-finder";
 import { DniCard } from "@/components/trackers/dni-card";
+import { TrackerBoard } from "@/components/trackers/tracker-board";
+import { lastChange } from "@/lib/tracker-view";
 import { getCore } from "@/server/core";
 import { getT } from "@/server/i18n";
 import { requireUser } from "@/server/session";
@@ -64,9 +66,19 @@ export default async function ServicePage({
       {kind ? (
         <>
           {offerFinder && <CourtFinder />}
-          {trackers.map((tracker) => (
-            <DniCard key={tracker.id} tracker={tracker} t={t} locale={locale} subscription={subscription} />
-          ))}
+          <TrackerBoard
+            storageKey={`ojo.board.${service.group}.${service.slug}`}
+            items={trackers.map((tracker) => ({
+              id: tracker.id,
+              node: <DniCard tracker={tracker} t={t} locale={locale} subscription={subscription} />,
+              status: tracker.status,
+              kept: tracker.keptInSubscription,
+              name: tracker.label ?? tracker.reference,
+              number: tracker.reference,
+              addedAt: new Date(tracker.addedAt).getTime(),
+              changedAt: lastChange(tracker),
+            }))}
+          />
           {trackers.length === 0 && kind !== "PJN" && (
             <Card title={t("track.empty")} description={t("track.emptyHint")}>
               {official && (

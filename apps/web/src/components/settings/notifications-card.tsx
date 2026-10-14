@@ -18,6 +18,14 @@ export interface NotificationCase {
   whatsapp: boolean;
 }
 
+export interface ClosedCase {
+  id: string;
+  kind: TrackerKindValue;
+  reference: string;
+  label: string | null;
+  status: "FINISHED" | "PAUSED";
+}
+
 const SECTION_ORDER: string[] = SERVICE_GROUPS.flatMap((group) => group.items.map((item) => item.section as string));
 
 /** Grid "case x channel": every case a user tracks, grouped by section, with its own switches. */
@@ -84,6 +92,79 @@ export function NotificationsCard({ cases, telegramLinked }: { cases: Notificati
         )}
       </div>
     </Card>
+  );
+}
+
+/** Finished and paused cases: not polled, not notified; listed by section, each section folds. */
+export function ClosedCases({ closed }: { closed: ClosedCase[] }) {
+  const t = useT();
+  if (closed.length === 0) return null;
+  const sections = [...new Set(closed.map((item) => TRACKER_KIND_SECTION[item.kind] as string))].sort(
+    (a, b) => SECTION_ORDER.indexOf(a) - SECTION_ORDER.indexOf(b),
+  );
+  return (
+    <Card title={t("settings.notifications.closedTitle")} description={t("settings.notifications.closedHelp")}>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+              <th className="py-2 pr-4 font-semibold">{t("settings.notifications.case")}</th>
+              <th className="px-2 py-2 font-semibold">{t("settings.notifications.status")}</th>
+              <th className="w-28 px-2 py-2 text-center font-semibold">{t("settings.notifications.telegram")}</th>
+              <th className="w-28 px-2 py-2 text-center font-semibold">{t("settings.notifications.whatsapp")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sections.map((section) => (
+              <ClosedSection
+                key={section}
+                title={t(`sections.${section}` as MessageKey)}
+                rows={closed.filter((item) => TRACKER_KIND_SECTION[item.kind] === section)}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
+function ClosedSection({ title, rows }: { title: string; rows: ClosedCase[] }) {
+  const t = useT();
+  const [open, setOpen] = useState(true);
+  return (
+    <>
+      <tr>
+        <th colSpan={4} className="bg-slate-50 p-0 text-left">
+          <button
+            type="button"
+            aria-expanded={open}
+            onClick={() => setOpen((value) => !value)}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 hover:bg-slate-100"
+          >
+            <span aria-hidden="true" className={`text-slate-400 transition-transform ${open ? "" : "-rotate-90"}`}>▾</span>
+            {title}
+            <span className="font-normal normal-case text-slate-400">({rows.length})</span>
+          </button>
+        </th>
+      </tr>
+      {open &&
+        rows.map((item) => (
+          <tr key={item.id} className="border-b border-slate-100 text-slate-500">
+            <td className="py-2.5 pr-4">
+              <div className="font-medium text-slate-700">{item.label ?? `№ ${item.reference}`}</div>
+              {item.label && <div className="text-xs">№ {item.reference}</div>}
+            </td>
+            <td className="px-2">{t(`track.status.${item.status}` as MessageKey)}</td>
+            <td className="px-2 text-center">
+              <input type="checkbox" disabled checked={false} readOnly className="h-4 w-4" aria-label="off" />
+            </td>
+            <td className="px-2 text-center">
+              <input type="checkbox" disabled checked={false} readOnly className="h-4 w-4" aria-label="off" />
+            </td>
+          </tr>
+        ))}
+    </>
   );
 }
 

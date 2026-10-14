@@ -9,7 +9,6 @@ import {
   findJurisdiction,
   isDnmKind,
   isFinalStatus,
-  type DnmKind,
   parseExpediente,
   parsePjnReference,
   pjnReference,
@@ -55,6 +54,8 @@ export interface PjnCandidate {
   expediente: string;
   dependencia: string;
   caratula: string;
+  /** The court registry already shows it as closed (archived). */
+  closed: boolean;
 }
 
 type AddFailure =
@@ -72,7 +73,7 @@ export type PjnStartResult =
   | { ok: true; tracker: TrackerDto }
   | { ok: false; reason: AddFailure | "NOT_FOUND" | "SOURCE_DOWN" };
 
-export type DnmPreviewResult =
+export type TramitePreviewResult =
   | { ok: true; header: TrackerHeaderFields }
   | { ok: false; reason: AddFailure | "SOURCE_DOWN" };
 
@@ -91,6 +92,27 @@ export interface EventPayload {
   header: TrackerHeaderFields;
   /** "Case added": the first report of a case, showing its latest stage. */
   initial?: boolean;
+  /**
+   * Telegram was on for the case when the change was found. Kept with the event, so the last
+   * report of a case that finishes is still delivered after its switches are turned off.
+   */
+  notify?: boolean;
+}
+
+/** One detected change of a case, for the "recent changes" feed. */
+export interface RecentEventDto {
+  id: string;
+  createdAt: string;
+  trackerId: string;
+  kind: TrackerKindValue;
+  label: string | null;
+  reference: string;
+  /** Title of the stage that appeared, or the new status when only the status changed. */
+  title: string;
+  /** Date of that stage as the source gave it. */
+  date: string;
+  /** The first report of a case that was just added. */
+  initial: boolean;
 }
 
 /** Latest known stage of one case, for the digest sent when Telegram gets linked. */
@@ -287,7 +309,7 @@ export function createTrackerService(deps: {
       where: { userId, kind, reference, status: { not: "FINISHED" } },
     });
     if (existing) return { ok: false, reason: "ALREADY_EXISTS" };
-    const remembered = isDnmKind(kind) && holderBirthDate ? takeDnmRead(userId, kind, reference, holderBirthDate) : null;
+    const remembered = takeRead(userId, kind, reference, holderBirthDate);
     // a case that is already closed occupies no slot, so no free slot is needed to keep it in the history
     const closed = remembered !== null && (remembered.finished || reachedFinalStatus(kind, remembered));
     if (!closed) {
@@ -306,6 +328,8 @@ export function createTrackerService(deps: {
       },
       update: {
         status: "ACTIVE",
+        // a case taken up again is notified again
+        notifyTelegram: true,
         nextCheckAt: now(),
         lastError: null,
         label: label ?? null,
@@ -329,69 +353,83 @@ export function createTrackerService(deps: {
   }
 
   /**
-   * Step one of adding a Migraciones case: asks the source and returns only who the case belongs
-   * to (name, office/nationality, file number). The steps stay hidden until the user confirms.
+   * Step one of adding a trámite: asks the source and returns only what identifies the case
+   * (and whether it is already closed). The stages stay hidden until the user confirms. A
+   * closed case takes no slot; an open one needs a free slot (or the trial).
    */
-  async function previewDnm(
+  async function previewTramite(
     userId: string,
-    kind: DnmKind,
+    kind: Exclude<TrackerKindValue, "PJN">,
     reference: string,
     birthDate?: Date | null,
-  ): Promise<DnmPreviewResult> {
+  ): Promise<TramitePreviewResult> {
     const existing = await prisma.tracker.findFirst({
       where: { userId, kind, reference, status: { not: "FINISHED" } },
     });
     if (existing) return { ok: false, reason: "ALREADY_EXISTS" };
-    const holderBirthDate =
-      birthDate ??
-      (await prisma.user.findUnique({ where: { id: userId }, select: { birthDate: true } }))?.birthDate ??
-      null;
-    if (!holderBirthDate) return { ok: false, reason: "BIRTH_DATE_REQUIRED" };
+    let holderBirthDate: Date | null = null;
+    if (isDnmKind(kind)) {
+      holderBirthDate =
+        birthDate ??
+        (await prisma.user.findUnique({ where: { id: userId }, select: { birthDate: true } }))?.birthDate ??
+        null;
+      if (!holderBirthDate) return { ok: false, reason: "BIRTH_DATE_REQUIRED" };
+    }
+    let result: ScrapedTramite;
     try {
-      const iso = holderBirthDate.toISOString().slice(0, 10);
-      const result = await scraper.dnm({
-        kind,
-        number: reference,
-        birthDate: `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`,
-      });
-      // a closed case takes no slot; an open one needs a free one (or the trial)
-      const closed = result.finished || reachedFinalStatus(kind, result);
-      if (!closed) {
-        const gate = await addGate(userId);
-        if (gate !== "OK") return { ok: false, reason: gate };
+      if (isDnmKind(kind) && holderBirthDate) {
+        const iso = holderBirthDate.toISOString().slice(0, 10);
+        result = await scraper.dnm({
+          kind,
+          number: reference,
+          birthDate: `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`,
+        });
+      } else {
+        result = kind === "RENAPER" ? await scraper.renaper(reference) : await scraper.correo(reference);
       }
-      rememberDnmRead(userId, kind, reference, holderBirthDate, result);
-      const { header } = result;
-      const identity: TrackerHeaderFields = {};
-      if (closed) {
-        identity.closed = "true";
-        if (header.state) identity.state = header.state;
-      }
-      if (result.holder) identity.holder = result.holder;
-      for (const key of ["office", "nationality", "expediente"]) {
-        if (header[key]) identity[key] = header[key]!;
-      }
-      return { ok: true, header: identity };
     } catch (error) {
       if (error instanceof ScraperError && error.code === "mismatch") return { ok: false, reason: "MISMATCH" };
+      // a number the source does not know yet is normal: it can still be added and is checked later
+      if (error instanceof ScraperError && error.code === "not_found") {
+        const gate = await addGate(userId);
+        return gate === "OK" ? { ok: true, header: {} } : { ok: false, reason: gate };
+      }
       return { ok: false, reason: "SOURCE_DOWN" };
     }
+    const closed = result.finished || reachedFinalStatus(kind, result);
+    if (!closed) {
+      const gate = await addGate(userId);
+      if (gate !== "OK") return { ok: false, reason: gate };
+    }
+    rememberRead(userId, kind, reference, holderBirthDate, result);
+    const { header } = result;
+    const identity: TrackerHeaderFields = {};
+    if (closed) {
+      identity.closed = "true";
+      const state = isDnmKind(kind) ? header.state : header.status;
+      if (state) identity.state = state;
+    }
+    if (result.holder) identity.holder = result.holder;
+    for (const key of ["office", "nationality", "expediente", "type", "description"]) {
+      if (header[key]) identity[key] = header[key]!;
+    }
+    return { ok: true, header: identity };
   }
 
   /** Reads made in the preview step, reused when the user confirms (no second request). */
-  const dnmReads = new Map<string, { result: ScrapedTramite; at: number }>();
-  const dnmKey = (userId: string, kind: string, reference: string, birth: Date) =>
-    `${userId}:${kind}:${reference}:${birth.toISOString().slice(0, 10)}`;
-  function rememberDnmRead(userId: string, kind: string, reference: string, birth: Date, result: ScrapedTramite) {
-    for (const [key, entry] of dnmReads) {
-      if (entry.at < now().getTime() - PREVIEW_TTL_MS) dnmReads.delete(key);
+  const reads = new Map<string, { result: ScrapedTramite; at: number }>();
+  const readKey = (userId: string, kind: string, reference: string, birth: Date | null) =>
+    `${userId}:${kind}:${reference}:${birth ? birth.toISOString().slice(0, 10) : ""}`;
+  function rememberRead(userId: string, kind: string, reference: string, birth: Date | null, result: ScrapedTramite) {
+    for (const [key, entry] of reads) {
+      if (entry.at < now().getTime() - PREVIEW_TTL_MS) reads.delete(key);
     }
-    dnmReads.set(dnmKey(userId, kind, reference, birth), { result, at: now().getTime() });
+    reads.set(readKey(userId, kind, reference, birth), { result, at: now().getTime() });
   }
-  function takeDnmRead(userId: string, kind: string, reference: string, birth: Date): ScrapedTramite | null {
-    const key = dnmKey(userId, kind, reference, birth);
-    const entry = dnmReads.get(key);
-    dnmReads.delete(key);
+  function takeRead(userId: string, kind: string, reference: string, birth: Date | null): ScrapedTramite | null {
+    const key = readKey(userId, kind, reference, birth);
+    const entry = reads.get(key);
+    reads.delete(key);
     return entry && entry.at >= now().getTime() - PREVIEW_TTL_MS ? entry.result : null;
   }
 
@@ -473,6 +511,32 @@ export function createTrackerService(deps: {
     return result.count === 1;
   }
 
+  /** The latest detected changes of the user's cases, newest first. */
+  async function recentEvents(userId: string, limit = 8): Promise<RecentEventDto[]> {
+    const rows = await prisma.trackerEvent.findMany({
+      where: { tracker: { userId } },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      include: { tracker: { select: { id: true, kind: true, label: true, reference: true } } },
+    });
+    return rows.map((row) => {
+      const payload = row.payload as unknown as EventPayload;
+      const kind = row.tracker.kind as TrackerKindValue;
+      const field = STATE_FIELD[kind] ?? "status";
+      return {
+        id: row.id,
+        createdAt: row.createdAt.toISOString(),
+        trackerId: row.tracker.id,
+        kind,
+        label: row.tracker.label,
+        reference: row.tracker.reference,
+        title: payload.step?.title ?? payload.header?.[field] ?? payload.header?.status ?? "",
+        date: payload.step?.date ?? payload.header?.statusDate ?? "",
+        initial: payload.initial === true,
+      };
+    });
+  }
+
   /** Anonymous tally of seen statuses and stages, most frequent first (for product analytics). */
   async function statusStats(kind?: TrackerKindValue) {
     return prisma.statusObservation.findMany({
@@ -529,6 +593,7 @@ export function createTrackerService(deps: {
           expediente: row.expediente,
           dependencia: row.dependencia,
           caratula: row.caratula,
+          closed: isFinalStatus("PJN", row.situacion),
         });
       }
       return { ok: true, candidates };
@@ -562,8 +627,6 @@ export function createTrackerService(deps: {
       where: { userId_kind_reference: { userId, kind: "PJN", reference } },
     });
     if (existing && existing.status !== "FINISHED") return { ok: false, reason: "ALREADY_EXISTS" };
-    const gate = await addGate(userId);
-    if (gate !== "OK") return { ok: false, reason: gate };
     return { ok: true, reference };
   }
 
@@ -593,8 +656,14 @@ export function createTrackerService(deps: {
     if (!checked.ok) return checked;
     const read = await readCaseHeader(input);
     if (!read.ok) return read;
+    // a closed (archived) case takes no slot; an open one needs a free slot (or the trial)
+    const closed = isFinalStatus("PJN", read.header.sit_actual);
+    if (!closed) {
+      const gate = await addGate(userId);
+      if (gate !== "OK") return { ok: false, reason: gate };
+    }
     rememberPreview(previewKey(userId, checked.reference), read.header);
-    return { ok: true, header: read.header };
+    return { ok: true, header: closed ? { ...read.header, closed: "true" } : read.header };
   }
 
   async function createPjn(
@@ -611,6 +680,11 @@ export function createTrackerService(deps: {
       const read = await readCaseHeader(input);
       if (!read.ok) return read;
       header = read.header;
+    }
+    const closed = isFinalStatus("PJN", header.sit_actual);
+    if (!closed) {
+      const gate = await addGate(userId);
+      if (gate !== "OK") return { ok: false, reason: gate };
     }
     const tracker = await prisma.tracker.upsert({
       where: { userId_kind_reference: { userId, kind: "PJN", reference } },
@@ -637,6 +711,14 @@ export function createTrackerService(deps: {
       create: { trackerId: tracker.id, header: asJson(header), steps: [], contentHash: contentHash(header, []) },
       update: { header: asJson(header), steps: [], contentHash: contentHash(header, []) },
     });
+    if (closed) {
+      // an archived case: read it fully once for the history, then close it (no slot, no notices)
+      await checkPjn(tracker, { announceFinish: false });
+      await prisma.tracker.update({
+        where: { id: tracker.id },
+        data: { status: "FINISHED", notifyTelegram: false, notifyWhatsapp: false },
+      });
+    }
     const full = await prisma.tracker.findUniqueOrThrow({
       where: { id: tracker.id },
       include: { snapshot: true },
@@ -750,6 +832,8 @@ export function createTrackerService(deps: {
           nextCheckAt: new Date(now().getTime() + TRACKER_CONFIG.checkIntervalHours * HOUR_MS),
           lastError: null,
           status: finished ? "FINISHED" : "ACTIVE",
+          // a finished case is neither polled nor notified: its switches go off by themselves
+          ...(finished ? { notifyTelegram: false, notifyWhatsapp: false } : {}),
         },
       }),
     ];
@@ -780,7 +864,12 @@ export function createTrackerService(deps: {
 
     if (!tracker.initialNotified && !muted) {
       // "Case added" report: the latest stage right after the first read.
-      const payload: EventPayload = { step: latest, header: data.header, initial: true };
+      const payload: EventPayload = {
+        step: latest,
+        header: data.header,
+        initial: true,
+        notify: tracker.notifyTelegram,
+      };
       operations.push(
         prisma.trackerEvent.create({
           data: { trackerId: tracker.id, payload: asJson(payload), createdAt: new Date(base) },
@@ -805,7 +894,7 @@ export function createTrackerService(deps: {
           ? newSteps.slice(-MAX_EVENTS_PER_CHECK)
           : [null];
         steps.forEach((step, index) => {
-          const payload: EventPayload = { step, header: data.header };
+          const payload: EventPayload = { step, header: data.header, notify: tracker.notifyTelegram };
           operations.push(
             prisma.trackerEvent.create({
               data: {
@@ -857,7 +946,7 @@ export function createTrackerService(deps: {
     }
   }
 
-  async function checkPjn(tracker: Tracker): Promise<void> {
+  async function checkPjn(tracker: Tracker, options: { announceFinish?: boolean } = {}): Promise<void> {
     const ref = parsePjnReference(tracker.reference);
     if (!ref) return recordFailure(tracker, new ScraperError("bad_reference"));
     try {
@@ -870,14 +959,42 @@ export function createTrackerService(deps: {
           detail: row.detalle,
         })),
         finished: false,
-      });
+      }, options);
     } catch (error) {
       await recordFailure(tracker, error);
     }
   }
 
+  /**
+   * Closes active cases whose stored data already shows a final status. The list of final
+   * statuses is configuration, so a status added to it applies to existing cases at once,
+   * without waiting for their next check. Quiet: nobody is notified about it.
+   */
+  async function closeFinished(): Promise<number> {
+    const rows = await prisma.tracker.findMany({
+      where: { status: "ACTIVE", snapshot: { isNot: null } },
+      include: { snapshot: true },
+      take: 500,
+    });
+    const ids = rows
+      .filter((row) =>
+        reachedFinalStatus(row.kind as TrackerKindValue, {
+          header: (row.snapshot?.header ?? {}) as TrackerHeaderFields,
+          steps: (row.snapshot?.steps ?? []) as unknown as TrackerStep[],
+        }),
+      )
+      .map((row) => row.id);
+    if (ids.length === 0) return 0;
+    const result = await prisma.tracker.updateMany({
+      where: { id: { in: ids }, status: "ACTIVE" },
+      data: { status: "FINISHED", notifyTelegram: false, notifyWhatsapp: false },
+    });
+    return result.count;
+  }
+
   /** Checks trackers whose time has come (called by the worker on a timer). */
   async function runDue(limit: number = TRACKER_CONFIG.batchSize): Promise<number> {
+    await closeFinished();
     const due = await prisma.tracker.findMany({
       where: {
         status: "ACTIVE",
@@ -932,7 +1049,8 @@ export function createTrackerService(deps: {
       const { tracker } = event;
       const { user } = tracker;
       const section = TRACKER_KIND_SECTION[tracker.kind as TrackerKindValue];
-      if (user.telegramId === null || !tracker.notifyTelegram) {
+      const payload = event.payload as unknown as EventPayload;
+      if (user.telegramId === null || !(payload.notify ?? tracker.notifyTelegram)) {
         // Nobody to tell: close the event so it does not pile up.
         await prisma.trackerEvent.update({ where: { id: event.id }, data: { notifiedAt: now() } });
         continue;
@@ -1025,7 +1143,9 @@ export function createTrackerService(deps: {
   return {
     list,
     addTramite,
-    previewDnm,
+    previewTramite,
+    recentEvents,
+    closeFinished,
     statusStats,
     findPjnByProfile,
     previewPjn,

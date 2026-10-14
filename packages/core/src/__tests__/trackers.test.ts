@@ -592,7 +592,7 @@ describe("Migraciones trackers", () => {
       },
     });
     const userId = await withBirthDate(core, "1990-03-05");
-    const preview = await core.trackers.previewDnm(userId, "DNM_DNI", "1129912025");
+    const preview = await core.trackers.previewTramite(userId, "DNM_DNI", "1129912025");
     // identity only: no status, no steps
     expect(preview).toEqual({
       ok: true,
@@ -652,7 +652,7 @@ describe("Migraciones trackers", () => {
     const userId = await withBirthDate(core, "1990-03-05");
     await prisma.user.update({ where: { id: userId }, data: { paidCases: 0, telegramId: 99n } });
 
-    const preview = await core.trackers.previewDnm(userId, "DNM_DNI", "1129912025");
+    const preview = await core.trackers.previewTramite(userId, "DNM_DNI", "1129912025");
     expect(preview).toMatchObject({ ok: true, header: { closed: "true", state: "RESUELTO" } });
 
     const added = await core.trackers.addTramite(userId, "DNM_DNI", "1129912025");
@@ -670,7 +670,7 @@ describe("Migraciones trackers", () => {
       },
     });
     const userId = await withBirthDate(core, "1990-03-05");
-    expect(await core.trackers.previewDnm(userId, "DNM_CITIZENSHIP", "2275808")).toEqual({
+    expect(await core.trackers.previewTramite(userId, "DNM_CITIZENSHIP", "2275808")).toEqual({
       ok: false,
       reason: "MISMATCH",
     });
@@ -714,6 +714,89 @@ describe("final statuses end a case", () => {
     expect(byKind).toEqual({ RENAPER: "FINISHED", PJN: "FINISHED" });
   });
 
+  it("switches notifications off when a case finishes, but still delivers its last report", async () => {
+    let status = "Verificado";
+    const core = makeCore({ scraper: { renaper: async () => renaperAnswer({ header: { status } }) } });
+    const userId = await newUser(core);
+    await subscribe(userId);
+    await prisma.user.update({ where: { id: userId }, data: { telegramId: 77n } });
+    await core.trackers.addTramite(userId, "RENAPER", "755824304");
+    await core.trackers.runDue();
+    for (const pending of await core.trackers.pendingNotifications()) await core.trackers.markNotified(pending.eventId);
+
+    status = "Embalado";
+    await prisma.tracker.updateMany({ where: { userId }, data: { nextCheckAt: new Date() } });
+    await core.trackers.runDue();
+    const [finished] = await core.trackers.list(userId);
+    expect(finished).toMatchObject({ status: "FINISHED", notifyTelegram: false, notifyWhatsapp: false });
+
+    // the report that closed the case was found while Telegram was on, so it is still sent
+    const pending = await core.trackers.pendingNotifications();
+    expect(pending).toHaveLength(1);
+    expect(pending[0]!.payload.header.status).toBe("Embalado");
+    // and a closed case is left out of the digest
+    expect(await core.trackers.latestSteps(userId)).toHaveLength(0);
+  });
+
+  it("adds a closed RENAPER or court case as finished: no slot, no notices, read once", async () => {
+    let renaperCalls = 0;
+    const core = makeCore({
+      scraper: {
+        renaper: async () => {
+          renaperCalls += 1;
+          return renaperAnswer({ header: { status: "Embalado", office: "RC PARANA" } });
+        },
+        pjnCase: async (input) =>
+          input.headerOnly
+            ? { header: { expediente: "CNE 7900/2026", dependencia: "J", sit_actual: "ARCHIVESE", caratula: "X" } }
+            : {
+                header: { expediente: "CNE 7900/2026", dependencia: "J", sit_actual: "ARCHIVESE", caratula: "X" },
+                actuaciones: [{ orden: 1, fecha: "3/09/2026", oficina: "", tipo: "ARCHIVESE", detalle: "" }],
+              },
+      },
+    });
+    const userId = await newUser(core);
+    await prisma.user.update({ where: { id: userId }, data: { telegramId: 5n } });
+    // trial user who already uses its single case: a closed one still goes in
+    await prisma.user.update({ where: { id: userId }, data: { subscriptionUntil: null } });
+    const open = makeCore({ scraper: { renaper: async () => renaperAnswer() } });
+    await open.trackers.addTramite(userId, "CORREO", "100000001");
+
+    const preview = await core.trackers.previewTramite(userId, "RENAPER", "755824304");
+    expect(preview).toMatchObject({ ok: true, header: { closed: "true", state: "Embalado" } });
+    expect(await core.trackers.addTramite(userId, "RENAPER", "755824304")).toMatchObject({ ok: true });
+    expect(renaperCalls).toBe(1);
+
+    expect(await core.trackers.previewPjn(userId, { jurisdiction: "4", number: "7900", year: "2026" })).toMatchObject({
+      ok: true,
+      header: { closed: "true" },
+    });
+    expect(await core.trackers.addPjn(userId, { jurisdiction: "4", number: "7900", year: "2026" })).toMatchObject({
+      ok: true,
+    });
+    const byKind = Object.fromEntries((await core.trackers.list(userId)).map((item) => [item.kind, item]));
+    expect(byKind.RENAPER).toMatchObject({ status: "FINISHED", notifyTelegram: false });
+    expect(byKind.PJN).toMatchObject({ status: "FINISHED", notifyTelegram: false });
+    expect(byKind.PJN!.steps).toHaveLength(1);
+    expect(await prisma.telegramOutbox.count()).toBe(0);
+  });
+
+  it("closes an active case whose stored status is already final, without waiting for a check", async () => {
+    const core = makeCore();
+    const userId = await newUser(core);
+    await subscribe(userId);
+    const added = await core.trackers.addTramite(userId, "RENAPER", "755824304");
+    if (!added.ok) throw new Error("add failed");
+    await prisma.trackerSnapshot.create({
+      data: { trackerId: added.tracker.id, header: { status: "Embalado" }, steps: [], contentHash: "h" },
+    });
+    await prisma.tracker.update({ where: { id: added.tracker.id }, data: { nextCheckAt: new Date(Date.now() + 3_600_000) } });
+
+    expect(await core.trackers.closeFinished()).toBe(1);
+    expect((await core.trackers.list(userId))[0]).toMatchObject({ status: "FINISHED", notifyTelegram: false });
+    expect(await core.trackers.closeFinished()).toBe(0);
+  });
+
   it("finishes a Correo case when the latest stage is delivery", async () => {
     const core = makeCore({
       scraper: {
@@ -731,6 +814,36 @@ describe("final statuses end a case", () => {
     await core.trackers.addTramite(userId, "CORREO", "755824304");
     await core.trackers.runDue();
     expect((await core.trackers.list(userId))[0]!.status).toBe("FINISHED");
+  });
+});
+
+describe("recent changes feed", () => {
+  it("lists the latest changes of the user's cases, newest first, and no one else's", async () => {
+    let step = 0;
+    const core = makeCore({
+      scraper: {
+        renaper: async () =>
+          renaperAnswer({
+            steps: Array.from({ length: step + 1 }, (_, i) => ({ date: `2026-10-1${i}`, title: `STAGE ${i}`, detail: "" })),
+          }),
+      },
+    });
+    const userId = await newUser(core);
+    const other = await newUser(core, "other@example.com");
+    await subscribe(userId);
+    await subscribe(other);
+    await core.trackers.addTramite(userId, "RENAPER", "755824304", "Mine");
+    await core.trackers.addTramite(other, "RENAPER", "111111111");
+    await core.trackers.runDue(10);
+    step = 1;
+    await prisma.tracker.updateMany({ data: { nextCheckAt: new Date() } });
+    await core.trackers.runDue(10);
+
+    const events = await core.trackers.recentEvents(userId);
+    expect(events.map((event) => [event.label, event.title, event.initial])).toEqual([
+      ["Mine", "STAGE 1", false],
+      ["Mine", "STAGE 0", true],
+    ]);
   });
 });
 
