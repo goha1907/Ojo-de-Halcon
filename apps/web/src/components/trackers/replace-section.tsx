@@ -13,7 +13,8 @@ export function ReplaceSection({
   t: TranslateFn;
   locale: string;
 }) {
-  if (tracker.status === "PAUSED") return null;
+  // a closed or paused case is not replaced: the user adds a new one instead (its place is free)
+  if (tracker.status === "PAUSED" || tracker.status === "FINISHED") return null;
   // before the first data the card itself offers fixing the number or deleting
   if (tracker.notStarted) return null;
   if (tracker.kind !== "PJN") {

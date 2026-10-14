@@ -2,10 +2,10 @@ import type { MessageKey, TranslateFn } from "@ojo/shared";
 
 const PROBLEMS = [1, 2, 3] as const;
 const SOURCES: ReadonlyArray<{ key: MessageKey; soon?: boolean }> = [
-  { key: "landing.sources.renaper" },
-  { key: "landing.sources.correo" },
-  { key: "landing.sources.pjn" },
   { key: "landing.sources.migraciones" },
+  { key: "landing.sources.renaper" },
+  { key: "landing.sources.pjn" },
+  { key: "landing.sources.correo" },
 ];
 
 /** The pain the service removes, and what it follows today. */

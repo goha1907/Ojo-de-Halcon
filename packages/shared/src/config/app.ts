@@ -55,6 +55,8 @@ export const APP_CONFIG = {
     email: { windowMs: 60 * 60_000, max: 10 },
     /** Adding trackers and searching courts (each may start a browser), per user. */
     trackerAdd: { windowMs: 10 * 60_000, max: 20 },
+    /** Feedback messages from the landing page, per client IP. */
+    feedback: { windowMs: 60 * 60_000, max: 5 },
     /** Creating Telegram link codes and polling their status, per user. */
     telegramLink: { windowMs: 60_000, max: 90 },
   },
@@ -121,6 +123,7 @@ export const API_ROUTES = {
   pjnConfirm: "/api/trackers/pjn/confirm",
   pjnPreview: "/api/trackers/pjn/preview",
   trackerPreview: "/api/trackers/preview",
+  feedback: "/api/feedback",
   people: "/api/people",
   billingStub: "/api/billing/stub",
   billingQuote: "/api/billing/quote",

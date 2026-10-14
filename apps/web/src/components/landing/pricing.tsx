@@ -1,4 +1,4 @@
-import { APP_CONFIG, PRICING, ROUTES, casesPrice, type TranslateFn } from "@ojo/shared";
+import { APP_CONFIG, PRICING, ROUTES, casesPrice, settingsHref, type TranslateFn } from "@ojo/shared";
 import Link from "next/link";
 import { formatMoney } from "@/lib/money";
 import { Calculator } from "./calculator";
@@ -7,9 +7,12 @@ const PLANS = [1, 3, 5] as const;
 const POPULAR = 3;
 
 /** Plans for 1, 3 and 5 cases, then a calculator for any number. Prices come from the config ladder. */
-export function Pricing({ t, locale }: { t: TranslateFn; locale: string }) {
+export function Pricing({ t, locale, signedIn }: { t: TranslateFn; locale: string; signedIn: boolean }) {
   const days = APP_CONFIG.limits.subscriptionDays;
   const money = (amount: number) => formatMoney(amount, PRICING.currency, locale);
+  // a visitor signs in first; a signed-in user goes straight to buying places for that many trackings
+  const buyHref = (count: number) =>
+    signedIn ? `${settingsHref("subscription")}?cases=${count}` : ROUTES.login;
   return (
     <section id="pricing" className="scroll-mt-20 mx-auto max-w-6xl space-y-8 px-4 py-16">
       <div className="space-y-2">
@@ -47,20 +50,20 @@ export function Pricing({ t, locale }: { t: TranslateFn; locale: string }) {
                 ))}
               </ul>
               <Link
-                href={ROUTES.register}
+                href={buyHref(count)}
                 className={`mt-6 inline-flex justify-center rounded-lg px-4 py-2.5 text-sm font-semibold ${
                   popular
                     ? "bg-brand-600 text-white hover:bg-brand-700"
                     : "border border-slate-300 text-slate-900 hover:bg-slate-50"
                 }`}
               >
-                {t("landing.pricing.choose")}
+                {t("landing.pricing.buy")}
               </Link>
             </div>
           );
         })}
       </div>
-      <Calculator />
+      <Calculator signedIn={signedIn} />
       <p className="text-sm text-slate-500">{t("landing.pricing.trial", { days: APP_CONFIG.limits.trialDays })}</p>
       <p className="text-sm text-slate-500">{t("landing.pricing.note")}</p>
     </section>

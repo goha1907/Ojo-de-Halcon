@@ -14,7 +14,7 @@ import { AddTrackerButton } from "@/components/trackers/add-tracker-button";
 import { CourtFinder } from "@/components/trackers/court-finder";
 import { DniCard } from "@/components/trackers/dni-card";
 import { TrackerBoard } from "@/components/trackers/tracker-board";
-import { lastChange } from "@/lib/tracker-view";
+import { currentStatus, displayNumber, lastChange } from "@/lib/tracker-view";
 import { getCore } from "@/server/core";
 import { getT } from "@/server/i18n";
 import { requireUser } from "@/server/session";
@@ -77,6 +77,16 @@ export default async function ServicePage({
               number: tracker.reference,
               addedAt: new Date(tracker.addedAt).getTime(),
               changedAt: lastChange(tracker),
+              search: [
+                tracker.label,
+                displayNumber(tracker),
+                tracker.reference,
+                currentStatus(tracker),
+                ...Object.values(tracker.header),
+                ...tracker.steps.flatMap((step) => [step.title, step.detail, step.date]),
+              ]
+                .filter(Boolean)
+                .join(" "),
             }))}
           />
           {trackers.length === 0 && kind !== "PJN" && (

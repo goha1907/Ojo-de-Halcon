@@ -45,6 +45,7 @@ model User {
   telegramLinkCode TelegramLinkCode?
   trackers         Tracker[]
   payments         Payment[]
+  feedback         FeedbackMessage[]
 }
 
 model Session {
@@ -178,6 +179,25 @@ model StatusObservation {
 
   @@unique([kind, field, value])
   @@index([kind, field])
+}
+
+/// A message written through the contact form of the landing page; read in the admin area.
+model FeedbackMessage {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  /// tracking | technical | subscription | suggestion | partnership | other
+  topic     String
+  name      String?
+  email     String
+  message   String
+  locale    String   @default("ru")
+  /// Set when the sender was signed in.
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// NEW | READ | ANSWERED | SPAM (handled in the admin area).
+  status    String   @default("NEW")
+
+  @@index([status, createdAt])
 }
 
 /// A detected change; `notifiedAt` is null until the Telegram message is sent.

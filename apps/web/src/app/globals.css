@@ -15,3 +15,9 @@ body {
 html {
   scroll-behavior: smooth;
 }
+
+/* matches of the page search (CSS Custom Highlight API) */
+::highlight(ojo-search) {
+  background-color: #fde68a;
+  color: inherit;
+}

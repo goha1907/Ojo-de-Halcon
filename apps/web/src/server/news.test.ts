@@ -26,8 +26,8 @@ describe("parseNewsFilename", () => {
 });
 
 describe("pickLocale", () => {
-  const item = (slug: string, locale: "ru" | "es", date = "2026-10-14"): NewsItem => ({
-    slug, date, locale, title: `${slug}-${locale}`, summary: "", body: "",
+  const item = (slug: string, locale: "ru" | "es", date = "2026-10-14", time = "00:00"): NewsItem => ({
+    slug, date, time, locale, title: `${slug}-${locale}`, summary: "", body: "",
   });
 
   it("prefers the requested locale, falls back to the default and sorts newest first", () => {
@@ -40,5 +40,17 @@ describe("pickLocale", () => {
       "es",
     );
     expect(picked.map((n) => n.title)).toEqual(["2026-10-20-b-ru", "2026-10-14-a-es"]);
+  });
+
+  it("orders entries of one day by time, newest first", () => {
+    const picked = pickLocale(
+      [
+        item("2026-10-14-morning", "ru", "2026-10-14", "09:00"),
+        item("2026-10-14-evening", "ru", "2026-10-14", "18:30"),
+        item("2026-10-14-noon", "ru", "2026-10-14", "12:00"),
+      ],
+      "ru",
+    );
+    expect(picked.map((n) => n.slug)).toEqual(["2026-10-14-evening", "2026-10-14-noon", "2026-10-14-morning"]);
   });
 });

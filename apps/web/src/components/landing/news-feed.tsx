@@ -9,6 +9,7 @@ import { Markdown } from "@/components/news/markdown";
 export interface NewsListItem {
   slug: string;
   date: string;
+  time: string;
   title: string;
 }
 
@@ -18,7 +19,16 @@ interface Page {
   pages: number;
 }
 
-type Opened = { title: string; date: string; body: string } | "loading" | "error" | null;
+interface Neighbour {
+  slug: string;
+  title: string;
+}
+
+type Opened =
+  | { title: string; date: string; time: string; body: string; newer: Neighbour | null; older: Neighbour | null }
+  | "loading"
+  | "error"
+  | null;
 
 /** Titles only, a few per page, paged in place; an entry opens in a modal. Scales to any number of news. */
 export function NewsFeed({ initial }: { initial: Page }) {
@@ -63,8 +73,8 @@ export function NewsFeed({ initial }: { initial: Page }) {
                 onClick={() => void open(item.slug)}
                 className="flex w-full items-baseline gap-4 px-5 py-3.5 text-left hover:bg-slate-50"
               >
-                <time dateTime={item.date} className="shrink-0 text-xs text-slate-500">
-                  {item.date}
+                <time dateTime={`${item.date}T${item.time}`} className="shrink-0 text-xs text-slate-500">
+                  {item.date} {item.time}
                 </time>
                 <span className="font-medium text-slate-900">{item.title}</span>
               </button>
@@ -105,11 +115,41 @@ export function NewsFeed({ initial }: { initial: Page }) {
         {opened === "loading" && <p className="text-sm text-slate-500">{t("landing.news.loading")}</p>}
         {opened === "error" && <p className="text-sm text-red-600">{t("landing.news.error")}</p>}
         {entry && (
-          <div className="max-h-[60vh] overflow-y-auto">
-            <time className="text-xs text-slate-500" dateTime={entry.date}>
-              {entry.date}
-            </time>
-            <Markdown>{entry.body}</Markdown>
+          <div className="space-y-4">
+            <div className="max-h-[55vh] overflow-y-auto">
+              <time className="text-xs text-slate-500" dateTime={`${entry.date}T${entry.time}`}>
+                {entry.date} {entry.time}
+              </time>
+              <Markdown>{entry.body}</Markdown>
+            </div>
+            {(entry.newer || entry.older) && (
+              <div className="grid gap-2 border-t border-slate-200 pt-3 sm:grid-cols-2">
+                {entry.newer ? (
+                  <button
+                    type="button"
+                    onClick={() => void open(entry.newer!.slug)}
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  >
+                    <span className="block text-xs text-slate-500">← {t("landing.news.newerEntry")}</span>
+                    <span className="block truncate font-medium text-slate-900">{entry.newer.title}</span>
+                  </button>
+                ) : (
+                  <span />
+                )}
+                {entry.older ? (
+                  <button
+                    type="button"
+                    onClick={() => void open(entry.older!.slug)}
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-right text-sm hover:bg-slate-50"
+                  >
+                    <span className="block text-xs text-slate-500">{t("landing.news.olderEntry")} →</span>
+                    <span className="block truncate font-medium text-slate-900">{entry.older.title}</span>
+                  </button>
+                ) : (
+                  <span />
+                )}
+              </div>
+            )}
           </div>
         )}
       </Modal>

@@ -1,6 +1,8 @@
-import { APP_CONFIG, PRICING, TRACKER_KIND_SECTION, ROUTES, sectionHref, settingsHref, type MessageKey } from "@ojo/shared";
+import { PRICING, TRACKER_KIND_SECTION, ROUTES, sectionHref, settingsHref, type MessageKey } from "@ojo/shared";
 import { Alert, Card } from "@ojo/ui";
 import Link from "next/link";
+import { StatTile } from "@/components/stat-tile";
+import { SubscriptionSummary } from "@/components/subscription/summary";
 import { nowMs } from "@/lib/days";
 import { TONE_STYLES, toneOf } from "@/lib/status-tones";
 import { currentStatus, displayNumber, lastChange } from "@/lib/tracker-view";
@@ -13,39 +15,6 @@ const DAY_MS = 86_400_000;
 /** How close an end date must be to be worth a warning. */
 const SOON_DAYS = 7;
 const PAGE_SIZE = 5;
-
-/** Colour of a summary tile: the same language as the card edges, plus blue for paid places. */
-const TILE_TONES = {
-  tracking: { edge: TONE_STYLES.tracking.edge, number: "text-emerald-600" },
-  removing: { edge: TONE_STYLES.removing.edge, number: "text-amber-500" },
-  finished: { edge: TONE_STYLES.finished.edge, number: "text-red-600" },
-  slots: {
-    edge: "border-l-blue-500 shadow-[-8px_0_16px_-10px_rgba(59,130,246,0.7)]",
-    number: "text-blue-600",
-  },
-  plain: { edge: "border-l-slate-200", number: "text-slate-900" },
-} as const;
-
-function Tile({
-  label,
-  value,
-  hint,
-  tone = "plain",
-}: {
-  label: string;
-  value: string | number;
-  hint?: string;
-  tone?: keyof typeof TILE_TONES;
-}) {
-  const style = TILE_TONES[tone];
-  return (
-    <div className={`rounded-2xl border border-l-4 border-slate-200 bg-white p-4 shadow-sm ${style.edge}`}>
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className={`mt-1 text-2xl font-bold ${style.number}`}>{value}</div>
-      {hint && <div className="mt-0.5 text-xs text-slate-500">{hint}</div>}
-    </div>
-  );
-}
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const user = await requireUser();
@@ -149,8 +118,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const page = Math.min(Math.max(1, Math.trunc(Number(pageParam)) || 1), pages);
   const rows = byChange.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const pageHref = (n: number) => (n === 1 ? ROUTES.dashboard : `${ROUTES.dashboard}?page=${n}`);
-  const periodStart = untilMs === null ? null : untilMs - APP_CONFIG.limits.subscriptionDays * DAY_MS;
-  const usedShare = billing.paidCases > 0 ? Math.min(100, Math.round((billing.activeCases / billing.paidCases) * 100)) : 0;
   const statusBadge = (item: (typeof trackers)[number]) => {
     const tone = toneOf(item.status, item.keptInSubscription);
     const text = {
@@ -173,23 +140,23 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       </header>
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Tile label={t("dash.tile.tracking")} value={tracking.length} tone="tracking" />
-        <Tile
+        <StatTile label={t("dash.tile.tracking")} value={tracking.length} tone="tracking" />
+        <StatTile label={t("dash.tile.removing")} value={removing.length} tone="removing" />
+        <StatTile
           label={t("dash.tile.finished")}
           value={finished.length}
           tone="finished"
           hint={paused.length ? t("dash.tile.paused", { count: paused.length }) : undefined}
         />
-        <Tile label={t("dash.tile.removing")} value={removing.length} tone="removing" />
         {subscribed ? (
-          <Tile
+          <StatTile
             label={t("dash.tile.slots")}
             value={`${billing.activeCases} / ${billing.paidCases}`}
             tone="slots"
             hint={t("dash.tile.free", { count: billing.freeCases })}
           />
         ) : (
-          <Tile
+          <StatTile
             label={t("dash.tile.plan")}
             value={access.plan === "trial" ? t("dash.tile.trial") : t("dash.tile.noPlan")}
             hint={access.until ? t("dash.tile.until", { date: day(access.until) }) : undefined}
@@ -312,63 +279,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       </Card>
 
       <Card title={t("dash.sub.title")}>
-        {subscribed && untilMs !== null && periodStart !== null ? (
-          <div className="space-y-5">
-            <div>
-              <div className="mb-1 flex justify-between text-sm">
-                <span className="text-slate-600">{t("dash.sub.usage")}</span>
-                <span className="font-medium text-slate-900">
-                  {billing.activeCases} / {billing.paidCases}
-                </span>
-              </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-brand-600" style={{ width: `${usedShare}%` }} />
-              </div>
-            </div>
-            <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <dt className="text-xs text-slate-500">{t("settings.sub.started")}</dt>
-                <dd className="font-medium text-slate-900">{day(periodStart)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">{t("settings.sub.nextCharge")}</dt>
-                <dd className="font-medium text-slate-900">
-                  {day(untilMs)}
-                  <span className="ml-1 font-normal text-slate-500">({t("dash.sub.daysLeft", { count: Math.max(0, daysLeft ?? 0) })})</span>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">{t("settings.sub.sum")}</dt>
-                <dd className="font-medium text-slate-900">{money(billing.currentPrice)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">{t("settings.sub.nextAmount")}</dt>
-                <dd className="font-medium text-slate-900">
-                  {billing.keptCases > 0 ? money(billing.nextPeriodPrice) : t("billing.cases.nextNone")}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">{t("dash.sub.free")}</dt>
-                <dd className="font-medium text-slate-900">{billing.freeCases}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">{t("settings.sub.disabledNext")}</dt>
-                <dd className="font-medium text-slate-900">{billing.cancelledCases}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">{t("settings.sub.finished")}</dt>
-                <dd className="font-medium text-slate-900">{billing.finishedCases}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">{t("dash.sub.lastPayment")}</dt>
-                <dd className="font-medium text-slate-900">
-                  {payments[0]
-                    ? `${day(payments[0].createdAt)} · ${formatMoney(payments[0].amount, payments[0].currency, locale)}`
-                    : "—"}
-                </dd>
-              </div>
-            </dl>
-          </div>
+        {subscribed && access.until ? (
+          <SubscriptionSummary
+            billing={billing}
+            untilIso={access.until}
+            daysLeft={daysLeft ?? 0}
+            lastPayment={payments[0] ?? null}
+          />
         ) : (
           <p className="text-sm text-slate-600">{t("settings.sub.noSubscription")}</p>
         )}

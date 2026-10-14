@@ -72,14 +72,24 @@ export function HowItWorks(): ReactNode {
       <div className="mx-auto max-w-6xl space-y-8 px-4 py-16">
         <h2 className="text-2xl font-bold text-slate-900">{t("landing.how.title")}</h2>
         <div className="grid items-center gap-8 md:grid-cols-2">
-          <div className="space-y-4" aria-live="polite">
-            <div className="text-sm font-semibold text-brand-600">{t("landing.how.step", { n: step })}</div>
-            <h3 className="text-xl font-semibold text-slate-900">
-              {t(`landing.how.${step}.title` as MessageKey)}
-            </h3>
-            <p className="leading-7 text-slate-600">
-              {t(`landing.how.${step}.text` as MessageKey)}
-            </p>
+          <div className="space-y-4">
+            {/* every step sits in the same grid cell: the cell is as tall as the tallest one,
+                so switching steps never moves the page */}
+            <div className="grid" aria-live="polite">
+              {STEPS.map((n) => (
+                <div
+                  key={n}
+                  aria-hidden={n !== step}
+                  className={cn("col-start-1 row-start-1 space-y-4", n !== step && "invisible")}
+                >
+                  <div className="text-sm font-semibold text-brand-600">{t("landing.how.step", { n })}</div>
+                  <h3 className="text-xl font-semibold text-slate-900">
+                    {t(`landing.how.${n}.title` as MessageKey)}
+                  </h3>
+                  <p className="leading-7 text-slate-600">{t(`landing.how.${n}.text` as MessageKey)}</p>
+                </div>
+              ))}
+            </div>
             <div className="flex items-center gap-3 pt-2">
               <button
                 type="button"
@@ -111,8 +121,16 @@ export function HowItWorks(): ReactNode {
               </button>
             </div>
           </div>
-          <div className="flex min-h-48 items-center justify-center rounded-2xl bg-slate-50 p-6">
-            <Mock step={step} />
+          <div className="grid rounded-2xl bg-slate-50 p-6">
+            {STEPS.map((n) => (
+              <div
+                key={n}
+                aria-hidden={n !== step}
+                className={cn("col-start-1 row-start-1 flex items-center justify-center", n !== step && "invisible")}
+              >
+                <Mock step={n} />
+              </div>
+            ))}
           </div>
         </div>
       </div>

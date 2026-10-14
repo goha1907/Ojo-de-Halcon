@@ -4,8 +4,10 @@ import { LegalLinks } from "./legal-links";
 import { PreferenceSelectors } from "./preference-selectors";
 import { LANDING_SECTIONS } from "./sections";
 
-/** Placeholder payment method until the provider is final. */
-const PAYMENT_METHODS = ["Mercado Pago"] as const;
+/** Accepted payment methods: logo files live in `public/payments` (official artwork, 2x). */
+const PAYMENT_METHODS = [
+  { name: "Mercado Pago", logo: "/payments/mercado-pago.png", width: 142, height: 37 },
+] as const;
 
 export function LandingFooter({ t }: { t: TranslateFn }) {
   return (
@@ -45,9 +47,11 @@ export function LandingFooter({ t }: { t: TranslateFn }) {
           </div>
           <div className="flex items-center justify-center gap-2 md:justify-end">
             <span>{t("landing.footer.payments")}:</span>
-            {PAYMENT_METHODS.map((name) => (
-              <span key={name} className="rounded-md border border-slate-600 px-2 py-1 text-slate-200">
-                {name}
+            {PAYMENT_METHODS.map((method) => (
+              // the logos are dark artwork: they sit on a white chip, as payment badges usually do
+              <span key={method.name} className="inline-flex items-center rounded-md bg-white px-2.5 py-1.5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={method.logo} alt={method.name} width={method.width} height={method.height} className="h-7 w-auto" />
               </span>
             ))}
           </div>

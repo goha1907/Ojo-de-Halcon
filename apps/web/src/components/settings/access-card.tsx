@@ -1,16 +1,19 @@
 "use client";
 
 import type { AccessState, BillingStateDto, PaymentDto } from "@ojo/core";
-import { API_ROUTES, APP_CONFIG, SETTINGS_SECTIONS, casesPrice, type MessageKey } from "@ojo/shared";
+import { API_ROUTES, SETTINGS_SECTIONS, casesPrice, type MessageKey } from "@ojo/shared";
 import { Alert, Button, Card, TextField } from "@ojo/ui";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { apiRequest } from "@/lib/api-client";
 import { describeApiError } from "@/lib/api-errors";
+import { StatTile } from "@/components/stat-tile";
+import { SubscriptionSummary } from "@/components/subscription/summary";
 import { formatMoney } from "@/lib/money";
 
-const DAY_MS = 86_400_000;
+/** Payments shown on one page of the log. */
+const LOG_PAGE_SIZE = 10;
 
 const PLAN_KEY: Record<AccessState["plan"], MessageKey> = {
   trial: "settings.access.trial",
@@ -25,41 +28,41 @@ interface Props {
   billing: BillingStateDto;
   payments: PaymentDto[];
   stubEnabled: boolean;
-}
-
-function Tile({ label, value, tone }: { label: string; value: number; tone?: "warn" }) {
-  return (
-    <div className="rounded-xl border border-slate-200 px-4 py-3">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className={`text-2xl font-bold ${tone === "warn" && value > 0 ? "text-amber-600" : "text-slate-900"}`}>
-        {value}
-      </div>
-    </div>
-  );
+  /** Number picked on the landing page (cases to buy), if any. */
+  initialCount?: number;
+  /** Days left of the running period. */
+  daysLeft: number;
 }
 
 /** Subscription page: purchase, slot analytics, amounts and dates, payment log, test buttons. */
-export function AccessCard({ access, billing, payments, stubEnabled }: Props) {
+export function AccessCard({ access, billing, payments, stubEnabled, initialCount, daysLeft }: Props) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
+  const [logPage, setLogPage] = useState(1);
+  const logPages = Math.max(1, Math.ceil(payments.length / LOG_PAGE_SIZE));
   const [error, setError] = useState("");
   const subscribed = access.plan === "subscription";
   // a running subscription grows by the entered number; without one the number is the whole subscription
-  const [count, setCount] = useState(subscribed ? 1 : Math.max(1, billing.keptCases));
+  const [count, setCount] = useState(() => {
+    const floor = subscribed ? 1 : Math.max(1, billing.keptCases);
+    const room = subscribed ? billing.maxCases - billing.paidCases : billing.maxCases;
+    return initialCount ? Math.min(Math.max(initialCount, floor), Math.max(floor, room)) : floor;
+  });
 
   const money = (amount: number) => formatMoney(amount, billing.currency, locale);
   const day = (iso: string | Date) => new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(iso));
   const dateTime = (iso: string) =>
     new Intl.DateTimeFormat(locale, { dateStyle: "long", timeStyle: "short" }).format(new Date(iso));
   const until = access.until && subscribed ? new Date(access.until) : null;
-  const periodStart = until ? new Date(until.getTime() - APP_CONFIG.limits.subscriptionDays * DAY_MS) : null;
 
   const minCount = subscribed ? 1 : Math.max(1, billing.keptCases);
   const maxCount = subscribed ? billing.maxCases - billing.paidCases : billing.maxCases;
   const valid = Number.isInteger(count) && count >= minCount && count <= maxCount;
   const target = subscribed ? billing.paidCases + count : count;
   const price = subscribed ? casesPrice(target) - casesPrice(billing.paidCases) : casesPrice(target);
+  // what the subscription holds now: shown while the typed number is not usable
+  const currentTotal = subscribed ? billing.paidCases : billing.keptCases;
   const cancelledAll = subscribed && billing.activeCases > 0 && billing.keptCases === 0;
 
   async function run(name: string, action: () => Promise<unknown>) {
@@ -92,7 +95,7 @@ export function AccessCard({ access, billing, payments, stubEnabled }: Props) {
                 onChange={(e) => setCount(e.target.value === "" ? Number.NaN : Number(e.target.value))}
               />
             </div>
-            <p className="text-sm text-slate-600">{t("settings.sub.total", { count: valid ? target : 0 })}</p>
+            <p className="text-sm text-slate-600">{t("settings.sub.total", { count: valid ? target : currentTotal })}</p>
             <Button
               disabled={!valid}
               loading={busy === "buy"}
@@ -117,41 +120,27 @@ export function AccessCard({ access, billing, payments, stubEnabled }: Props) {
       {subscribed && (
         <Card title={t("settings.sub.slots")}>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            <Tile label={t("settings.sub.bought")} value={billing.paidCases} />
-            <Tile label={t("settings.sub.used")} value={billing.activeCases} />
-            <Tile label={t("settings.sub.free")} value={billing.freeCases} />
-            <Tile label={t("settings.sub.disabledNext")} value={billing.cancelledCases} tone="warn" />
-            <Tile label={t("settings.sub.finished")} value={billing.finishedCases} />
-            <Tile label={t("settings.sub.paused")} value={billing.pausedCases} />
+            <StatTile label={t("settings.sub.bought")} value={billing.paidCases} tone="slots" />
+            <StatTile label={t("settings.sub.used")} value={billing.activeCases} tone="finished" />
+            <StatTile label={t("settings.sub.free")} value={billing.freeCases} tone="tracking" />
+            <StatTile label={t("settings.sub.disabledNext")} value={billing.cancelledCases} tone="removing" />
+            <StatTile label={t("settings.sub.finished")} value={billing.finishedCases} tone="finished" />
+            <StatTile label={t("settings.sub.paused")} value={billing.pausedCases} />
           </div>
         </Card>
       )}
 
       <Card title={t("settings.sub.info")}>
-        {subscribed && until && periodStart ? (
+        {subscribed && until ? (
           <div className="space-y-4">
-            <dl className="grid gap-3 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-xs text-slate-500">{t("settings.sub.sum")}</dt>
-                <dd className="text-lg font-semibold text-slate-900">{money(billing.currentPrice)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">{t("settings.sub.started")}</dt>
-                <dd className="font-medium text-slate-900">{day(periodStart)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">{t("settings.sub.nextCharge")}</dt>
-                <dd className="font-medium text-slate-900">{day(until)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">{t("settings.sub.nextAmount")}</dt>
-                <dd className="font-medium text-slate-900">
-                  {billing.keptCases > 0
-                    ? `${money(billing.nextPeriodPrice)} · ${t("landing.pricing.cases", { count: billing.keptCases })}`
-                    : t("billing.cases.nextNone")}
-                </dd>
-              </div>
-            </dl>
+            <SubscriptionSummary
+              billing={billing}
+              untilIso={access.until!}
+              daysLeft={daysLeft}
+              lastPayment={payments[0] ?? null}
+              withPlaces={false}
+              withLastPayment={false}
+            />
 
             {billing.activeCases > 0 && (
               <div className="space-y-1">
@@ -230,18 +219,62 @@ export function AccessCard({ access, billing, payments, stubEnabled }: Props) {
         {payments.length === 0 ? (
           <p className="text-sm text-slate-500">{t("billing.historyEmpty")}</p>
         ) : (
-          <ul className="divide-y divide-slate-100 text-sm">
-            {payments.map((payment) => (
-              <li key={payment.id} className="flex justify-between gap-3 py-2 text-slate-700">
-                <span>
-                  {dateTime(payment.createdAt)} ·{" "}
-                  {t(`billing.kind.${payment.kind}` as MessageKey, { count: payment.casesDelta })}
-                  <span className="text-slate-400"> ({t("billing.stubBadge")})</span>
+          <div className="space-y-3">
+            <ul className="divide-y divide-slate-100 text-sm">
+              {payments.slice((logPage - 1) * LOG_PAGE_SIZE, logPage * LOG_PAGE_SIZE).map((payment) => (
+                <li key={payment.id} className="flex justify-between gap-3 py-2 text-slate-700">
+                  <span>
+                    {dateTime(payment.createdAt)} ·{" "}
+                    {t(`billing.kind.${payment.kind}` as MessageKey, { count: payment.casesDelta })}
+                    <span className="text-slate-400"> ({t("billing.stubBadge")})</span>
+                  </span>
+                  <span className="font-medium">{formatMoney(payment.amount, payment.currency, locale)}</span>
+                </li>
+              ))}
+            </ul>
+            {logPages > 1 && (
+              <nav aria-label={t("dash.table.pages")} className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                <span className="text-slate-500">
+                  {t("dash.table.range", {
+                    from: (logPage - 1) * LOG_PAGE_SIZE + 1,
+                    to: Math.min(logPage * LOG_PAGE_SIZE, payments.length),
+                    total: payments.length,
+                  })}
                 </span>
-                <span className="font-medium">{formatMoney(payment.amount, payment.currency, locale)}</span>
-              </li>
-            ))}
-          </ul>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={logPage <= 1}
+                    onClick={() => setLogPage(logPage - 1)}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    ←
+                  </button>
+                  {Array.from({ length: logPages }, (_, index) => index + 1).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      aria-current={n === logPage ? "page" : undefined}
+                      onClick={() => setLogPage(n)}
+                      className={`rounded-lg border px-3 py-1.5 ${
+                        n === logPage ? "border-brand-600 bg-brand-600 text-white" : "border-slate-300 hover:bg-slate-50"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={logPage >= logPages}
+                    onClick={() => setLogPage(logPage + 1)}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    →
+                  </button>
+                </div>
+              </nav>
+            )}
+          </div>
         )}
       </Card>
     </div>

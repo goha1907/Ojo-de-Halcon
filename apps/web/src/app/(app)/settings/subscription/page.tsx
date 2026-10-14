@@ -1,5 +1,6 @@
 import { AccessCard } from "@/components/settings/access-card";
 import { getCore } from "@/server/core";
+import { nowMs } from "@/lib/days";
 import { getEnv } from "@/server/env";
 import { getT } from "@/server/i18n";
 import { requireUser } from "@/server/session";
@@ -7,8 +8,14 @@ import { requireUser } from "@/server/session";
 /** Payments log page size: the whole history, newest first. */
 const PAYMENTS_LIMIT = 200;
 
-export default async function SettingsSubscriptionPage() {
+export default async function SettingsSubscriptionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cases?: string }>;
+}) {
   const user = await requireUser();
+  // "?cases=N" comes from the pricing section of the landing page
+  const requested = Math.trunc(Number((await searchParams).cases));
   const { t } = await getT();
   const core = getCore();
   const [access, billing, payments] = await Promise.all([
@@ -20,7 +27,14 @@ export default async function SettingsSubscriptionPage() {
   return (
     <>
       <h1 className="text-xl font-semibold text-slate-900">{t("nav.settings.subscription")}</h1>
-      <AccessCard access={access} billing={billing} payments={payments} stubEnabled={getEnv().PAYMENTS_STUB} />
+      <AccessCard
+        access={access}
+        billing={billing}
+        payments={payments}
+        stubEnabled={getEnv().PAYMENTS_STUB}
+        daysLeft={access.until ? Math.ceil((new Date(access.until).getTime() - nowMs()) / 86_400_000) : 0}
+        {...(Number.isFinite(requested) && requested > 0 ? { initialCount: requested } : {})}
+      />
     </>
   );
 }

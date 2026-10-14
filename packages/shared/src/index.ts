@@ -13,3 +13,4 @@ export * from "./domain/trackers";
 export * from "./config/email";
 export * from "./config/pricing";
 export * from "./domain/billing";
+export * from "./domain/feedback";

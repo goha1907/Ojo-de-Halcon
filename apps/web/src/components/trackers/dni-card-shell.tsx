@@ -7,6 +7,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { useT } from "@/components/providers/i18n-provider";
 import { apiRequest } from "@/lib/api-client";
 import { TONE_STYLES, type StatusTone } from "@/lib/status-tones";
+import { useSearchWords } from "./search-context";
 
 interface Props {
   id: string;
@@ -33,7 +34,10 @@ const ICON_PRIMARY = `${ICON_BUTTON} border-brand-600 bg-brand-600 text-white ho
 export function DniCardShell({ id, tone, label, number, summary, renameTitle, toggleTitle, strip, children }: Props) {
   const t = useT();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [folded, setOpen] = useState(false);
+  // while searching, cards stay open so the matched text is visible
+  const searching = useSearchWords().length > 0;
+  const open = folded || searching;
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(label ?? "");
   const [busy, setBusy] = useState(false);

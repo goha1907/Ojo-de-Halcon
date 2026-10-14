@@ -7,6 +7,8 @@ export interface NewsItem {
   slug: string;
   /** ISO date taken from the file name. */
   date: string;
+  /** `HH:MM` from the `time` field of the entry (midnight when absent): orders entries of one day. */
+  time: string;
   title: string;
   summary: string;
   /** Markdown body. */
@@ -55,7 +57,10 @@ export function pickLocale(items: NewsItem[], locale: Locale): NewsItem[] {
       (current.locale !== locale && item.locale === APP_CONFIG.defaultLocale);
     if (better) bySlug.set(item.slug, item);
   }
-  return [...bySlug.values()].sort((a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug));
+  // newest first: by date and time, then by name so the order is always the same
+  return [...bySlug.values()].sort(
+    (a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`) || a.slug.localeCompare(b.slug),
+  );
 }
 
 async function readAll(): Promise<NewsItem[]> {
@@ -70,7 +75,8 @@ async function readAll(): Promise<NewsItem[]> {
     const info = parseNewsFilename(file);
     if (!info) continue;
     const { meta, body } = parseFrontmatter(await readFile(path.join(NEWS_DIR, file), "utf8"));
-    items.push({ ...info, title: meta.title ?? info.slug, summary: meta.summary ?? "", body });
+    const time = /^([01]\d|2[0-3]):[0-5]\d$/.test(meta.time ?? "") ? meta.time! : "00:00";
+    items.push({ ...info, time, title: meta.title ?? info.slug, summary: meta.summary ?? "", body });
   }
   return items;
 }
@@ -84,9 +90,27 @@ export async function getNews(slug: string, locale: Locale): Promise<NewsItem | 
   return (await listNews(locale)).find((item) => item.slug === slug) ?? null;
 }
 
+export interface NewsWithNeighbours {
+  item: NewsItem;
+  /** The next newer entry, if any. */
+  newer: Pick<NewsItem, "slug" | "title"> | null;
+  /** The next older entry, if any. */
+  older: Pick<NewsItem, "slug" | "title"> | null;
+}
+
+/** One entry together with its neighbours in the newest-first list. */
+export async function getNewsWithNeighbours(slug: string, locale: Locale): Promise<NewsWithNeighbours | null> {
+  if (!SLUG_PATTERN.test(slug)) return null;
+  const all = await listNews(locale);
+  const index = all.findIndex((item) => item.slug === slug);
+  if (index === -1) return null;
+  const pick = (entry: NewsItem | undefined) => (entry ? { slug: entry.slug, title: entry.title } : null);
+  return { item: all[index]!, newer: pick(all[index - 1]), older: pick(all[index + 1]) };
+}
+
 export interface NewsPage {
   /** Entries without the body: the list only needs titles. */
-  items: Array<Pick<NewsItem, "slug" | "date" | "title">>;
+  items: Array<Pick<NewsItem, "slug" | "date" | "time" | "title">>;
   page: number;
   pages: number;
 }
@@ -98,6 +122,6 @@ export async function listNewsPage(locale: Locale, page: number, pageSize: numbe
   const current = Math.min(Math.max(1, Math.trunc(page) || 1), pages);
   const items = all
     .slice((current - 1) * pageSize, current * pageSize)
-    .map(({ slug, date, title }) => ({ slug, date, title }));
+    .map(({ slug, date, time, title }) => ({ slug, date, time, title }));
   return { items, page: current, pages };
 }

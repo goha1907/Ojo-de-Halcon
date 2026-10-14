@@ -1,12 +1,13 @@
 "use client";
 
-import { APP_CONFIG, PRICING, casesPrice } from "@ojo/shared";
+import { APP_CONFIG, PRICING, ROUTES, casesPrice, settingsHref } from "@ojo/shared";
+import Link from "next/link";
 import { useState } from "react";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { formatMoney } from "@/lib/money";
 
 /** Price of any number of cases, with the ladder spelled out. */
-export function Calculator() {
+export function Calculator({ signedIn }: { signedIn: boolean }) {
   const { t, locale } = useI18n();
   const max = APP_CONFIG.limits.maxCases;
   const [count, setCount] = useState(5);
@@ -31,15 +32,29 @@ export function Calculator() {
           />
           <span className="block text-xs text-slate-500">{t("landing.calc.max", { max })}</span>
         </label>
-        <div aria-live="polite">
-          <div className="text-sm text-slate-500">
-            {t("landing.calc.total", { days: APP_CONFIG.limits.subscriptionDays })}
-          </div>
-          <div className="text-3xl font-bold text-slate-900">{valid ? money(total) : "—"}</div>
-          {valid && (
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div aria-live="polite">
             <div className="text-sm text-slate-500">
-              {t("landing.calc.avg", { amount: money(Math.round(total / count)) })}
+              {t("landing.calc.total", { days: APP_CONFIG.limits.subscriptionDays })}
             </div>
+            <div className="text-3xl font-bold text-slate-900">{valid ? money(total) : "—"}</div>
+            {valid && (
+              <div className="text-sm text-slate-500">
+                {t("landing.calc.avg", { amount: money(Math.round(total / count)) })}
+              </div>
+            )}
+          </div>
+          {valid ? (
+            <Link
+              href={signedIn ? `${settingsHref("subscription")}?cases=${count}` : ROUTES.login}
+              className="inline-flex rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+            >
+              {t("landing.pricing.buy")}
+            </Link>
+          ) : (
+            <span className="inline-flex cursor-not-allowed rounded-lg bg-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-500">
+              {t("landing.pricing.buy")}
+            </span>
           )}
         </div>
       </div>

@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useT } from "@/components/providers/i18n-provider";
+import { highlightMatches, matchesAll, searchWords } from "@/lib/search";
+import { SearchWordsProvider } from "./search-context";
 import { StatusLegend } from "./status-legend";
 import { toneOf, type StatusTone } from "@/lib/status-tones";
 
@@ -20,6 +22,8 @@ export interface BoardItem {
   /** Epoch ms of when it was added, and of its latest change at the source. */
   addedAt: number;
   changedAt: number;
+  /** Everything the search looks through: name, number, statuses, stages, details. */
+  search: string;
 }
 
 type Filter = "all" | "tracking" | "removing" | "finished" | "paused" | "pending";
@@ -106,6 +110,9 @@ function useChoice(key: string) {
 export function TrackerBoard({ items, storageKey }: { items: BoardItem[]; storageKey: string }) {
   const t = useT();
   const [{ filter, sort }, choose] = useChoice(storageKey);
+  const [query, setQuery] = useState("");
+  const words = useMemo(() => searchWords(query), [query]);
+  const list = useRef<HTMLDivElement>(null);
 
   const counts = useMemo(() => {
     const result = { all: items.length } as Record<Filter, number>;
@@ -116,9 +123,16 @@ export function TrackerBoard({ items, storageKey }: { items: BoardItem[]; storag
   }, [items]);
 
   const shown = useMemo(() => {
-    const filtered = filter === "all" ? items : items.filter(FILTERS[filter]);
-    return [...filtered].sort(SORTS[sort]);
-  }, [items, filter, sort]);
+    const byState = filter === "all" ? items : items.filter(FILTERS[filter]);
+    const found = words.length === 0 ? byState : byState.filter((item) => matchesAll(item.search, words));
+    return [...found].sort(SORTS[sort]);
+  }, [items, filter, sort, words]);
+
+  // mark the matches inside the visible cards (after the cards have opened)
+  useEffect(() => {
+    if (words.length === 0 || !list.current) return;
+    return highlightMatches(list.current, words);
+  }, [words, shown]);
 
   // a chosen filter stays selectable even when it has just become empty
   const visibleFilters = (["all", ...Object.keys(FILTERS)] as Filter[]).filter(
@@ -141,8 +155,16 @@ export function TrackerBoard({ items, storageKey }: { items: BoardItem[]; storag
       {items.length > 0 && (
         <StatusLegend title={t("board.legend.title")} infoLabel={t("board.legend.info")} items={legend} />
       )}
-      {items.length > 1 && (
+      {items.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3">
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t("board.search.placeholder")}
+            aria-label={t("board.search.label")}
+            className="min-w-48 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-2 focus-visible:outline-brand-600"
+          />
           <label className="flex items-center gap-2 text-sm text-slate-600">
             {t("board.filter.label")}
             <select
@@ -175,10 +197,16 @@ export function TrackerBoard({ items, storageKey }: { items: BoardItem[]; storag
       )}
       {shown.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-          {t("board.empty")}
+          {words.length > 0 ? t("board.search.empty", { query: query.trim() }) : t("board.empty")}
         </p>
       ) : (
-        shown.map((item) => <div key={item.id}>{item.node}</div>)
+        <SearchWordsProvider value={words}>
+          <div ref={list} className="space-y-4">
+            {shown.map((item) => (
+              <div key={item.id}>{item.node}</div>
+            ))}
+          </div>
+        </SearchWordsProvider>
       )}
     </div>
   );

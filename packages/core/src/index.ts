@@ -2,6 +2,7 @@ import { createAccountService } from "./accounts/account-service";
 import { createSessionService } from "./auth/session-service";
 import { createAccessService } from "./access/access-service";
 import { createBillingService } from "./billing/billing-service";
+import { createFeedbackService } from "./feedback/feedback-service";
 import { createProfileService } from "./profile/profile-service";
 import { createTelegramService } from "./telegram/telegram-service";
 import { createTrackerService } from "./trackers/tracker-service";
@@ -22,6 +23,7 @@ export function createCore(deps: CoreDeps) {
     }),
     access: createAccessService({ prisma, now }),
     billing: createBillingService({ prisma, now }),
+    feedback: createFeedbackService({ prisma }),
   };
 }
 

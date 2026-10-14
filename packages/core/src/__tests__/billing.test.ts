@@ -1,6 +1,6 @@
 import { PRICING, casesPrice, quotePurchase } from "@ojo/shared";
 import { beforeEach, describe, expect, it } from "vitest";
-import { adultProfile, makeCore, resetDb } from "../../test/helpers";
+import { adultProfile, makeCore, prisma, resetDb } from "../../test/helpers";
 
 const DAY = 86_400_000;
 const NOW = new Date("2026-10-14T12:00:00Z");
@@ -80,5 +80,19 @@ describe("billing service", () => {
       ok: false,
       reason: "SUBSCRIPTION_REQUIRED",
     });
+  });
+});
+
+describe("feedback", () => {
+  beforeEach(resetDb);
+
+  it("stores a message with its context and drops the honeypot", async () => {
+    const core = makeCore();
+    const base = { topic: "technical" as const, name: null, email: "a@example.com", message: "Не приходит уведомление" };
+    await core.feedback.submit({ ...base, website: "" }, { userId: null, locale: "ru" });
+    await core.feedback.submit({ ...base, website: "http://spam" }, { userId: null, locale: "ru" });
+    const rows = await prisma.feedbackMessage.findMany();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ topic: "technical", status: "NEW", locale: "ru", userId: null });
   });
 });
