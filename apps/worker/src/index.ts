@@ -18,7 +18,9 @@ async function main(): Promise<void> {
 
   const purge = setInterval(() => {
     Promise.all([core.telegram.purgeExpired(), core.sessions.purgeExpired()])
-      .then(([linkCodes, sessions]) => logger.info("purged expired data", { linkCodes, sessions }))
+      .then(([linkCodes, sessions]) =>
+        logger.info("purged expired data", { linkCodes, sessions }),
+      )
       .catch((error: unknown) =>
         logger.error("purge failed", { error: error instanceof Error ? error.message : "unknown" }),
       );

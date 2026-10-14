@@ -1,6 +1,5 @@
 import { createAccountService } from "./accounts/account-service";
 import { createSessionService } from "./auth/session-service";
-import { createPreferencesService } from "./notifications/preferences-service";
 import { createAccessService } from "./access/access-service";
 import { createBillingService } from "./billing/billing-service";
 import { createPeopleService } from "./people/people-service";
@@ -17,9 +16,13 @@ export function createCore(deps: CoreDeps) {
     accounts: createAccountService({ prisma, config, mailer, now }),
     telegram: createTelegramService({ prisma, config, now }),
     profile: createProfileService({ prisma, now }),
-    preferences: createPreferencesService({ prisma }),
-    trackers: createTrackerService({ prisma, scraper, now, secret: config.secret }),
-    people: createPeopleService({ prisma, now }),
+    trackers: createTrackerService({
+      prisma,
+      scraper,
+      now,
+      relativesEnabled: config.relativesEnabled,
+    }),
+    people: createPeopleService({ prisma, now, enabled: config.relativesEnabled }),
     access: createAccessService({ prisma, now }),
     billing: createBillingService({ prisma, now }),
   };
@@ -43,6 +46,7 @@ export type {
   EventPayload,
   PendingNotification,
   PjnCandidate,
+  PjnPreviewResult,
   PjnSearchResult,
   PjnStartResult,
   TrackerDto,
@@ -57,5 +61,6 @@ export type {
   CheckoutResult,
   PaymentDto,
   QuoteDto,
-  ReduceResult,
+  RenewResult,
+  TrackerBillingResult,
 } from "./billing/billing-service";

@@ -1,5 +1,5 @@
 import {
-  ROUTES,
+  settingsHref,
   SERVICE_OFFICIAL_LINK,
   TRACKER_KIND_SECTION,
   findLink,
@@ -10,8 +10,9 @@ import {
 import { Alert, Card } from "@ojo/ui";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AddTrackerButton } from "@/components/trackers/add-tracker-button";
 import { CourtFinder } from "@/components/trackers/court-finder";
-import { TrackerCard } from "@/components/trackers/tracker-card";
+import { DniCard } from "@/components/trackers/dni-card";
 import { getCore } from "@/server/core";
 import { getT } from "@/server/i18n";
 import { requireUser } from "@/server/session";
@@ -33,13 +34,12 @@ export default async function ServicePage({
   const user = await requireUser();
   const { t, locale } = await getT();
   const core = getCore();
-  const preferences = await core.preferences.get(user.id);
   const official = findLink(SERVICE_OFFICIAL_LINK[service.section]);
-  const enabled = preferences[service.section];
   const kind = SECTION_KIND[service.section];
-  const ownerName =
-    [user.firstName, user.lastName].filter(Boolean).join(" ") || t("track.person.me");
   const trackers = kind ? (await core.trackers.list(user.id)).filter((item) => item.kind === kind) : [];
+  const billing = kind ? await core.billing.state(user.id) : null;
+  const access = await core.access.get(user.id);
+  const subscription = { active: access.plan === "subscription", periodEnd: access.until };
   const people = kind === "PJN" ? await core.people.list(user.id) : [];
   // any tracker counts, finished ones too: the case is already known and is not offered again
   const hasCase = (personId: string | null) =>
@@ -54,11 +54,20 @@ export default async function ServicePage({
 
   return (
     <>
-      <header className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {t(`menu.group.${service.group}` as MessageKey)}
-        </p>
-        <h1 className="text-xl font-semibold text-slate-900">{t(`sections.${service.section}` as MessageKey)}</h1>
+      <header className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t(`menu.group.${service.group}` as MessageKey)}
+          </p>
+          <h1 className="text-xl font-semibold text-slate-900">{t(`sections.${service.section}` as MessageKey)}</h1>
+        </div>
+        {/* opens the modal of this very section, without the kind dropdown */}
+        {kind && (
+          <div className="flex flex-col items-end gap-1">
+            <AddTrackerButton kind={kind} />
+            <span className="text-xs text-slate-500">{billing && access.plan === "subscription" ? t("track.usage", { used: billing.activeCases, limit: billing.paidCases }) : null}</span>
+          </div>
+        )}
       </header>
 
       {kind ? (
@@ -74,7 +83,7 @@ export default async function ServicePage({
           {[...trackers]
             .sort((a, b) => Number(a.person !== null) - Number(b.person !== null))
             .map((tracker) => (
-              <TrackerCard key={tracker.id} tracker={tracker} t={t} locale={locale} ownerName={ownerName} />
+              <DniCard key={tracker.id} tracker={tracker} t={t} locale={locale} subscription={subscription} />
             ))}
           {trackers.length === 0 && kind !== "PJN" && (
             <Card title={t("track.empty")} description={t("track.emptyHint")}>
@@ -107,9 +116,8 @@ export default async function ServicePage({
       )}
 
       <Alert tone="info">
-        {t("service.notifications")}:{" "}
-        <strong>{enabled ? t("service.notificationsOn") : t("service.notificationsOff")}</strong>.{" "}
-        <Link href={ROUTES.settings} className="underline">
+        {t("service.notificationsHint")}{" "}
+        <Link href={settingsHref("notifications")} className="underline">
           {t("service.changeInSettings")}
         </Link>
       </Alert>

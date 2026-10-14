@@ -65,6 +65,16 @@ describe("profile", () => {
     ]);
   });
 
+  it("accepts a profile without birth date or court", async () => {
+    const { core, userId } = await register();
+    await core.profile.update(userId, { ...adultProfile, birthDate: null, pjnJurisdiction: "" });
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    expect([user.firstName, user.birthDate, user.pjnJurisdiction]).toEqual(["Egor", null, null]);
+    // nothing but the name was recorded, and the name alone makes the profile complete
+    expect((await prisma.profileChange.findMany()).map((c) => c.field).sort()).toEqual(["firstName", "lastName"]);
+    expect((await core.sessions.getUser((await core.sessions.create(userId)).token))?.profileComplete).toBe(true);
+  });
+
   it("writes nothing when nothing changed and marks onboarding once", async () => {
     const { core, userId } = await register();
     await core.profile.update(userId, adultProfile);
@@ -77,16 +87,5 @@ describe("profile", () => {
     expect(first).not.toBeNull();
     await core.profile.completeOnboarding(userId);
     expect((await prisma.user.findUniqueOrThrow({ where: { id: userId } })).onboardingCompletedAt).toEqual(first);
-  });
-});
-
-describe("service preferences", () => {
-  it("defaults to on, stores overrides and ignores unknown keys", async () => {
-    const { core, userId } = await register();
-    expect(await core.preferences.get(userId)).toMatchObject({ dni_post: true, citizenship_court: true });
-
-    await core.preferences.set(userId, { dni_post: false, "made.up": true });
-    expect(await core.preferences.get(userId)).toMatchObject({ dni_post: false, dni_approval: true });
-    expect(await prisma.servicePreference.count()).toBe(1);
   });
 });

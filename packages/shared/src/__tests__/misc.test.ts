@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadEnv } from "../config/env";
 import { buildBotDeepLink } from "../domain/auth";
-import { TRACKER_SECTIONS, isTrackerSection, resolveServicePreferences } from "../domain/events";
+import { TRACKER_SECTIONS } from "../domain/events";
 import { es } from "../i18n/es";
 import { createTranslator, resolveLocale } from "../i18n/index";
 import { ru } from "../i18n/ru";
@@ -33,13 +33,6 @@ describe("loadEnv", () => {
 describe("services", () => {
   it("has a label for every section in the dictionary", () => {
     for (const section of TRACKER_SECTIONS) expect(`sections.${section}` in ru).toBe(true);
-  });
-  it("defaults to on and respects overrides", () => {
-    const prefs = resolveServicePreferences({ dni_post: false });
-    expect(prefs.dni_post).toBe(false);
-    expect(prefs.dni_approval).toBe(true);
-    expect(isTrackerSection("dni_post")).toBe(true);
-    expect(isTrackerSection("made.up")).toBe(false);
   });
 });
 

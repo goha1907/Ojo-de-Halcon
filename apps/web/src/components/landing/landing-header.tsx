@@ -1,0 +1,68 @@
+import { ROUTES, type TranslateFn } from "@ojo/shared";
+import Link from "next/link";
+import { LANDING_SECTIONS } from "./sections";
+import { PreferenceSelectors } from "./preference-selectors";
+
+const BUTTON =
+  "inline-flex items-center rounded-lg px-3.5 py-2 text-sm font-medium transition-colors";
+
+/** Sticky header: logo, in-page menu, auth buttons. The menu folds into a drop-down on phones. */
+export function LandingHeader({ t, signedIn }: { t: TranslateFn; signedIn: boolean }) {
+  const links = LANDING_SECTIONS.map((section) => (
+    <a
+      key={section.id}
+      href={`#${section.id}`}
+      className="rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+    >
+      {t(section.labelKey)}
+    </a>
+  ));
+  const auth = signedIn ? (
+    <Link href={ROUTES.dashboard} className={`${BUTTON} bg-brand-600 text-white hover:bg-brand-700`}>
+      {t("landing.cta.cabinet")}
+    </Link>
+  ) : (
+    <>
+      <Link href={ROUTES.login} className={`${BUTTON} text-slate-800 hover:bg-slate-100`}>
+        {t("landing.cta.login")}
+      </Link>
+      <Link href={ROUTES.register} className={`${BUTTON} bg-brand-600 text-white hover:bg-brand-700`}>
+        {t("landing.cta.register")}
+      </Link>
+    </>
+  );
+
+  return (
+    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
+        <Link href={ROUTES.home} className="flex items-center gap-2 text-base font-semibold text-slate-900">
+          <span aria-hidden="true" className="text-xl">👁</span>
+          {t("app.name")}
+        </Link>
+        <nav aria-label={t("landing.nav.label")} className="ml-4 hidden items-center gap-1 md:flex">
+          {links}
+        </nav>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="hidden lg:block">
+            <PreferenceSelectors t={t} />
+          </div>
+          {auth}
+          <details className="relative md:hidden">
+            <summary
+              aria-label={t("landing.menu.open")}
+              className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-lg border border-slate-300 text-lg [&::-webkit-details-marker]:hidden"
+            >
+              ☰
+            </summary>
+            <div className="absolute right-0 mt-2 flex w-56 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+              {links}
+              <div className="border-t border-slate-100 pt-2 lg:hidden">
+                <PreferenceSelectors t={t} />
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </header>
+  );
+}

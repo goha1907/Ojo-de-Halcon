@@ -149,10 +149,26 @@ export const birthDateSchema = makeBirthDateSchema(APP_CONFIG.profile.minAccount
 /** Relative tracked by the owner: any age (children are tracked by a guardian). */
 export const personBirthDateSchema = makeBirthDateSchema(0);
 
+/** Makes a birth date optional: empty input is `null`, anything else must be valid. */
+function optionalBirthDate(schema: ReturnType<typeof makeBirthDateSchema>) {
+  return z.string().transform((value, ctx) => {
+    if (!value.trim()) return null;
+    const parsed = schema.safeParse(value);
+    if (parsed.success) return parsed.data;
+    for (const issue of parsed.error.issues) ctx.addIssue({ code: "custom", message: issue.message });
+    return z.NEVER;
+  });
+}
+
+/** Birth date of the owner: optional (only some sources need it), 18+ when given. */
+export const optionalBirthDateSchema = optionalBirthDate(birthDateSchema);
+/** Birth date of a relative: optional, any age. */
+export const optionalPersonBirthDateSchema = optionalBirthDate(personBirthDateSchema);
+
 export const profileSchema = z.object({
   firstName: nameSchema,
   lastName: nameSchema,
-  birthDate: birthDateSchema,
+  birthDate: optionalBirthDateSchema,
   pjnJurisdiction: courtSchema,
 });
 export type ProfileInput = z.infer<typeof profileSchema>;
@@ -206,10 +222,11 @@ export const resetPasswordSchema = z
   });
 
 /** A relative: name, birth date and (optionally) the court used for the name search. */
+
 export const personSchema = z.object({
   firstName: nameSchema,
   lastName: nameSchema,
-  birthDate: personBirthDateSchema,
+  birthDate: optionalPersonBirthDateSchema,
   pjnJurisdiction: courtSchema,
   /** Send this person's updates to the owner's Telegram. */
   notifyTelegram: z.boolean().default(true),

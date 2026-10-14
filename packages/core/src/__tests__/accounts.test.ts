@@ -129,7 +129,6 @@ describe("account deletion", () => {
     const reg = await core.accounts.register({ email: "a@b.co", password: PASSWORD });
     if (!reg.ok) throw new Error("registration failed");
     await core.sessions.create(reg.userId);
-    await core.preferences.set(reg.userId, { dni_post: false });
     await core.telegram.createLinkCode(reg.userId);
 
     expect(await core.accounts.deleteAccount(reg.userId, "wrong")).toEqual({ ok: false });
@@ -138,7 +137,6 @@ describe("account deletion", () => {
     expect(await core.accounts.deleteAccount(reg.userId, PASSWORD)).toEqual({ ok: true });
     expect(await prisma.user.count()).toBe(0);
     expect(await prisma.session.count()).toBe(0);
-    expect(await prisma.servicePreference.count()).toBe(0);
     expect(await prisma.telegramLinkCode.count()).toBe(0);
   });
 
@@ -167,18 +165,20 @@ describe("one account per mailbox and a remembered trial", () => {
     });
   });
 
-  it("keeps the trial start after the account is deleted and re-created", async () => {
+  it("starts the trial at registration and keeps it after the account is deleted and re-created", async () => {
+    const before = Date.now();
     const core = makeCore();
     const first = await core.accounts.register({ email: "again@example.com", password: PASSWORD });
     if (!first.ok) throw new Error("registration failed");
-    await core.trackers.addTramite(first.userId, "RENAPER", "755824304");
     const started = (await prisma.user.findUniqueOrThrow({ where: { id: first.userId } })).trialStartedAt;
-    expect(started).not.toBeNull();
+    // no tracker was added, the trial still runs from registration
+    expect(started.getTime()).toBeGreaterThanOrEqual(before - 1000);
+    expect((await core.access.get(first.userId)).plan).toBe("trial");
 
     await core.accounts.deleteAccount(first.userId, PASSWORD);
     const second = await core.accounts.register({ email: "AGAIN@example.com", password: PASSWORD });
     if (!second.ok) throw new Error("registration failed");
     const row = await prisma.user.findUniqueOrThrow({ where: { id: second.userId } });
-    expect(row.trialStartedAt?.getTime()).toBe(started!.getTime());
+    expect(row.trialStartedAt.getTime()).toBe(started.getTime());
   });
 });

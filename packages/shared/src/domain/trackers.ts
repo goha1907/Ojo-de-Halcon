@@ -1,14 +1,16 @@
 import { z } from "zod";
+import { APP_CONFIG } from "../config/app";
 import { TRACKER_CONFIG } from "../config/trackers";
 import { findJurisdiction } from "../config/pjn";
 import type { MessageKey } from "../i18n/ru";
+import { normalizeSpaces } from "./profile";
 
 const msg = (key: MessageKey) => ({ message: key });
 
 export const TRACKER_KINDS = ["RENAPER", "CORREO", "PJN"] as const;
 export type TrackerKindValue = (typeof TRACKER_KINDS)[number];
 
-export const TRACKER_STATUSES = ["PENDING_CONFIRMATION", "ACTIVE", "FINISHED"] as const;
+export const TRACKER_STATUSES = ["PENDING_CONFIRMATION", "ACTIVE", "FINISHED", "PAUSED"] as const;
 export type TrackerStatusValue = (typeof TRACKER_STATUSES)[number];
 
 /** One stage as shown to the user (RENAPER / Correo / PJN alike). */
@@ -78,10 +80,20 @@ export const addTrackerSchema = z.discriminatedUnion("kind", [
 ]);
 export type AddTrackerInput = z.infer<typeof addTrackerSchema>;
 
-/** Add request: the tracker data plus who it is for (omitted = the account owner). */
+/** Custom name of a case ("Mamá", "Sud Paraná"…): optional, trimmed, empty means none. */
+export const trackerLabelSchema = z
+  .string()
+  .transform(normalizeSpaces)
+  .pipe(z.string().max(APP_CONFIG.limits.labelMaxLength, msg("validation.nameTooLong")))
+  .transform((value) => (value === "" ? null : value));
+
+/** Add request: the tracker data, who it is for (omitted = the account owner) and an optional name. */
 export const addTrackerRequestSchema = z.intersection(
   addTrackerSchema,
-  z.object({ personId: z.string().min(1).nullish() }),
+  z.object({
+    personId: z.string().min(1).nullish(),
+    label: trackerLabelSchema.optional(),
+  }),
 );
 
 /** Stable key of a PJN case inside `Tracker.reference`. */

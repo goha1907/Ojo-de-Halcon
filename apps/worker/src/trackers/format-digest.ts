@@ -6,27 +6,24 @@ import {
   type TrackerKindValue,
   type TrackerStep,
 } from "@ojo/shared";
+import { STATUS_FIELD, caseLine } from "./format-notification";
 
 export interface DigestInput {
   kind: TrackerKindValue;
   section: string;
-  personName: string | null;
+  caseId: string;
   header: TrackerHeaderFields;
   step: TrackerStep | null;
 }
 
-const STATUS_FIELD: Record<TrackerKindValue, string> = {
-  RENAPER: "status",
-  CORREO: "status",
-  PJN: "sit_actual",
-};
-
-/** Message with the latest known stage of one case (sent right after linking Telegram). */
+/** Latest known stage of one case (sent right after linking Telegram): whose, which service, stage, status. */
 export function formatDigest(input: DigestInput, locale: string): string {
   const t = createTranslator(resolveLocale(locale));
-  const section = t(`menu.${input.section}` as MessageKey);
-  const service = input.personName ? `${section} · ${input.personName}` : section;
-  const lines = [t("bot.digest.title", { service })];
+  const service = t(`menu.${input.section}` as MessageKey);
+  const lines = [
+    caseLine(t, input.kind, input.caseId),
+    t("bot.digest.title", { service }),
+  ];
   if (input.step) {
     const text = [input.step.title, input.step.detail].filter(Boolean).join(" — ");
     lines.push(`• ${[input.step.date, text].filter(Boolean).join(" · ")}`);

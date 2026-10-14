@@ -56,7 +56,8 @@ export function CourtFinder({ personId, personName }: { personId?: string; perso
     const id = `${candidate.number}/${candidate.year}`;
     setBusyId(id);
     try {
-      const added = await apiRequest<{ tracker: { id: string } }>(API_ROUTES.trackers, {
+      // the candidate's header was shown above; confirming adds the case straight away
+      await apiRequest(API_ROUTES.trackers, {
         method: "POST",
         body: {
           kind: "PJN",
@@ -66,7 +67,6 @@ export function CourtFinder({ personId, personName }: { personId?: string; perso
           ...(personId ? { personId } : {}),
         },
       });
-      await apiRequest(API_ROUTES.pjnConfirm, { method: "POST", body: { id: added.tracker.id } });
       router.refresh();
     } catch (error) {
       const subscription = error instanceof ApiError && error.code === "SUBSCRIPTION_REQUIRED";
@@ -121,7 +121,7 @@ export function CourtFinder({ personId, personName }: { personId?: string; perso
             <Button
               variant="ghost"
               onClick={() =>
-                window.dispatchEvent(new CustomEvent(ADD_TRACKER_EVENT, { detail: { kind: "PJN" } }))
+                window.dispatchEvent(new CustomEvent(ADD_TRACKER_EVENT, { detail: { kind: "PJN", fixed: true } }))
               }
             >
               {t("pjn.find.manual")}

@@ -4,7 +4,6 @@ const PROTECTED_PREFIXES = [
   ROUTES.dashboard,
   ROUTES.settings,
   ROUTES.onboarding,
-  ROUTES.news,
   ROUTES.links,
   "/services",
 ];

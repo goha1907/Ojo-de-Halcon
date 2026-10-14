@@ -15,6 +15,8 @@ export interface CoreConfig {
   linkCodeBytes: number;
   sessionTokenBytes: number;
   emailTokenBytes: number;
+  /** Relatives (people, slots) are switched on. */
+  relativesEnabled: boolean;
 }
 
 export interface CoreDeps {

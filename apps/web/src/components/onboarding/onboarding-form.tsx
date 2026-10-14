@@ -6,21 +6,18 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useT } from "@/components/providers/i18n-provider";
 import { ProfileFields, useProfileFields, type ProfileInitial } from "@/components/profile/profile-fields";
-import { ServiceCheckboxes, type ServiceValues } from "@/components/services/service-checkboxes";
 import { apiRequest } from "@/lib/api-client";
 import { describeApiError } from "@/lib/api-errors";
 
 interface Props {
   initial: ProfileInitial;
-  services: ServiceValues;
 }
 
-/** Optional step after registration: profile + which services to follow. */
-export function OnboardingForm({ initial, services: initialServices }: Props) {
+/** Optional step after registration: the profile. */
+export function OnboardingForm({ initial }: Props) {
   const t = useT();
   const router = useRouter();
   const profile = useProfileFields(initial);
-  const [services, setServices] = useState(initialServices);
   const [loading, setLoading] = useState<"save" | "skip" | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -34,10 +31,7 @@ export function OnboardingForm({ initial, services: initialServices }: Props) {
     setLoading(mode);
     try {
       if (profilePayload) await apiRequest(API_ROUTES.profile, { method: "PUT", body: profilePayload });
-      await apiRequest(API_ROUTES.services, {
-        method: "PUT",
-        body: { services: mode === "save" ? services : {}, completeOnboarding: true },
-      });
+      await apiRequest(API_ROUTES.onboarding, { method: "POST", body: {} });
       router.replace(ROUTES.dashboard);
       router.refresh();
     } catch (error) {
@@ -51,9 +45,6 @@ export function OnboardingForm({ initial, services: initialServices }: Props) {
       {formError && <Alert tone="error">{formError}</Alert>}
       <Card title={t("onboarding.profile")}>
         <ProfileFields state={profile} />
-      </Card>
-      <Card title={t("onboarding.services")} description={t("onboarding.servicesHelp")}>
-        <ServiceCheckboxes values={services} onChange={setServices} />
       </Card>
       <div className="flex items-center gap-3">
         <Button loading={loading === "save"} disabled={loading === "skip"} onClick={() => finish("save")}>

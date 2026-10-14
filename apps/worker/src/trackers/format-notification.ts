@@ -9,7 +9,8 @@ import {
 export interface NotificationInput {
   kind: TrackerKindValue;
   locale: string;
-  label: string | null;
+  /** Identifies the case: trámite number or court file number. */
+  caseId: string;
   payload: {
     /** One stage per event (current format). */
     step?: { date: string; title: string; detail: string } | null;
@@ -22,19 +23,29 @@ export interface NotificationInput {
 }
 
 /** Header field that best describes the current state of each kind. */
-const STATUS_FIELD: Record<TrackerKindValue, string> = {
+export const STATUS_FIELD: Record<TrackerKindValue, string> = {
   RENAPER: "status",
   CORREO: "status",
   PJN: "sit_actual",
 };
 
-/** Simplified Telegram text: what changed, no scraping details. */
+/** First line of every message: which case it is, by its number. */
+export function caseLine(t: ReturnType<typeof createTranslator>, kind: TrackerKindValue, caseId: string): string {
+  return t(kind === "PJN" ? "bot.case.court" : "bot.case.tramite", { id: caseId });
+}
+
+/**
+ * Simplified Telegram text, always in the same order: which case, which
+ * service, then what happened and the current status.
+ */
 export function formatNotification(input: NotificationInput): string {
   const t = createTranslator(resolveLocale(input.locale));
-  const sectionKey = `menu.${TRACKER_KIND_SECTION[input.kind]}` as MessageKey;
-  const service = input.label ? `${t(sectionKey)} · ${input.label}` : t(sectionKey);
+  const service = t(`menu.${TRACKER_KIND_SECTION[input.kind]}` as MessageKey);
 
-  const lines = [t(input.payload.initial ? "bot.initial.title" : "bot.update.title", { service })];
+  const lines = [
+    caseLine(t, input.kind, input.caseId),
+    t(input.payload.initial ? "bot.initial.title" : "bot.update.title", { service }),
+  ];
   const steps = input.payload.step ? [input.payload.step] : (input.payload.newSteps ?? []);
   for (const step of steps) {
     const text = [step.title, step.detail].filter(Boolean).join(" — ");

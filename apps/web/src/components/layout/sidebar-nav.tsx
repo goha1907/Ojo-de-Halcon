@@ -18,7 +18,20 @@ export function SidebarNav({ counts = {} }: { counts?: Record<string, number> })
   return (
     <nav className="space-y-1" aria-label={t("nav.menu")}>
       {NAVIGATION.map((entry) =>
-        entry.kind === "link" ? (
+        entry.kind === "link" && entry.id !== "dashboard" ? (
+          <div key={entry.id} className="pt-3">
+            <Link
+              href={entry.href}
+              aria-current={isActive(pathname, entry.href) ? "page" : undefined}
+              className={cn(
+                "block px-3 py-1 text-xs font-semibold uppercase tracking-wide hover:text-slate-900",
+                isActive(pathname, entry.href) ? "text-brand-700" : "text-slate-500",
+              )}
+            >
+              {t(entry.labelKey)}
+            </Link>
+          </div>
+        ) : entry.kind === "link" ? (
           <Link
             key={entry.id}
             href={entry.href}

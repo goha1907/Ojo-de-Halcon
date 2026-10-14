@@ -17,7 +17,7 @@ export type ApiErrorCode =
   | "INVALID_TOKEN"
   | "INVALID_PASSWORD"
   | "ALREADY_EXISTS"
-  | "SECTION_BUSY"
+  | "NO_FREE_SLOT"
   | "NOT_FOUND"
   | "SOURCE_DOWN"
   | "PROFILE_INCOMPLETE"
@@ -26,9 +26,9 @@ export type ApiErrorCode =
   | "SUBSCRIPTION_REQUIRED"
   | "LIMIT_REACHED"
   | "EMAIL_NOT_VERIFIED"
-  | "SLOT_REQUIRED"
-  | "INVALID_SEATS"
-  | "PEOPLE_MISMATCH";
+  | "INVALID_CASES"
+  | "NO_CASES"
+  | "FEATURE_DISABLED";
 
 const STATUS: Record<ApiErrorCode, number> = {
   VALIDATION: 422,
@@ -42,7 +42,7 @@ const STATUS: Record<ApiErrorCode, number> = {
   INVALID_TOKEN: 400,
   INVALID_PASSWORD: 403,
   ALREADY_EXISTS: 409,
-  SECTION_BUSY: 409,
+  NO_FREE_SLOT: 409,
   NOT_FOUND: 404,
   SOURCE_DOWN: 503,
   PROFILE_INCOMPLETE: 409,
@@ -51,9 +51,9 @@ const STATUS: Record<ApiErrorCode, number> = {
   SUBSCRIPTION_REQUIRED: 402,
   LIMIT_REACHED: 409,
   EMAIL_NOT_VERIFIED: 403,
-  SLOT_REQUIRED: 402,
-  INVALID_SEATS: 422,
-  PEOPLE_MISMATCH: 409,
+  INVALID_CASES: 422,
+  NO_CASES: 409,
+  FEATURE_DISABLED: 403,
 };
 
 export function apiError(code: ApiErrorCode, extra?: Record<string, unknown>) {

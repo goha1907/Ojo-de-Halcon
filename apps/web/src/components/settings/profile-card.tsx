@@ -1,6 +1,6 @@
 "use client";
 
-import { API_ROUTES } from "@ojo/shared";
+import { API_ROUTES, SETTINGS_SECTIONS } from "@ojo/shared";
 import { Alert, Button, Card } from "@ojo/ui";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -49,7 +49,7 @@ export function ProfileCard({
   }
 
   return (
-    <Card title={t("settings.profile.title")} description={t("settings.profile.help")}>
+    <Card id={SETTINGS_SECTIONS.profile} title={t("settings.profile.title")} description={t("settings.profile.help")}>
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         <div className="space-y-1.5">
           <span className="block text-sm font-medium text-slate-800">{t("settings.profile.email")}</span>

@@ -3,7 +3,7 @@ import { shouldRedirectToLogin } from "./route-guard";
 
 describe("shouldRedirectToLogin", () => {
   it("sends anonymous visitors away from the signed-in area", () => {
-    for (const path of ["/dashboard", "/settings", "/onboarding", "/news", "/news/2026-10-13-x", "/links", "/services/dni/renaper"]) {
+    for (const path of ["/dashboard", "/settings", "/onboarding", "/links", "/services/dni/renaper"]) {
       expect(shouldRedirectToLogin(path, false)).toBe(true);
     }
   });

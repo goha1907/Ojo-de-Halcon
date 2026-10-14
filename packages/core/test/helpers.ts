@@ -24,6 +24,7 @@ export const testConfig: CoreConfig = {
   linkCodeBytes: 18,
   sessionTokenBytes: 32,
   emailTokenBytes: 32,
+  relativesEnabled: true,
 };
 
 export function makeMailbox() {
@@ -49,13 +50,18 @@ const unusedScraper: Scraper = {
 
 export function makeCore(options: {
   scraper?: Partial<Scraper>;
+  relatives?: boolean;
   now?: () => Date;
   verification?: boolean;
   mailer?: Mailer;
 } = {}) {
   return createCore({
     prisma,
-    config: { ...testConfig, emailVerificationRequired: options.verification ?? false },
+    config: {
+      ...testConfig,
+      emailVerificationRequired: options.verification ?? false,
+      relativesEnabled: options.relatives ?? true,
+    },
     mailer: options.mailer ?? makeMailbox().mailer,
     scraper: { ...unusedScraper, ...options.scraper },
     now: options.now ?? (() => new Date()),
@@ -71,7 +77,7 @@ export function tokenFromMail(message: MailMessage): string {
 
 export async function resetDb(): Promise<void> {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "TelegramOutbox", "TrialLedger", "ProfileChange", "ServicePreference", "TelegramLinkCode", "EmailToken", "Session", "User" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "TelegramOutbox", "TrialLedger", "ProfileChange", "TelegramLinkCode", "EmailToken", "Session", "User" RESTART IDENTITY CASCADE',
   );
 }
 

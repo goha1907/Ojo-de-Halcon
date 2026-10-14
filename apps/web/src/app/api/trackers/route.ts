@@ -1,4 +1,4 @@
-import { APP_CONFIG, addTrackerRequestSchema, pjnReference } from "@ojo/shared";
+import { APP_CONFIG, addTrackerRequestSchema } from "@ojo/shared";
 import { NextResponse } from "next/server";
 import { apiError, limitByUser, parseBody, withVerifiedUser } from "@/server/api";
 import { getCore } from "@/server/core";
@@ -14,21 +14,18 @@ export async function POST(request: Request) {
     const trackers = getCore().trackers;
 
     if (input.kind === "PJN") {
-      const result = await trackers.startPjn(
+      // the user already saw the case header in the preview step and confirmed
+      const result = await trackers.addPjn(
         user.id,
         { jurisdiction: input.jurisdiction, number: input.number, year: input.year },
         input.personId,
+        input.label,
       );
       if (!result.ok) return apiError(result.reason);
-      return NextResponse.json({
-        ok: true,
-        tracker: result.tracker,
-        reference: pjnReference(input),
-        needsConfirmation: true,
-      });
+      return NextResponse.json({ ok: true, tracker: result.tracker });
     }
 
-    const result = await trackers.addTramite(user.id, input.kind, input.number, input.personId);
+    const result = await trackers.addTramite(user.id, input.kind, input.number, input.personId, input.label);
     if (!result.ok) return apiError(result.reason);
     return NextResponse.json({ ok: true, tracker: result.tracker });
   });

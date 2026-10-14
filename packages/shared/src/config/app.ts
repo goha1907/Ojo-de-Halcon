@@ -31,11 +31,19 @@ export const APP_CONFIG = {
     minAccountAgeYears: 18,
     maxAgeYears: 120,
   },
+  /** News list on the landing page. */
+  news: { pageSize: 5 },
   /** Product limits. */
   limits: {
     /** Relatives one account may track besides the owner. */
     maxPeople: 5,
-    /** Free trial length, counted from the first added tracker. */
+    /** Longest custom name of a tracked case. */
+    labelMaxLength: 60,
+    /** Most cases one subscription may hold (sanity cap on purchases). */
+    maxCases: 100,
+    /** A tracked case can be replaced (new number / released) at most this often. */
+    replaceCooldownDays: 30,
+    /** Free trial length, counted from account creation. */
     trialDays: 7,
     /** Length of one paid period. */
     subscriptionDays: 30,
@@ -63,12 +71,42 @@ export const ROUTES = {
   verifyEmail: "/verify-email",
   onboarding: "/onboarding",
   dashboard: "/dashboard",
-  news: "/news",
   links: "/links",
   settings: "/settings",
+  settingsProfile: "/settings/profile",
+  settingsNotifications: "/settings/notifications",
+  settingsSubscription: "/settings/subscription",
 } as const;
 
+/** Anchors of the cards on the settings page; links to a specific card use `settingsHref`. */
+export const SETTINGS_SECTIONS = {
+  profile: "profile",
+  telegram: "telegram",
+  notifications: "notifications",
+  people: "people",
+  subscription: "subscription",
+} as const;
+
+export type SettingsSection = keyof typeof SETTINGS_SECTIONS;
+
+/** Settings page that hosts each card. */
+const SETTINGS_PAGE: Record<SettingsSection, string> = {
+  profile: ROUTES.settingsProfile,
+  telegram: ROUTES.settingsProfile,
+  people: ROUTES.settingsProfile,
+  notifications: ROUTES.settingsNotifications,
+  subscription: ROUTES.settingsSubscription,
+};
+
+/** Link to a settings card: its page, scrolled to the card when the page holds several. */
+export function settingsHref(section: SettingsSection): string {
+  const page = SETTINGS_PAGE[section];
+  return page === ROUTES.settingsProfile ? `${page}#${SETTINGS_SECTIONS[section]}` : page;
+}
+
 export const API_ROUTES = {
+  news: "/api/news",
+  onboarding: "/api/onboarding",
   register: "/api/auth/register",
   login: "/api/auth/login",
   logout: "/api/auth/logout",
@@ -77,17 +115,18 @@ export const API_ROUTES = {
   verifyEmail: "/api/auth/verify-email",
   resendVerification: "/api/auth/resend-verification",
   profile: "/api/profile",
-  services: "/api/services",
   telegramLink: "/api/telegram/link",
   telegram: "/api/telegram",
   account: "/api/account",
   trackers: "/api/trackers",
   pjnSearch: "/api/trackers/pjn/search",
   pjnConfirm: "/api/trackers/pjn/confirm",
+  pjnPreview: "/api/trackers/pjn/preview",
   people: "/api/people",
   billingStub: "/api/billing/stub",
   billingQuote: "/api/billing/quote",
   billingCheckout: "/api/billing/checkout",
   billingRenew: "/api/billing/renew",
-  billingSeats: "/api/billing/seats",
+  billingCases: "/api/billing/cases",
+  billingSubscription: "/api/billing/subscription",
 } as const;

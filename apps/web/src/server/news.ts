@@ -83,3 +83,21 @@ export async function getNews(slug: string, locale: Locale): Promise<NewsItem | 
   if (!SLUG_PATTERN.test(slug)) return null;
   return (await listNews(locale)).find((item) => item.slug === slug) ?? null;
 }
+
+export interface NewsPage {
+  /** Entries without the body: the list only needs titles. */
+  items: Array<Pick<NewsItem, "slug" | "date" | "title">>;
+  page: number;
+  pages: number;
+}
+
+/** One page of the news list, newest first; an out-of-range page is clamped. */
+export async function listNewsPage(locale: Locale, page: number, pageSize: number): Promise<NewsPage> {
+  const all = await listNews(locale);
+  const pages = Math.max(1, Math.ceil(all.length / pageSize));
+  const current = Math.min(Math.max(1, Math.trunc(page) || 1), pages);
+  const items = all
+    .slice((current - 1) * pageSize, current * pageSize)
+    .map(({ slug, date, title }) => ({ slug, date, title }));
+  return { items, page: current, pages };
+}

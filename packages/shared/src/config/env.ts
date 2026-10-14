@@ -27,6 +27,14 @@ const envSchema = z.object({
    * unless explicitly forced, so a real deployment never gives access away.
    */
   PAYMENTS_STUB: z.enum(["true", "false"]).optional(),
+  /**
+   * "true": relatives (extra people, paid slots) are available. The code stays
+   * in place but is dormant by default: one user, one tracker per section.
+   */
+  FEATURE_RELATIVES: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
   EMAIL_VERIFICATION_REQUIRED: z
     .enum(["true", "false"])
     .default("false")

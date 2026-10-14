@@ -1,7 +1,6 @@
 import { ROUTES } from "@ojo/shared";
 import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/components/onboarding/onboarding-form";
-import { getCore } from "@/server/core";
 import { getT } from "@/server/i18n";
 import { requireUser } from "@/server/session";
 
@@ -9,7 +8,6 @@ export default async function OnboardingPage() {
   const user = await requireUser();
   if (user.onboardingDone) redirect(ROUTES.dashboard);
   const { t } = await getT();
-  const services = await getCore().preferences.get(user.id);
 
   return (
     <>
@@ -19,7 +17,6 @@ export default async function OnboardingPage() {
       </header>
       <OnboardingForm
         initial={{ firstName: user.firstName, lastName: user.lastName, birthDate: user.birthDate, pjnJurisdiction: user.pjnJurisdiction }}
-        services={services}
       />
     </>
   );

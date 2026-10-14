@@ -10,8 +10,11 @@ export const SERVICE_GROUPS = [
     items: [
       { section: "dni_approval", slug: "migraciones" },
       { section: "dni_production", slug: "renaper" },
-      { section: "dni_post", slug: "correo" },
     ],
+  },
+  {
+    key: "post",
+    items: [{ section: "dni_post", slug: "correo" }],
   },
   {
     key: "citizenship",

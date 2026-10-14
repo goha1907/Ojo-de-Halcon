@@ -68,22 +68,28 @@ export function createAccountService(deps: {
     });
     if (taken) return { ok: false, reason: "EMAIL_TAKEN" };
     // A mailbox that already used its trial (even on a deleted account) keeps that start date.
-    const used = await prisma.trialLedger.findUnique({
-      where: { keyHash: keyedHash(config.secret, "ledger", `email:${emailCanonical}`) },
-    });
+    const ledgerHash = keyedHash(config.secret, "ledger", `email:${emailCanonical}`);
+    const used = await prisma.trialLedger.findUnique({ where: { keyHash: ledgerHash } });
+    const trialStartedAt = used?.trialStartedAt ?? now();
     const passwordHash = await hashPassword(input.password);
     try {
       const user = await prisma.user.create({
         data: {
           email,
           emailCanonical,
-          trialStartedAt: used?.trialStartedAt ?? null,
+          trialStartedAt,
           passwordHash,
           locale: resolveLocale(input.locale),
           termsAcceptedAt: now(),
           // With verification switched off every new account counts as verified.
           emailVerifiedAt: config.emailVerificationRequired ? null : now(),
         },
+      });
+      // Remember the mailbox's trial so deleting the account does not restart it.
+      await prisma.trialLedger.upsert({
+        where: { keyHash: ledgerHash },
+        create: { keyHash: ledgerHash, kind: "email", trialStartedAt },
+        update: {},
       });
       if (config.emailVerificationRequired) await sendVerificationEmail(user.id);
       return { ok: true, userId: user.id };

@@ -30,17 +30,16 @@ model User {
   locale                String    @default("ru")
   termsAcceptedAt       DateTime
   onboardingCompletedAt DateTime?
-  /// Set when the first tracker is added; the free trial runs from here.
-  trialStartedAt        DateTime?
+  /// The free trial runs from account creation (or from the first account of the same mailbox).
+  trialStartedAt        DateTime  @default(now())
   /// Paid access end (payments are not connected yet; set manually).
   subscriptionUntil     DateTime?
-  /// Paid slots for relatives (the owner is always covered by the base price).
-  seats                 Int       @default(0)
+  /// Cases the subscription pays for in the running period (free slots = paidCases - active cases).
+  paidCases             Int       @default(0)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
   sessions         Session[]
-  servicePrefs     ServicePreference[]
   profileChanges   ProfileChange[]
   emailTokens      EmailToken[]
   telegramLinkCode TelegramLinkCode?
@@ -85,17 +84,6 @@ model TelegramLinkCode {
   createdAt DateTime @default(now())
 }
 
-/// Per-service switch: the user follows the service and gets its notifications.
-model ServicePreference {
-  userId     String
-  serviceKey String
-  enabled    Boolean
-  updatedAt  DateTime @updatedAt
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([userId, serviceKey])
-}
-
 /// Audit trail of profile edits (name, surname, birth date).
 model ProfileChange {
   id        String   @id @default(cuid())
@@ -120,6 +108,8 @@ enum TrackerStatus {
   PENDING_CONFIRMATION
   ACTIVE
   FINISHED
+  /// Over the slot limit after a reduction; kept for a while, not checked.
+  PAUSED
 }
 
 /// One tracked procedure of one user. RENAPER and CORREO are independent sources.
@@ -132,6 +122,12 @@ model Tracker {
   person          Person?       @relation(fields: [personId], references: [id], onDelete: Cascade)
   /// `personId` or "self"; part of the unique key (NULLs are not unique in SQL).
   personKey       String        @default("self")
+  /// Since when this slot holds this case (creation or last replacement); starts the cooldown.
+  slotSince       DateTime      @default(now())
+  /// false: this tracker is paused when a scheduled reduction takes effect.
+  keepNext        Boolean       @default(true)
+  /// When it was paused; paused trackers are removed after a retention period.
+  pausedAt        DateTime?
   /// The "case added" notification was produced (it waits while the person is muted).
   initialNotified Boolean       @default(false)
   kind            TrackerKind
@@ -142,6 +138,10 @@ model Tracker {
   lastCheckedAt   DateTime?
   nextCheckAt     DateTime      @default(now())
   lastError       String?
+  /// Notifications of this case go to Telegram.
+  notifyTelegram  Boolean       @default(true)
+  /// Notifications of this case go to WhatsApp (the bot does not exist yet).
+  notifyWhatsapp  Boolean       @default(false)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -180,16 +180,17 @@ model TrackerEvent {
 
 /// A relative whose cases the account owner tracks (the owner is the User itself).
 model Person {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   firstName       String
   lastName        String
-  birthDate       DateTime @db.Date
+  /// Optional: only needed by some sources (e.g. Migraciones citizenship).
+  birthDate       DateTime? @db.Date
   pjnJurisdiction String?
   /// false: updates of this person are not sent to the owner's Telegram.
-  notifyTelegram  Boolean  @default(true)
-  createdAt       DateTime @default(now())
+  notifyTelegram  Boolean   @default(true)
+  createdAt       DateTime  @default(now())
 
   trackers Tracker[]
 
@@ -236,10 +237,10 @@ model Payment {
   /// Whole units of `currency`.
   amount     Int
   currency   String
-  /// "subscription" | "seats" | "renewal"
+  /// "subscription" | "cases" | "renewal"
   kind       String
-  /// Relative slots bought with this payment.
-  seatsDelta Int      @default(0)
+  /// Cases bought with this payment.
+  casesDelta Int      @default(0)
   /// Payment provider; "stub" until real billing is connected.
   provider   String
   createdAt  DateTime @default(now())

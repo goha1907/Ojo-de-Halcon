@@ -1,8 +1,5 @@
-import { ROUTES } from "@ojo/shared";
-import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/server/session";
+import { LandingPage } from "@/components/landing/landing-page";
 
-export default async function HomePage() {
-  const user = await getCurrentUser();
-  redirect(user ? ROUTES.dashboard : ROUTES.login);
+export default function HomePage() {
+  return <LandingPage />;
 }

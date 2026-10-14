@@ -11,7 +11,7 @@ export function toUserDto(user: User): UserDto {
     lastName: user.lastName,
     birthDate: user.birthDate ? user.birthDate.toISOString().slice(0, 10) : null,
     pjnJurisdiction: user.pjnJurisdiction,
-    profileComplete: Boolean(user.firstName && user.lastName && user.birthDate),
+    profileComplete: Boolean(user.firstName && user.lastName),
     telegramLinked: user.telegramId !== null,
     telegramUsername: user.telegramUsername,
     locale: user.locale,

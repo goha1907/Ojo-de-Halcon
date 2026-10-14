@@ -2,13 +2,17 @@ import { describe, expect, it } from "vitest";
 import { NAVIGATION, isActive } from "./navigation";
 
 describe("navigation", () => {
-  it("lists the two service groups with their items in order", () => {
+  it("lists the service groups, then the settings pages, in order", () => {
     const groups = NAVIGATION.filter((e) => e.kind === "group");
-    expect(groups.map((g) => g.id)).toEqual(["dni", "citizenship"]);
+    expect(groups.map((g) => g.id)).toEqual(["dni", "post", "citizenship", "settings"]);
     expect(groups[0]!.kind === "group" && groups[0]!.items.map((i) => i.href)).toEqual([
       "/services/dni/migraciones",
       "/services/dni/renaper",
-      "/services/dni/correo",
+    ]);
+    expect(groups[3]!.kind === "group" && groups[3]!.items.map((i) => i.href)).toEqual([
+      "/settings/profile",
+      "/settings/notifications",
+      "/settings/subscription",
     ]);
   });
 

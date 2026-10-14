@@ -130,3 +130,13 @@ describe("canonical e-mail", () => {
     expect(registerSchema.safeParse({ ...base, email: "x@gmail.com" }).success).toBe(true);
   });
 });
+
+describe("owner profile without birth date", () => {
+  it("accepts an empty date but still rejects minors and partial dates", async () => {
+    const { profileSchema } = await import("../index");
+    const base = { firstName: "Egor", lastName: "Medvedev", pjnJurisdiction: "" };
+    expect(profileSchema.parse({ ...base, birthDate: "" }).birthDate).toBeNull();
+    expect(profileSchema.safeParse({ ...base, birthDate: "2015-05-01" }).success).toBe(false);
+    expect(profileSchema.safeParse({ ...base, birthDate: "1987-07-" }).success).toBe(false);
+  });
+});

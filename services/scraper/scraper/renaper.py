@@ -73,6 +73,7 @@ def parse_renaper(raw: dict) -> dict | None:
     if not data:
         return None
     ui = (data.get("tramitesUI") or [{}])[0] or {}
+    office = data.get("oficina_remitente") or {}
     history = ui.get("historico") or data.get("historico") or []
     renaper_steps, postal_steps = [], []
     for item in history:
@@ -106,8 +107,16 @@ def parse_renaper(raw: dict) -> dict | None:
             "status": data.get("descripcion_ultimo_estado", ""),
             "statusDate": data.get("fecha_ultimo_estado", ""),
             "type": data.get("tipo_tramite", ""),
-            "office": (data.get("oficina_remitente") or {}).get("descripcion", ""),
+            "office": office.get("descripcion", ""),
+            "officeAddress": str(office.get("domicilio") or ""),
             "stage": ui.get("texto_front") or ui.get("descripcion", ""),
+            "stageText": plain(ui.get("texto_cuerpo", "")),
+            "previous": str(data.get("descripcion_anteultimo_estado") or ""),
+            "previousDate": str(data.get("fecha_anteultimo_estado") or ""),
+            "takenDate": str(data.get("fecha_toma") or ""),
+            "class": str(data.get("clase_tramite") or ""),
+            "pickup": str(data.get("tipo_retiro") or ""),
+            "description": str(data.get("descripcion_tramite") or ""),
         },
         "renaper_steps": renaper_steps,
         "postal_steps": postal_steps,

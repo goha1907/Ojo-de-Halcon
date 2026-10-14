@@ -22,7 +22,7 @@ export function createProfileService(deps: { prisma: PrismaClient; now: () => Da
     const current = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const changes: { field: string; oldValue: string; newValue: string }[] = [];
     const diff = (field: string, oldValue: string | null, newValue: string) => {
-      if (oldValue !== newValue) changes.push({ field, oldValue: oldValue ?? "", newValue });
+      if ((oldValue ?? "") !== newValue) changes.push({ field, oldValue: oldValue ?? "", newValue });
     };
     diff("firstName", current.firstName, input.firstName);
     diff("lastName", current.lastName, input.lastName);
@@ -30,7 +30,7 @@ export function createProfileService(deps: { prisma: PrismaClient; now: () => Da
     diff(
       "birthDate",
       current.birthDate ? current.birthDate.toISOString().slice(0, 10) : null,
-      input.birthDate.toISOString().slice(0, 10),
+      input.birthDate ? input.birthDate.toISOString().slice(0, 10) : "",
     );
 
     if (changes.length === 0) return { allowed: true };

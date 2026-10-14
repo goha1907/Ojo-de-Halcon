@@ -6,24 +6,24 @@ describe("formatNotification", () => {
     const text = formatNotification({
       kind: "PJN",
       locale: "ru",
-      label: null,
+      caseId: "CNE 007900/2026",
       payload: {
         step: { date: "3/09/2026", title: "DESPACHO", detail: "TRASLADO" },
         header: { sit_actual: "GIRO" },
       },
     });
-    expect(text).toContain("Суд");
+    expect(text.split("\n").slice(0, 2)).toEqual(["Дело CNE 007900/2026", expect.stringContaining("PJN")]);
     expect(text).toContain("• 3/09/2026 · DESPACHO — TRASLADO");
     expect(text).toContain("GIRO");
   });
 
-  it("falls back to the default locale and shows the label", () => {
+  it("falls back to the default locale and the generic owner label", () => {
     const text = formatNotification({
       kind: "CORREO",
       locale: "xx",
-      label: "Мама",
+      caseId: "755824304",
       payload: { step: null, header: {} },
     });
-    expect(text).toContain("Мама");
+    expect(text.startsWith("Отслеживание № 755824304")).toBe(true);
   });
 });

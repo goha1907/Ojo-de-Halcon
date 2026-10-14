@@ -31,9 +31,17 @@ export const NAVIGATION: NavEntry[] = [
       })),
     }),
   ),
-  { kind: "link", id: "news", href: ROUTES.news, labelKey: "nav.news" },
+  {
+    kind: "group",
+    id: "settings",
+    labelKey: "nav.settings",
+    items: [
+      { id: "settings_profile", href: ROUTES.settingsProfile, labelKey: "nav.settings.profile" },
+      { id: "settings_notifications", href: ROUTES.settingsNotifications, labelKey: "nav.settings.notifications" },
+      { id: "settings_subscription", href: ROUTES.settingsSubscription, labelKey: "nav.settings.subscription" },
+    ],
+  },
   { kind: "link", id: "links", href: ROUTES.links, labelKey: "nav.links" },
-  { kind: "link", id: "settings", href: ROUTES.settings, labelKey: "nav.settings" },
 ];
 
 /** A link is active on its own path and on any nested path. */

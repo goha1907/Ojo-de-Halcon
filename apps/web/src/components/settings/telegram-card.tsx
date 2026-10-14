@@ -1,6 +1,6 @@
 "use client";
 
-import { API_ROUTES, APP_CONFIG, type MessageKey } from "@ojo/shared";
+import { API_ROUTES, APP_CONFIG, SETTINGS_SECTIONS, type MessageKey } from "@ojo/shared";
 import { Alert, Button, Card, Spinner } from "@ojo/ui";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -84,7 +84,7 @@ export function TelegramCard({ linked, username }: { linked: boolean; username: 
   }
 
   return (
-    <Card title={t("settings.telegram.title")} description={t("settings.telegram.help")}>
+    <Card id={SETTINGS_SECTIONS.telegram} title={t("settings.telegram.title")} description={t("settings.telegram.help")}>
       <div className="space-y-4">
         {error && <Alert tone="error">{error}</Alert>}
 

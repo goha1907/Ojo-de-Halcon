@@ -1,9 +1,8 @@
 import type { AccessState } from "@ojo/core";
-import { ROUTES, type MessageKey, type TranslateFn } from "@ojo/shared";
+import { settingsHref, type MessageKey, type TranslateFn } from "@ojo/shared";
 import Link from "next/link";
 
 const KEY: Record<Exclude<AccessState["plan"], "subscription">, MessageKey> = {
-  none: "access.banner.none",
   trial: "access.banner.trial",
   trial_expired: "access.banner.trialExpired",
 };
@@ -21,7 +20,7 @@ export function AccessBanner({ access, t, locale }: { access: AccessState; t: Tr
   return (
     <p className={`rounded-lg border px-3 py-2 text-sm ${tone}`}>
       {t(KEY[access.plan], { date })}{" "}
-      <Link href={`${ROUTES.settings}#subscription`} className="font-medium underline">
+      <Link href={settingsHref("subscription")} className="font-medium underline">
         {t("access.banner.link")}
       </Link>
     </p>

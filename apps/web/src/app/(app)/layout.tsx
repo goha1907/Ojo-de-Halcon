@@ -13,11 +13,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!mustVerify && !user.onboardingDone) redirect(ROUTES.onboarding);
 
   const core = getCore();
-  const [people, access, trackers] = await Promise.all([
+  const [people, access, trackers, billing] = await Promise.all([
     core.people.list(user.id),
     core.access.get(user.id),
     core.trackers.list(user.id),
+    core.billing.state(user.id),
   ]);
+  // paid cases of a subscription; finished and paused cases do not occupy one
+  const usage = access.plan === "subscription" ? { used: billing.activeCases, limit: billing.paidCases } : null;
   const sectionCounts: Record<string, number> = {};
   for (const item of trackers) {
     const section = TRACKER_KIND_SECTION[item.kind];
@@ -37,6 +40,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       people={people}
       access={access}
       addLock={addLock}
+      usage={usage}
       sectionCounts={sectionCounts}
     >
       {mustVerify ? <VerifyPending email={user.email} /> : children}

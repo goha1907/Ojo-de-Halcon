@@ -104,7 +104,7 @@ export function ProfileFields({ state }: { state: ProfileFieldsState }) {
         onChange={(e) => setValues({ ...values, lastName: e.target.value })}
       />
       <DateField
-        label={t("field.birthDate")}
+        label={t("field.birthDateOptional")}
         value={values.birthDate}
         error={errors.birthDate}
         labels={{ day: t("field.day"), month: t("field.month"), year: t("field.year") }}

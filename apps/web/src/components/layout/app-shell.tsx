@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { AccessBanner } from "@/components/layout/access-banner";
 import { LogoutButton } from "@/components/logout-button";
 import { AddTrackerButton } from "@/components/trackers/add-tracker-button";
+import { AddTrackerHost } from "@/components/trackers/add-tracker-host";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { getT } from "@/server/i18n";
 
@@ -17,6 +18,7 @@ export async function AppShell({
   people,
   access,
   addLock,
+  usage,
   sectionCounts,
   children,
 }: {
@@ -27,6 +29,8 @@ export async function AppShell({
   access: AccessState;
   /** Why adding is blocked right now (null = allowed). */
   addLock: "trial" | "expired" | null;
+  /** Paid cases in use / paid; null without a subscription. */
+  usage: { used: number; limit: number } | null;
   /** Cases per section id, shown in the menu. */
   sectionCounts: Record<string, number>;
   children: ReactNode;
@@ -34,14 +38,17 @@ export async function AppShell({
   const { t, locale } = await getT();
 
   const brand = (
-    <Link href={ROUTES.dashboard} className="text-lg font-semibold text-slate-900">
+    <Link href={ROUTES.home} className="text-lg font-semibold text-slate-900">
       {t("app.name")}
     </Link>
   );
   const account = (
-    <div className="flex items-center justify-between gap-2 border-t border-slate-200 pt-3">
-      <span className="truncate text-sm text-slate-600">{userLabel}</span>
-      <LogoutButton />
+    <div className="space-y-3 border-t border-slate-200 pt-3">
+      {showMenu && <AddTrackerButton fullWidth />}
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate text-sm text-slate-600">{userLabel}</span>
+        <LogoutButton />
+      </div>
     </div>
   );
 
@@ -63,8 +70,9 @@ export async function AppShell({
         {showMenu && (
           <details className="mt-2">
             <summary className="cursor-pointer text-sm font-medium text-slate-700">{t("nav.menu")}</summary>
-            <div className="mt-2">
+            <div className="mt-2 space-y-3">
               <SidebarNav counts={sectionCounts} />
+              <AddTrackerButton fullWidth />
             </div>
           </details>
         )}
@@ -72,15 +80,17 @@ export async function AppShell({
 
       <main className="min-w-0 px-4 py-6 md:px-8">
         <div className="mx-auto max-w-4xl space-y-6">
-          {showMenu && (
-            <div className="flex justify-end">
-              <AddTrackerButton defaultJurisdiction={defaultJurisdiction} people={people} lock={addLock} />
-            </div>
-          )}
           {showMenu && <AccessBanner access={access} t={t} locale={locale} />}
           {children}
         </div>
       </main>
+      {/* The single "add tracker" modal of the page; all + buttons open it */}
+      {showMenu && <AddTrackerHost
+          defaultJurisdiction={defaultJurisdiction}
+          people={people}
+          lock={addLock}
+          usage={usage}
+        />}
     </div>
   );
 }

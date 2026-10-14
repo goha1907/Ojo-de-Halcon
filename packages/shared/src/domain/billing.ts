@@ -3,57 +3,57 @@ import { PRICING } from "../config/pricing";
 
 const DAY_MS = 86_400_000;
 
-/** Price of one full period: the owner plus `seats` relatives. */
-export function periodPrice(seats: number): number {
-  return PRICING.perUserPerPeriod * (1 + seats);
+/** Price of one period for a subscription holding `cases` tracked cases. */
+export function casesPrice(cases: number): number {
+  if (cases <= 0) return 0;
+  const { ladder, extraCase } = PRICING;
+  if (cases <= ladder.length) return ladder[cases - 1]!;
+  return ladder[ladder.length - 1]! + (cases - ladder.length) * extraCase;
 }
 
-export interface CheckoutQuote {
-  /** `new_period`: a period is started/renewed and charged in full.
-   *  `prorated`: seats are added to the running period for the remaining days. */
-  mode: "new_period" | "prorated";
+export interface PurchaseQuote {
+  /** `new_period`: a period starts and is charged in full.
+   *  `extra`: more cases are added to the running period; the renewal date stays. */
+  mode: "new_period" | "extra";
   amount: number;
   currency: string;
   /** End of the paid period after the payment. */
   periodEnd: Date;
-  seatsAfter: number;
-  addSeats: number;
+  /** Paid cases after the payment. */
+  casesAfter: number;
+  /** Cases this payment adds. */
+  addCases: number;
 }
 
 /**
- * What a purchase costs. Without an active subscription one full period is
- * charged for the owner and every seat. With one, only the new seats are
- * charged, in proportion to the days left, and the renewal date stays.
+ * What a purchase costs. Without a running period one full period is charged for
+ * `targetCases`. Inside a running period the added cases cost the difference of the
+ * price ladder in full (no proration: they are tracked from now on) and the period
+ * does not move.
  */
-export function quoteCheckout(input: {
+export function quotePurchase(input: {
   subscriptionUntil: Date | null;
-  seats: number;
-  addSeats: number;
+  paidCases: number;
+  targetCases: number;
   now: Date;
-}): CheckoutQuote {
-  const periodMs = APP_CONFIG.limits.subscriptionDays * DAY_MS;
-  const seatsAfter = input.seats + input.addSeats;
+}): PurchaseQuote {
   const active = input.subscriptionUntil !== null && input.subscriptionUntil > input.now;
   if (!active) {
     return {
       mode: "new_period",
-      amount: periodPrice(seatsAfter),
+      amount: casesPrice(input.targetCases),
       currency: PRICING.currency,
-      periodEnd: new Date(input.now.getTime() + periodMs),
-      seatsAfter,
-      addSeats: input.addSeats,
+      periodEnd: new Date(input.now.getTime() + APP_CONFIG.limits.subscriptionDays * DAY_MS),
+      casesAfter: input.targetCases,
+      addCases: input.targetCases,
     };
   }
-  const remaining = input.subscriptionUntil!.getTime() - input.now.getTime();
-  const fraction = Math.min(1, remaining / periodMs);
-  const raw = PRICING.perUserPerPeriod * input.addSeats * fraction;
   return {
-    mode: "prorated",
-    // never free: at least one currency unit per purchase of seats
-    amount: input.addSeats > 0 ? Math.max(1, Math.ceil(raw)) : 0,
+    mode: "extra",
+    amount: casesPrice(input.targetCases) - casesPrice(input.paidCases),
     currency: PRICING.currency,
     periodEnd: input.subscriptionUntil!,
-    seatsAfter,
-    addSeats: input.addSeats,
+    casesAfter: input.targetCases,
+    addCases: input.targetCases - input.paidCases,
   };
 }

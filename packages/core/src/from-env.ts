@@ -40,6 +40,7 @@ export function createCoreFromEnv(env: Env, mailer: Mailer = createConsoleMailer
       linkCodeBytes: APP_CONFIG.auth.linkCodeBytes,
       sessionTokenBytes: APP_CONFIG.auth.sessionTokenBytes,
       emailTokenBytes: APP_CONFIG.auth.emailTokenBytes,
+      relativesEnabled: env.FEATURE_RELATIVES,
     },
   });
 }
