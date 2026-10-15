@@ -45,7 +45,7 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
   // the trial is its own thing: one place for a few days, shown only while it runs
   const trial = !subscribed && access.trialCases > 0;
   // gift places are mentioned only to people who have them
-  const giftCases = access.bonusCases;
+  const giftCases = access.giftCases;
   const giftGrants = grants.filter((grant) => grant.kind !== "TRIAL" && grant.active);
   const giftEnds = giftGrants
     .map((grant) => (grant.expiresAt ? new Date(grant.expiresAt).getTime() : null))
@@ -53,7 +53,7 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
   const giftUntil = giftEnds.length > 0 ? Math.min(...giftEnds) : null;
   const trialUsed = Math.min(billing.activeCases, access.trialCases);
   // the server decides which places hold the cases (free ones first); the page only shows it
-  const giftUsed = billing.giftUsedCases;
+  const giftUsed = billing.grantedUsedCases;
   const paidUsed = billing.paidUsedCases;
   // a running subscription grows by the entered number; without one the number is the whole subscription
   // without a subscription the number is the whole subscription: it must hold the cases the free places do not cover

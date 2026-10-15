@@ -54,7 +54,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   for (const item of trackers.filter((row) => row.lastError === "birth_date_missing")) {
     attention.push({ key: `b-${item.id}`, tone: "error", text: t("dash.attn.birth", { name: nameOf(item) }) });
   }
-  if (access.plan === "trial_expired") {
+  if (access.plan === "none") {
     attention.push({
       key: "trial-expired",
       tone: "error",
@@ -62,11 +62,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       href: settingsHref("subscription"),
       action: t("dash.attn.subscribe"),
     });
-  } else if (access.plan === "trial" && daysLeft !== null && daysLeft <= 3) {
+  } else if (access.plan === "granted" && daysLeft !== null && daysLeft <= 3) {
     attention.push({
       key: "trial-ending",
       tone: "info",
-      text: t(access.bonusCases > 0 ? "dash.attn.giftEnding" : "dash.attn.trialEnding", { date: day(untilMs!) }),
+      text: t(access.giftCases > 0 ? "dash.attn.giftEnding" : "dash.attn.trialEnding", { date: day(untilMs!) }),
       href: settingsHref("subscription"),
       action: t("dash.attn.subscribe"),
     });
@@ -172,8 +172,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <StatTile
             label={t("dash.tile.plan")}
             value={
-              access.plan === "trial"
-                ? t(access.bonusCases > 0 && access.trialCases === 0 ? "dash.tile.gift" : "dash.tile.trial")
+              access.plan === "granted"
+                ? t(access.giftCases > 0 && access.trialCases === 0 ? "dash.tile.gift" : "dash.tile.trial")
                 : t("dash.tile.noPlan")
             }
             hint={access.until ? t("dash.tile.until", { date: day(access.until) }) : undefined}

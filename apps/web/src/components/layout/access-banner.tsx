@@ -9,16 +9,16 @@ export function AccessBanner({ access, t, locale }: { access: AccessState; t: Tr
     ? new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(access.until))
     : "";
   const tone =
-    access.plan === "trial_expired"
+    access.plan === "none"
       ? "border-amber-200 bg-amber-50 text-amber-900"
       : "border-sky-200 bg-sky-50 text-sky-900";
   const text =
-    access.plan === "trial_expired"
+    access.plan === "none"
       ? t(access.endedKind && access.endedKind !== "TRIAL" ? "access.banner.giftEnded" : "access.banner.trialExpired")
-      : access.bonusCases > 0
+      : access.giftCases > 0
         ? access.until
-          ? t("access.banner.gift", { count: access.bonusCases, date })
-          : t("access.banner.giftNoEnd", { count: access.bonusCases })
+          ? t("access.banner.gift", { count: access.giftCases, date })
+          : t("access.banner.giftNoEnd", { count: access.giftCases })
         : t("access.banner.trial", { date });
   return (
     <p className={`rounded-lg border px-3 py-2 text-sm ${tone}`}>

@@ -18,6 +18,7 @@ import {
   type TrackerStatusValue,
   type TrackerStep,
 } from "@ojo/shared";
+import type { CapacityService } from "../capacity/capacity-service";
 import type { GrantService } from "../grants/grant-service";
 import { ScraperError, type Scraper, type ScrapedTramite } from "./scraper";
 
@@ -205,8 +206,9 @@ export function createTrackerService(deps: {
   scraper: Scraper;
   now: () => Date;
   grants: GrantService;
+  capacity: CapacityService;
 }) {
-  const { prisma, scraper, now, grants } = deps;
+  const { prisma, scraper, now, grants, capacity } = deps;
 
   type TrackerWithSnapshot = Tracker & { snapshot: TrackerSnapshot | null };
 
@@ -245,20 +247,14 @@ export function createTrackerService(deps: {
    * free ones (trial, bonus, gift); finished and paused cases do not occupy one.
    */
   async function addGate(userId: string): Promise<"OK" | "NO_FREE_SLOT" | "SUBSCRIPTION_REQUIRED"> {
-    const at = now();
-    const user = await prisma.user.findUniqueOrThrow({
-      where: { id: userId },
-      select: { subscriptionUntil: true, paidCases: true },
-    });
-    const running = user.subscriptionUntil !== null && user.subscriptionUntil > at;
-    const capacity = (running ? user.paidCases : 0) + (await grants.casesAt(userId, at));
-    if (capacity === 0) return "SUBSCRIPTION_REQUIRED";
+    const places = await capacity.get(userId);
+    if (places.total === 0) return "SUBSCRIPTION_REQUIRED";
     const occupied = await prisma.tracker.count({
       where: { userId, status: { notIn: ["FINISHED", "PAUSED"] } },
     });
-    if (occupied < capacity) return "OK";
-    // the places are full: more paid ones fix it for a subscriber, a free-only account needs a subscription
-    return running ? "NO_FREE_SLOT" : "SUBSCRIPTION_REQUIRED";
+    if (occupied < places.total) return "OK";
+    // the places are full: more paid ones fix it for a subscriber, an account without one needs a subscription
+    return places.running ? "NO_FREE_SLOT" : "SUBSCRIPTION_REQUIRED";
   }
 
   /** Runs a create; null when another request just added the very same case (unique key). */
@@ -953,42 +949,11 @@ export function createTrackerService(deps: {
     return result.count;
   }
 
-  /**
-   * Ids of the active cases that are due and covered by a place of their owner. Cases of one owner take
-   * places oldest first, so when the places run out (a bonus ended) the newest ones wait without being
-   * touched, and they resume by themselves once places exist again.
-   */
-  async function dueCoveredIds(limit: number): Promise<string[]> {
-    const at = now();
-    const rows = await prisma.$queryRaw<{ id: string }[]>`
-      WITH capacity AS (
-        SELECT u."id" AS "userId",
-          (CASE WHEN u."subscriptionUntil" > ${at} THEN u."paidCases" ELSE 0 END)
-          + COALESCE((
-              SELECT SUM(g."cases") FROM "FreeGrant" g
-              WHERE g."userId" = u."id" AND g."revokedAt" IS NULL AND g."startsAt" <= ${at}
-                AND (g."expiresAt" IS NULL OR g."expiresAt" > ${at})
-            ), 0) AS "places"
-        FROM "User" u
-      ), ranked AS (
-        SELECT t."id", t."userId", t."status"::text AS "status", t."nextCheckAt",
-          ROW_NUMBER() OVER (PARTITION BY t."userId" ORDER BY t."slotSince", t."createdAt", t."id") AS "rank"
-        FROM "Tracker" t
-        WHERE t."status"::text IN ('ACTIVE', 'PENDING_CONFIRMATION')
-      )
-      SELECT r."id" FROM ranked r
-      JOIN capacity c ON c."userId" = r."userId"
-      WHERE r."status" = 'ACTIVE' AND r."nextCheckAt" <= ${at} AND r."rank" <= c."places"
-      ORDER BY r."nextCheckAt" ASC
-      LIMIT ${limit}`;
-    return rows.map((row) => row.id);
-  }
-
   /** Checks trackers whose time has come (called by the worker on a timer). */
   async function runDue(limit: number = TRACKER_CONFIG.batchSize): Promise<number> {
     await closeFinished();
     await grants.sweepExpired();
-    const ids = await dueCoveredIds(limit);
+    const ids = await capacity.coveredDueIds(limit);
     const due = await prisma.tracker.findMany({
       where: { id: { in: ids } },
       orderBy: { nextCheckAt: "asc" },

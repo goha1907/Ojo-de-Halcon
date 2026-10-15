@@ -2,6 +2,7 @@ import { createAccountService } from "./accounts/account-service";
 import { createSessionService } from "./auth/session-service";
 import { createAccessService } from "./access/access-service";
 import { createBillingService } from "./billing/billing-service";
+import { createCapacityService } from "./capacity/capacity-service";
 import { createGrantService } from "./grants/grant-service";
 import { createFeedbackService } from "./feedback/feedback-service";
 import { createPaymentService } from "./payments/payment-service";
@@ -15,8 +16,9 @@ import type { CoreDeps } from "./types";
 export function createCore(deps: CoreDeps) {
   const now = deps.now ?? (() => new Date());
   const { prisma, config, mailer, scraper } = deps;
-  const grants = createGrantService({ prisma, now });
-  const billing = createBillingService({ prisma, now, grants });
+  const capacity = createCapacityService({ prisma, now });
+  const grants = createGrantService({ prisma, now, capacity });
+  const billing = createBillingService({ prisma, now, grants, capacity });
   // Payment providers: connecting a real one (Mercado Pago, an acquirer) is adding its adapter here.
   const providers: PaymentProvider[] = [
     ...(config.payments.stubEnabled
@@ -33,9 +35,11 @@ export function createCore(deps: CoreDeps) {
       scraper,
       now,
       grants,
+      capacity,
     }),
     grants,
-    access: createAccessService({ prisma, now }),
+    capacity,
+    access: createAccessService({ prisma, now, capacity, grants }),
     billing,
     feedback: createFeedbackService({ prisma }),
     payments: createPaymentService({ prisma, billing, providers, config: config.payments, now }),
@@ -70,7 +74,8 @@ export type {
   TrackerService,
 } from "./trackers/tracker-service";
 export type { AccessPlan, AccessState } from "./access/access-service";
-export type { FreeGrantDto, FreeCapacity, GrantKind, GrantService } from "./grants/grant-service";
+export type { FreeGrantDto, GrantKind, GrantService } from "./grants/grant-service";
+export type { PlaceBreakdown, CapacityService } from "./capacity/capacity-service";
 export { GRANT_KINDS } from "./grants/grant-service";
 export { resolveAccess } from "./access/access-service";
 export type {

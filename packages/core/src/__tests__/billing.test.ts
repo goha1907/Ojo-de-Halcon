@@ -55,7 +55,7 @@ describe("billing service", () => {
     expect(await core.billing.state(userId)).toMatchObject({
       paidCases: 5,
       // buying a subscription ended the trial place
-      freeGrantCases: 0,
+      grantedCases: 0,
       freeCases: 5,
       currentPrice: 15000,
     });

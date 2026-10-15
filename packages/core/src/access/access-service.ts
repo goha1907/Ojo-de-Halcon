@@ -1,37 +1,38 @@
 import type { PrismaClient } from "@ojo/db";
-import { activeGrantWhere, trialGrantData } from "../grants/grant-service";
+import type { CapacityService } from "../capacity/capacity-service";
+import { trialGrantData, type GrantService } from "../grants/grant-service";
 
 /**
  * "subscription": a paid period is running.
- * "trial": no subscription, but free places are active (the trial, a bonus, a gift).
- * "trial_expired": neither: tracking is paused until a subscription is bought.
+ * "granted": no subscription, but granted places are active (the trial, gifted places).
+ * "none": nothing is active: tracking is paused until a subscription is bought.
  */
-export type AccessPlan = "subscription" | "trial" | "trial_expired";
+export type AccessPlan = "subscription" | "granted" | "none";
 
 export interface AccessState {
   plan: AccessPlan;
-  /** End of the subscription, or of the free places (null: they have no end); null when there is none. */
+  /** End of the subscription, or of the granted places (null: they have no end); null when there is none. */
   until: string | null;
-  /** May the account be tracked at all right now (paid, or free places active). */
+  /** May the account be tracked at all right now (paid, or granted places active). */
   active: boolean;
-  /** Cases the active extra places cover (the trial place and bonus ones together). */
-  freeCases: number;
+  /** Cases the active granted places cover (trial and gift together). */
+  grantedCases: number;
   /** Of them: the trial place. */
   trialCases: number;
-  /** Of them: bonus, gift and other granted places. */
-  bonusCases: number;
+  /** Of them: gifted places. */
+  giftCases: number;
   /** Kind of the grant that ended last while nothing is active; null otherwise. */
   endedKind: string | null;
 }
 
-/** Pure rule: what the account's paid period and free places mean right now. */
+/** Pure rule: what the paid period and the granted places mean right now. */
 export function resolveAccess(
   user: { subscriptionUntil: Date | null },
-  free: { trial: number; bonus: number; until: Date | null; lastEnd: Date | null; endedKind?: string | null },
+  granted: { trial: number; gift: number; until: Date | null; lastEnd: Date | null; endedKind?: string | null },
   now: Date,
 ): AccessState {
-  const cases = free.trial + free.bonus;
-  const counts = { freeCases: cases, trialCases: free.trial, bonusCases: free.bonus };
+  const cases = granted.trial + granted.gift;
+  const counts = { grantedCases: cases, trialCases: granted.trial, giftCases: granted.gift };
   if (user.subscriptionUntil && user.subscriptionUntil > now) {
     return {
       plan: "subscription",
@@ -43,51 +44,44 @@ export function resolveAccess(
   }
   if (cases > 0) {
     return {
-      plan: "trial",
-      until: free.until ? free.until.toISOString() : null,
+      plan: "granted",
+      until: granted.until ? granted.until.toISOString() : null,
       active: true,
       ...counts,
       endedKind: null,
     };
   }
   return {
-    plan: "trial_expired",
-    until: free.lastEnd ? free.lastEnd.toISOString() : null,
+    plan: "none",
+    until: granted.lastEnd ? granted.lastEnd.toISOString() : null,
     active: false,
     ...counts,
-    endedKind: free.endedKind ?? null,
+    endedKind: granted.endedKind ?? null,
   };
 }
 
-export function createAccessService(deps: { prisma: PrismaClient; now: () => Date }) {
-  const { prisma, now } = deps;
+export function createAccessService(deps: {
+  prisma: PrismaClient;
+  now: () => Date;
+  capacity: CapacityService;
+  grants: GrantService;
+}) {
+  const { prisma, now, capacity, grants } = deps;
 
   async function get(userId: string): Promise<AccessState> {
     const at = now();
-    const [user, active, lastEnded] = await Promise.all([
+    const [user, places] = await Promise.all([
       prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { subscriptionUntil: true } }),
-      prisma.freeGrant.findMany({
-        where: { userId, ...activeGrantWhere(at) },
-        select: { cases: true, expiresAt: true, kind: true },
-      }),
-      prisma.freeGrant.findFirst({
-        where: { userId, revokedAt: null, expiresAt: { lte: at } },
-        orderBy: { expiresAt: "desc" },
-        select: { expiresAt: true, kind: true },
-      }),
+      capacity.get(userId, at),
     ]);
-    const trial = active.filter((row) => row.kind === "TRIAL").reduce((total, row) => total + row.cases, 0);
-    const bonus = active.filter((row) => row.kind !== "TRIAL").reduce((total, row) => total + row.cases, 0);
-    const endless = active.some((row) => row.expiresAt === null);
-    const last = active.reduce((max, row) => Math.max(max, row.expiresAt?.getTime() ?? 0), 0);
     return resolveAccess(
       user,
       {
-        trial,
-        bonus,
-        until: active.length === 0 || endless || last === 0 ? null : new Date(last),
-        lastEnd: lastEnded?.expiresAt ?? null,
-        endedKind: lastEnded?.kind ?? null,
+        trial: places.trial,
+        gift: places.gift,
+        until: places.grantedUntil,
+        lastEnd: places.lastEnd,
+        endedKind: places.endedKind,
       },
       at,
     );
@@ -105,10 +99,7 @@ export function createAccessService(deps: { prisma: PrismaClient; now: () => Dat
       });
     } else {
       await prisma.$transaction([
-        prisma.freeGrant.updateMany({
-          where: { userId, kind: "TRIAL", revokedAt: null },
-          data: { revokedAt: now(), expiryHandledAt: now() },
-        }),
+        grants.endTrial(userId),
         prisma.user.update({ where: { id: userId }, data: { trialStartedAt: now() } }),
         prisma.freeGrant.create({ data: trialGrantData(userId, now(), now()) }),
       ]);

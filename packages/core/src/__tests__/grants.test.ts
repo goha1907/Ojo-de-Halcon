@@ -23,7 +23,7 @@ describe("free places", () => {
     const [trial] = await core.grants.list(userId);
     expect(trial).toMatchObject({ kind: "TRIAL", cases: 1, active: true });
     expect(new Date(trial!.expiresAt!).getTime()).toBe(clock.at.getTime() + 7 * DAY);
-    expect(await core.access.get(userId)).toMatchObject({ plan: "trial", freeCases: 1 });
+    expect(await core.access.get(userId)).toMatchObject({ plan: "granted", grantedCases: 1 });
   });
 
   it("moves a case from the trial place to the bonus places without cost", async () => {
@@ -46,7 +46,7 @@ describe("free places", () => {
     });
     clock.at = new Date(clock.at.getTime() + 8 * DAY);
     const state = await core.billing.state(userId);
-    expect(state).toMatchObject({ paidCases: 0, freeGrantCases: 5, activeCases: 1, freeCases: 4, currentPrice: 0 });
+    expect(state).toMatchObject({ paidCases: 0, grantedCases: 5, activeCases: 1, freeCases: 4, currentPrice: 0 });
     for (const number of NUMBERS.slice(1, 5)) {
       expect(await core.trackers.addTramite(userId, "RENAPER", number)).toMatchObject({ ok: true });
     }
@@ -72,7 +72,7 @@ describe("free places", () => {
     clock.at = new Date(clock.at.getTime() + 31 * DAY);
     await prisma.tracker.updateMany({ where: { userId }, data: { nextCheckAt: clock.at } });
     expect(await core.trackers.runDue(10)).toBe(0);
-    expect(await core.access.get(userId)).toMatchObject({ plan: "trial_expired", active: false });
+    expect(await core.access.get(userId)).toMatchObject({ plan: "none", active: false });
 
     // one message, with the number of stopped cases
     const outbox = await prisma.telegramOutbox.findMany();
@@ -109,14 +109,14 @@ describe("free places", () => {
     const clock = { at: new Date("2026-10-14T10:00:00Z") };
     const { core, userId } = await setup(clock);
     await core.trackers.addTramite(userId, "RENAPER", NUMBERS[0]!);
-    expect(await core.access.get(userId)).toMatchObject({ plan: "trial", trialCases: 1, bonusCases: 0 });
+    expect(await core.access.get(userId)).toMatchObject({ plan: "granted", trialCases: 1, giftCases: 0 });
 
     // the case sits on the trial place; buying a subscription moves it to the paid one
     expect(await core.billing.checkout(userId, 1)).toMatchObject({ ok: true });
     expect(await core.access.get(userId)).toMatchObject({ plan: "subscription", trialCases: 0 });
     expect(await core.billing.state(userId)).toMatchObject({
       paidCases: 1,
-      freeGrantCases: 0,
+      grantedCases: 0,
       activeCases: 1,
       freeCases: 0,
       nextPeriodCases: 1,
@@ -130,14 +130,14 @@ describe("free places", () => {
     const { core, userId } = await setup(clock);
     await core.trackers.addTramite(userId, "RENAPER", NUMBERS[0]!);
     await core.grants.give({ userId, kind: "GIFT", cases: 5, expiresAt: new Date(clock.at.getTime() + 30 * DAY) });
-    expect(await core.access.get(userId)).toMatchObject({ plan: "trial", trialCases: 0, bonusCases: 5 });
+    expect(await core.access.get(userId)).toMatchObject({ plan: "granted", trialCases: 0, giftCases: 5 });
     // the case stays, now on a gift place: 4 are left
     expect(await core.billing.state(userId)).toMatchObject({
       activeCases: 1,
-      freeGrantCases: 5,
+      grantedCases: 5,
       freeCases: 4,
       // free places take the case first, the paid ones hold none
-      giftUsedCases: 1,
+      grantedUsedCases: 1,
       paidUsedCases: 0,
     });
     expect(await core.grants.give({ userId, kind: "GIFT", cases: 1 }).then(() => true)).toBe(true);
@@ -150,13 +150,13 @@ describe("free places", () => {
     const { core, userId } = await setup(clock);
     const grant = await core.grants.give({ userId, kind: "ADMIN", cases: 2 });
     expect(await core.grants.setExpiry(grant.id, new Date(clock.at.getTime() + DAY))).toBe(true);
-    expect((await core.grants.capacity(userId)).cases).toBe(2);
+    expect((await core.capacity.get(userId)).granted).toBe(2);
     clock.at = new Date(clock.at.getTime() + 2 * DAY);
-    expect((await core.grants.capacity(userId)).cases).toBe(0);
+    expect((await core.capacity.get(userId)).granted).toBe(0);
     const other = await core.grants.give({ userId, kind: "BONUS", cases: 4 });
-    expect((await core.grants.capacity(userId)).cases).toBe(4);
+    expect((await core.capacity.get(userId)).granted).toBe(4);
     expect(await core.grants.revoke(other.id)).toBe(true);
-    expect((await core.grants.capacity(userId)).cases).toBe(0);
+    expect((await core.capacity.get(userId)).granted).toBe(0);
   });
 
   it("charges the next period only for the cases the free places do not cover", async () => {

@@ -196,7 +196,7 @@ describe("one account per mailbox and a remembered trial", () => {
     const started = (await prisma.user.findUniqueOrThrow({ where: { id: first.userId } })).trialStartedAt;
     // no tracker was added, the trial still runs from registration
     expect(started.getTime()).toBeGreaterThanOrEqual(before - 1000);
-    expect((await core.access.get(first.userId)).plan).toBe("trial");
+    expect((await core.access.get(first.userId)).plan).toBe("granted");
 
     await core.accounts.deleteAccount(first.userId, PASSWORD);
     const second = await core.accounts.register({ email: "AGAIN@example.com", password: PASSWORD });

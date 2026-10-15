@@ -26,7 +26,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     sectionCounts[section] = (sectionCounts[section] ?? 0) + 1;
   }
   // without a subscription the trial covers one case; an expired trial covers none
-  const addLock = access.plan === "trial_expired" ? "expired" : null;
+  const addLock = access.plan === "none" ? "expired" : null;
 
   return (
     <AppShell userLabel={user.email} showMenu={!mustVerify}

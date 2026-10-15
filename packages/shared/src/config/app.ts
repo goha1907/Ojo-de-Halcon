@@ -42,6 +42,8 @@ export const APP_CONFIG = {
   },
   /** News list on the landing page. */
   news: { pageSize: 5 },
+  /** Contacts shown to visitors. The mailbox is a placeholder until the real one exists. */
+  contact: { supportEmail: "support@ojodehalcon.example" },
   /** Product limits. */
   limits: {
     /** Longest custom name of a tracked case. */

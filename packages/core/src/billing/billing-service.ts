@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@ojo/db";
 import { APP_CONFIG, PRICING, casesPrice, quotePurchase } from "@ojo/shared";
+import type { CapacityService } from "../capacity/capacity-service";
 import type { GrantService } from "../grants/grant-service";
 
 const DAY_MS = 86_400_000;
@@ -22,12 +23,12 @@ export interface BillingStateDto {
   /** Cases occupying a slot now (tracked, including those marked for removal). */
   activeCases: number;
   /** Cases held by the free places (they take cases first) and by the paid ones: they add up to `activeCases`. */
-  giftUsedCases: number;
+  grantedUsedCases: number;
   paidUsedCases: number;
   /** Places that cases can still take: paid and free ones together, minus the occupied. */
   freeCases: number;
   /** Cases the active free places cover (trial, bonus, gift): they cost nothing. */
-  freeGrantCases: number;
+  grantedCases: number;
   /** All places right now: paid plus free. */
   capacity: number;
   /**
@@ -83,8 +84,13 @@ function toQuoteDto(quote: ReturnType<typeof quotePurchase>): QuoteDto {
   return { ...quote, periodEnd: quote.periodEnd.toISOString() };
 }
 
-export function createBillingService(deps: { prisma: PrismaClient; now: () => Date; grants: GrantService }) {
-  const { prisma, now, grants } = deps;
+export function createBillingService(deps: {
+  prisma: PrismaClient;
+  now: () => Date;
+  grants: GrantService;
+  capacity: CapacityService;
+}) {
+  const { prisma, now, grants, capacity } = deps;
 
   async function counts(userId: string) {
     const rows = await prisma.tracker.groupBy({
@@ -118,15 +124,16 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
   /** Paid places the next period needs: the cases that stay, minus those the free places will cover. */
   async function nextPaid(userId: string, kept: number, periodEnd: Date): Promise<number> {
     // the trial place ends when a subscription starts, so it never covers the next period
-    return Math.max(0, kept - (await grants.casesAt(userId, periodEnd, { withoutTrial: true })));
+    return Math.max(0, kept - (await capacity.grantedAt(userId, periodEnd, { withoutTrial: true })));
   }
 
   async function state(userId: string): Promise<BillingStateDto> {
     const at = now();
-    const [user, count, freeNow] = await Promise.all([load(userId), counts(userId), grants.casesAt(userId, at)]);
-    const running = isRunning(user.subscriptionUntil);
+    const [user, count, places] = await Promise.all([load(userId), counts(userId), capacity.get(userId, at)]);
+    const freeNow = places.granted;
+    const running = places.running;
     // an ended period pays for nothing: the places are bought again at renewal
-    const paid = running ? user.paidCases : 0;
+    const paid = places.paid;
     // the period started one subscription length before its end (extra purchases do not move it);
     // without a subscription the last month is the period
     const periodEnd = running ? user.subscriptionUntil! : new Date(at.getTime() + APP_CONFIG.limits.subscriptionDays * DAY_MS);
@@ -145,8 +152,8 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
       paidCases: paid,
       activeCases: count.active,
       freeCases: Math.max(0, paid + freeNow - count.active),
-      freeGrantCases: freeNow,
-      giftUsedCases: Math.min(count.active, freeNow),
+      grantedCases: freeNow,
+      grantedUsedCases: Math.min(count.active, freeNow),
       paidUsedCases: Math.max(0, count.active - freeNow),
       capacity: paid + freeNow,
       freedByFinished,
@@ -219,10 +226,7 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
     await prisma.$transaction([
       ...(q.mode === "new_period" ? [pauseCancelled(userId)] : []),
       // buying a subscription ends the trial place: the case moves to a paid place
-      prisma.freeGrant.updateMany({
-        where: { userId, kind: "TRIAL", revokedAt: null },
-        data: { revokedAt: now(), expiryHandledAt: now() },
-      }),
+      grants.endTrial(userId),
       prisma.user.update({
         where: { id: userId },
         data: {
@@ -330,10 +334,9 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
   async function resume(userId: string, trackerId: string): Promise<TrackerBillingResult> {
     const tracker = await prisma.tracker.findFirst({ where: { id: trackerId, userId, status: "PAUSED" } });
     if (!tracker) return { ok: false, reason: "NOT_FOUND" };
-    const [user, count, freeNow] = await Promise.all([load(userId), counts(userId), grants.casesAt(userId, now())]);
-    const capacity = (isRunning(user.subscriptionUntil) ? user.paidCases : 0) + freeNow;
-    if (capacity === 0) return { ok: false, reason: "SUBSCRIPTION_REQUIRED" };
-    if (count.active >= capacity) return { ok: false, reason: "NO_FREE_SLOT" };
+    const [count, places] = await Promise.all([counts(userId), capacity.get(userId)]);
+    if (places.total === 0) return { ok: false, reason: "SUBSCRIPTION_REQUIRED" };
+    if (count.active >= places.total) return { ok: false, reason: "NO_FREE_SLOT" };
     await prisma.tracker.update({
       where: { id: tracker.id },
       data: { status: "ACTIVE", pausedAt: null, keepNext: true, lastError: null, nextCheckAt: now() },

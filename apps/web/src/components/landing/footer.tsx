@@ -1,4 +1,4 @@
-import { ROUTES, type TranslateFn } from "@ojo/shared";
+import { APP_CONFIG, ROUTES, type TranslateFn } from "@ojo/shared";
 import Link from "next/link";
 import { LegalLinks } from "./legal-links";
 import { PreferenceSelectors } from "./preference-selectors";
@@ -18,6 +18,12 @@ export function LandingFooter({ t }: { t: TranslateFn }) {
             {t("app.name")}
           </Link>
           <p>{t("landing.footer.company")}</p>
+          <p>
+            {t("landing.footer.support")}{" "}
+            <a href={`mailto:${APP_CONFIG.contact.supportEmail}`} className="underline hover:text-white">
+              {APP_CONFIG.contact.supportEmail}
+            </a>
+          </p>
           <p className="text-slate-400">{t("landing.footer.disclaimer")}</p>
         </div>
         <div className="space-y-3">

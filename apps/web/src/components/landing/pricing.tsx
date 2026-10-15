@@ -1,10 +1,21 @@
-import { APP_CONFIG, PRICING, ROUTES, casesPrice, settingsHref, type TranslateFn } from "@ojo/shared";
+import {
+  APP_CONFIG,
+  PRICING,
+  ROUTES,
+  casesPrice,
+  settingsHref,
+  type MessageKey,
+  type TranslateFn,
+} from "@ojo/shared";
 import Link from "next/link";
 import { formatMoney } from "@/lib/money";
+import { randomVariant } from "@/lib/variant";
 import { Calculator } from "./calculator";
 
 const PLANS = [1, 3, 5] as const;
 const POPULAR = 3;
+/** Wordings of the line for corporate clients (keys `landing.pricing.corporate.<n>`); one is shown per visit. */
+const CORPORATE_VARIANTS = 6;
 
 /** Plans for 1, 3 and 5 cases, then a calculator for any number. Prices come from the config ladder. */
 export function Pricing({ t, locale, signedIn }: { t: TranslateFn; locale: string; signedIn: boolean }) {
@@ -64,6 +75,15 @@ export function Pricing({ t, locale, signedIn }: { t: TranslateFn; locale: strin
         })}
       </div>
       <Calculator signedIn={signedIn} />
+      <p className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-700">
+        {t(`landing.pricing.corporate.${randomVariant(CORPORATE_VARIANTS)}` as MessageKey)}{" "}
+        <a
+          href={`mailto:${APP_CONFIG.contact.supportEmail}`}
+          className="font-medium text-brand-700 underline hover:text-brand-600"
+        >
+          {APP_CONFIG.contact.supportEmail}
+        </a>
+      </p>
       <p className="text-sm text-slate-500">{t("landing.pricing.trial", { days: APP_CONFIG.limits.trialDays })}</p>
       <p className="text-sm text-slate-500">{t("landing.pricing.note")}</p>
     </section>
