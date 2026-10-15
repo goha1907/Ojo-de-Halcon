@@ -16,7 +16,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
             {t("app.name")}
           </Link>
           <div className="flex items-center gap-3">
-            <PreferenceSelectors t={t} currency={false} />
+            <PreferenceSelectors t={t} />
             <Link href={ROUTES.home} className="text-sm font-medium text-slate-700 hover:text-slate-900">
               ← {t("landing.backHome")}
             </Link>

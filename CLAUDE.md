@@ -33,9 +33,14 @@
 ## Структура
 
 ```
-apps/web        Next.js (интерфейс + API)
-apps/worker     фоновые задачи, Telegram-бот, проверки
-packages/db     Prisma-схема и клиент
-packages/ui     общие UI-компоненты
-packages/shared конфиг, i18n-словари, схемы валидации, типы
+apps/web          Next.js (интерфейс + API), новости в content/news
+apps/worker       фоновые задачи, Telegram-бот, расписание опросов
+packages/core     бизнес-логика: подписка, отслеживания, платежи, доступ
+packages/db       Prisma-схема, миграции и клиент
+packages/shared   конфиг, i18n-словари, схемы валидации, типы
+packages/ui       общие UI-компоненты
+services/scraper  Python-сборщик данных (RENAPER, Correo, Migraciones, PJN)
+scripts/          локальные скрипты (dev, тестовая БД, статистика статусов)
+docs/             PLAN, IDEAS, PAYMENTS, TELEGRAM_BOT, WHATSAPP_BOT, ACCOUNTANT_QUESTIONS
 ```
+Документация лежит в `docs/`; в корне только README.md и CLAUDE.md.

@@ -453,7 +453,6 @@ export const ru = {
   "landing.footer.copyright": "© {year} Ojo de Halcón. Все права защищены.",
   "landing.footer.payments": "Принимаем к оплате",
   "landing.lang": "Язык",
-  "landing.currency": "Валюта",
   "landing.soonOption": "{name} (скоро)",
   "landing.legal.terms": "Пользовательское соглашение",
   "landing.legal.privacy": "Политика конфиденциальности",

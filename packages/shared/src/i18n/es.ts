@@ -450,7 +450,6 @@ export const es: Messages = {
   "landing.footer.copyright": "© {year} Ojo de Halcón. Todos los derechos reservados.",
   "landing.footer.payments": "Medios de pago",
   "landing.lang": "Idioma",
-  "landing.currency": "Moneda",
   "landing.soonOption": "{name} (próximamente)",
   "landing.legal.terms": "Términos y condiciones",
   "landing.legal.privacy": "Política de privacidad",
