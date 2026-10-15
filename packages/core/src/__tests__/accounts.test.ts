@@ -155,6 +155,29 @@ describe("account deletion", () => {
   });
 });
 
+describe("changing the password", () => {
+  it("needs the current password, replaces the hash and closes the other sessions", async () => {
+    const core = makeCore();
+    const reg = await core.accounts.register({ email: "p@b.co", password: PASSWORD });
+    if (!reg.ok) throw new Error("registration failed");
+    const here = await core.sessions.create(reg.userId);
+    const other = await core.sessions.create(reg.userId);
+
+    expect(await core.accounts.changePassword(reg.userId, "wrong-password", "another-password-1")).toEqual({
+      ok: false,
+    });
+    expect((await core.accounts.login({ email: "p@b.co", password: PASSWORD })).ok).toBe(true);
+
+    expect(await core.accounts.changePassword(reg.userId, PASSWORD, "another-password-1")).toEqual({ ok: true });
+    expect((await core.accounts.login({ email: "p@b.co", password: PASSWORD })).ok).toBe(false);
+    expect((await core.accounts.login({ email: "p@b.co", password: "another-password-1" })).ok).toBe(true);
+
+    await core.sessions.destroyOthers(reg.userId, here.token);
+    expect(await core.sessions.getUser(here.token)).not.toBeNull();
+    expect(await core.sessions.getUser(other.token)).toBeNull();
+  });
+});
+
 describe("one account per mailbox and a remembered trial", () => {
   it("treats address variations of one mailbox as taken", async () => {
     const core = makeCore();

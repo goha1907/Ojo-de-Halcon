@@ -57,13 +57,23 @@ export function createSessionService(deps: {
     });
   }
 
+  /** Signs the user out everywhere except the session of `keepToken`. */
+  async function destroyOthers(userId: string, keepToken: string | undefined | null): Promise<void> {
+    await prisma.session.deleteMany({
+      where: {
+        userId,
+        ...(keepToken ? { tokenHash: { not: keyedHash(config.secret, "session", keepToken) } } : {}),
+      },
+    });
+  }
+
   /** Housekeeping: drop expired sessions. */
   async function purgeExpired(): Promise<number> {
     const result = await prisma.session.deleteMany({ where: { expiresAt: { lt: now() } } });
     return result.count;
   }
 
-  return { create, getUser, destroy, purgeExpired };
+  return { create, getUser, destroy, destroyOthers, purgeExpired };
 }
 
 export type SessionService = ReturnType<typeof createSessionService>;

@@ -19,22 +19,17 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     core.billing.state(user.id),
   ]);
   // paid cases of a subscription; finished and paused cases do not occupy one
-  const usage = access.plan === "subscription" ? { used: billing.activeCases, limit: billing.paidCases } : null;
+  const usage = billing.capacity > 0 ? { used: billing.activeCases, limit: billing.capacity } : null;
   const sectionCounts: Record<string, number> = {};
   for (const item of trackers) {
     const section = TRACKER_KIND_SECTION[item.kind];
     sectionCounts[section] = (sectionCounts[section] ?? 0) + 1;
   }
   // without a subscription the trial covers one case; an expired trial covers none
-  const addLock =
-    access.plan === "trial_expired"
-      ? "expired"
-      : access.plan !== "subscription" && trackers.some((item) => item.status !== "FINISHED")
-        ? "trial"
-        : null;
+  const addLock = access.plan === "trial_expired" ? "expired" : null;
 
   return (
-    <AppShell userLabel={user.firstName ?? user.email} showMenu={!mustVerify}
+    <AppShell userLabel={user.email} showMenu={!mustVerify}
       defaultJurisdiction={user.pjnJurisdiction}
       access={access}
       addLock={addLock}

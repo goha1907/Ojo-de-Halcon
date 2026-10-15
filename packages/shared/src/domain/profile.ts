@@ -111,6 +111,16 @@ export const nameSchema = z
       .regex(NAME_PATTERN, msg("validation.nameInvalid")),
   );
 
+/** A name that may be left empty (the profile is only used for automatic search); when given it must be valid. */
+export const optionalNameSchema = z.string().transform((value, ctx) => {
+  const normalized = normalizeSpaces(value);
+  if (normalized === "") return "";
+  const parsed = nameSchema.safeParse(normalized);
+  if (parsed.success) return parsed.data;
+  for (const issue of parsed.error.issues) ctx.addIssue({ code: "custom", message: issue.message });
+  return z.NEVER;
+});
+
 /** Birth date as an ISO string (output: UTC Date) with a minimum age; 0 allows children. */
 export const makeBirthDateSchema = (minAgeYears: number) =>
   z
@@ -163,8 +173,8 @@ function optionalBirthDate(schema: ReturnType<typeof makeBirthDateSchema>) {
 /** Birth date of the owner: optional (only some sources need it), 18+ when given. */
 export const optionalBirthDateSchema = optionalBirthDate(birthDateSchema);
 export const profileSchema = z.object({
-  firstName: nameSchema,
-  lastName: nameSchema,
+  firstName: optionalNameSchema,
+  lastName: optionalNameSchema,
   birthDate: optionalBirthDateSchema,
   pjnJurisdiction: courtSchema,
 });
@@ -206,6 +216,23 @@ export const loginSchema = z.object({
 export type LoginInput = z.infer<typeof loginSchema>;
 
 export const forgotPasswordSchema = z.object({ email: emailSchema });
+
+/** Change of the password from the settings: the current one proves it is the owner at the keyboard. */
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, msg("validation.required")),
+    password: passwordSchema,
+    passwordConfirm: z.string(),
+  })
+  .refine((value) => value.password === value.passwordConfirm, {
+    path: ["passwordConfirm"],
+    ...msg("validation.passwordMismatch"),
+  })
+  .refine((value) => value.password !== value.currentPassword, {
+    path: ["password"],
+    ...msg("validation.passwordSame"),
+  });
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
 export const resetPasswordSchema = z
   .object({

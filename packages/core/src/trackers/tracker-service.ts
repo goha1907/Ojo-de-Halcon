@@ -18,7 +18,7 @@ import {
   type TrackerStatusValue,
   type TrackerStep,
 } from "@ojo/shared";
-import { resolveAccess } from "../access/access-service";
+import type { GrantService } from "../grants/grant-service";
 import { ScraperError, type Scraper, type ScrapedTramite } from "./scraper";
 
 export interface TrackerDto {
@@ -204,8 +204,9 @@ export function createTrackerService(deps: {
   prisma: PrismaClient;
   scraper: Scraper;
   now: () => Date;
+  grants: GrantService;
 }) {
-  const { prisma, scraper, now } = deps;
+  const { prisma, scraper, now, grants } = deps;
 
   type TrackerWithSnapshot = Tracker & { snapshot: TrackerSnapshot | null };
 
@@ -240,22 +241,24 @@ export function createTrackerService(deps: {
   }
 
   /**
-   * May one more case be tracked. A subscription holds as many cases as were paid for
-   * (finished and paused cases do not occupy a slot); the free trial covers one case.
+   * May one more case be tracked. The places are the paid ones of a running subscription plus the active
+   * free ones (trial, bonus, gift); finished and paused cases do not occupy one.
    */
   async function addGate(userId: string): Promise<"OK" | "NO_FREE_SLOT" | "SUBSCRIPTION_REQUIRED"> {
+    const at = now();
     const user = await prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { trialStartedAt: true, subscriptionUntil: true, paidCases: true },
+      select: { subscriptionUntil: true, paidCases: true },
     });
-    const access = resolveAccess(user, now());
-    if (access.plan === "trial_expired") return "SUBSCRIPTION_REQUIRED";
+    const running = user.subscriptionUntil !== null && user.subscriptionUntil > at;
+    const capacity = (running ? user.paidCases : 0) + (await grants.casesAt(userId, at));
+    if (capacity === 0) return "SUBSCRIPTION_REQUIRED";
     const occupied = await prisma.tracker.count({
       where: { userId, status: { notIn: ["FINISHED", "PAUSED"] } },
     });
-    if (access.plan === "subscription") return occupied < user.paidCases ? "OK" : "NO_FREE_SLOT";
-    // the trial covers exactly one case in total
-    return occupied === 0 ? "OK" : "SUBSCRIPTION_REQUIRED";
+    if (occupied < capacity) return "OK";
+    // the places are full: more paid ones fix it for a subscriber, a free-only account needs a subscription
+    return running ? "NO_FREE_SLOT" : "SUBSCRIPTION_REQUIRED";
   }
 
   /** Runs a create; null when another request just added the very same case (unique key). */
@@ -731,7 +734,7 @@ export function createTrackerService(deps: {
   async function finish(userId: string, trackerId: string): Promise<boolean> {
     const result = await prisma.tracker.updateMany({
       where: { id: trackerId, userId, status: "ACTIVE" },
-      data: { status: "FINISHED" },
+      data: { status: "FINISHED", finishedAt: now() },
     });
     return result.count === 1;
   }
@@ -788,6 +791,10 @@ export function createTrackerService(deps: {
           status: finished ? "FINISHED" : "ACTIVE",
           // a finished case is neither polled nor notified: its switches go off by themselves
           ...(finished ? { notifyTelegram: false, notifyWhatsapp: false } : {}),
+          // the slot became free now (a case added already closed never held one)
+          ...(finished && tracker.status !== "FINISHED" && options.announceFinish !== false
+            ? { finishedAt: now() }
+            : {}),
         },
       }),
     ];
@@ -941,28 +948,50 @@ export function createTrackerService(deps: {
     if (ids.length === 0) return 0;
     const result = await prisma.tracker.updateMany({
       where: { id: { in: ids }, status: "ACTIVE" },
-      data: { status: "FINISHED", notifyTelegram: false, notifyWhatsapp: false },
+      data: { status: "FINISHED", notifyTelegram: false, notifyWhatsapp: false, finishedAt: now() },
     });
     return result.count;
+  }
+
+  /**
+   * Ids of the active cases that are due and covered by a place of their owner. Cases of one owner take
+   * places oldest first, so when the places run out (a bonus ended) the newest ones wait without being
+   * touched, and they resume by themselves once places exist again.
+   */
+  async function dueCoveredIds(limit: number): Promise<string[]> {
+    const at = now();
+    const rows = await prisma.$queryRaw<{ id: string }[]>`
+      WITH capacity AS (
+        SELECT u."id" AS "userId",
+          (CASE WHEN u."subscriptionUntil" > ${at} THEN u."paidCases" ELSE 0 END)
+          + COALESCE((
+              SELECT SUM(g."cases") FROM "FreeGrant" g
+              WHERE g."userId" = u."id" AND g."revokedAt" IS NULL AND g."startsAt" <= ${at}
+                AND (g."expiresAt" IS NULL OR g."expiresAt" > ${at})
+            ), 0) AS "places"
+        FROM "User" u
+      ), ranked AS (
+        SELECT t."id", t."userId", t."status"::text AS "status", t."nextCheckAt",
+          ROW_NUMBER() OVER (PARTITION BY t."userId" ORDER BY t."slotSince", t."createdAt", t."id") AS "rank"
+        FROM "Tracker" t
+        WHERE t."status"::text IN ('ACTIVE', 'PENDING_CONFIRMATION')
+      )
+      SELECT r."id" FROM ranked r
+      JOIN capacity c ON c."userId" = r."userId"
+      WHERE r."status" = 'ACTIVE' AND r."nextCheckAt" <= ${at} AND r."rank" <= c."places"
+      ORDER BY r."nextCheckAt" ASC
+      LIMIT ${limit}`;
+    return rows.map((row) => row.id);
   }
 
   /** Checks trackers whose time has come (called by the worker on a timer). */
   async function runDue(limit: number = TRACKER_CONFIG.batchSize): Promise<number> {
     await closeFinished();
+    await grants.sweepExpired();
+    const ids = await dueCoveredIds(limit);
     const due = await prisma.tracker.findMany({
-      where: {
-        status: "ACTIVE",
-        nextCheckAt: { lte: now() },
-        // no paid access and the trial is over: tracking is paused
-        user: {
-          OR: [
-            { subscriptionUntil: { gt: now() } },
-            { trialStartedAt: { gt: new Date(now().getTime() - APP_CONFIG.limits.trialDays * 86_400_000) } },
-          ],
-        },
-      },
+      where: { id: { in: ids } },
       orderBy: { nextCheckAt: "asc" },
-      take: limit,
     });
     const handled = new Set<string>();
     let checked = 0;

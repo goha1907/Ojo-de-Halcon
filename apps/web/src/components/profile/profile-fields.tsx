@@ -86,14 +86,14 @@ export function ProfileFields({ state }: { state: ProfileFieldsState }) {
   return (
     <div className="space-y-4">
       <TextField
-        label={t("field.firstName")}
+        label={t("field.firstNameOptional")}
         autoComplete="given-name"
         value={values.firstName}
         error={errors.firstName}
         onChange={(e) => setValues({ ...values, firstName: e.target.value })}
       />
       <TextField
-        label={t("field.lastName")}
+        label={t("field.lastNameOptional")}
         autoComplete="family-name"
         value={values.lastName}
         error={errors.lastName}

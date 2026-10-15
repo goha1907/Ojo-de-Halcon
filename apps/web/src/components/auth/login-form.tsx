@@ -5,6 +5,7 @@ import { Alert, Button, Card, TextField } from "@ojo/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { PasswordField } from "@/components/password-field";
 import { useT } from "@/components/providers/i18n-provider";
 import { ApiError, apiRequest } from "@/lib/api-client";
 import { describeApiError } from "@/lib/api-errors";
@@ -54,9 +55,8 @@ export function LoginForm() {
           error={errors.email}
           onChange={(e) => setValues({ ...values, email: e.target.value })}
         />
-        <TextField
+        <PasswordField
           label={t("field.password")}
-          type="password"
           autoComplete="current-password"
           value={values.password}
           error={errors.password}

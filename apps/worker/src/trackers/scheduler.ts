@@ -35,6 +35,7 @@ export function startTrackerScheduler(deps: SchedulerDeps): () => void {
     account_deleted: "bot.accountDeleted",
     unlinked: "bot.unlinked",
     case_finished: "bot.caseFinished",
+    free_places_ended: "bot.freePlacesEnded",
   };
 
   /** Farewell messages that outlive the user record (account deleted / Telegram unlinked). */

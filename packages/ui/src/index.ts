@@ -12,6 +12,7 @@ export {
   type SelectOption,
   type TextFieldProps,
 } from "./components/field";
+export { PasswordField, type PasswordFieldProps } from "./components/password-field";
 export { Modal, type ModalProps } from "./components/modal";
 export { Spinner } from "./components/spinner";
 export { cn } from "./lib/cn";

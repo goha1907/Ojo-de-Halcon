@@ -2,7 +2,7 @@ import { TRACKER_CONFIG, casesPrice } from "@ojo/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { PjnCaseResult, ScrapedTramite } from "../index";
 import { ScraperError } from "../index";
-import { adultProfile, makeCore, prisma, resetDb } from "../../test/helpers";
+import { adultProfile, endFreePlaces, makeCore, prisma, resetDb } from "../../test/helpers";
 
 const HOUR = 3_600_000;
 
@@ -26,6 +26,7 @@ async function newUser(core: ReturnType<typeof makeCore>, email = "a@example.com
 beforeEach(resetDb);
 
 async function subscribe(userId: string) {
+  await endFreePlaces(userId);
   await prisma.user.update({
     where: { id: userId },
     data: { subscriptionUntil: new Date(Date.now() + 30 * 86_400_000), paidCases: 5 },
@@ -49,6 +50,7 @@ describe("trackers: trámite", () => {
   it("rejects the same number twice and a case beyond the paid ones", async () => {
     const core = makeCore();
     const userId = await newUser(core);
+    await endFreePlaces(userId);
     await core.billing.checkout(userId, 1); // subscribed, one case paid
     await core.trackers.addTramite(userId, "CORREO", "755824304");
     expect(await core.trackers.addTramite(userId, "CORREO", "755824304")).toMatchObject({
@@ -337,9 +339,10 @@ describe("trial", () => {
     const core = makeCore();
     const userId = await newUser(core);
     await core.trackers.addTramite(userId, "RENAPER", "755824304");
-    await prisma.user.update({
-      where: { id: userId },
-      data: { trialStartedAt: new Date(Date.now() - 8 * 86_400_000) },
+    // the trial's end date has passed
+    await prisma.freeGrant.updateMany({
+      where: { userId, kind: "TRIAL" },
+      data: { expiresAt: new Date(Date.now() - 86_400_000) },
     });
     expect(await core.trackers.runDue()).toBe(0);
   });
@@ -621,7 +624,8 @@ describe("Migraciones trackers", () => {
       },
     });
     const userId = await withBirthDate(core, "1990-03-05");
-    await prisma.user.update({ where: { id: userId }, data: { paidCases: 1 } });
+    await endFreePlaces(userId);
+    await prisma.user.update({ where: { id: userId }, data: { paidCases: 1, subscriptionUntil: new Date(Date.now() + 30 * 86_400_000) } });
     await core.trackers.addTramite(userId, "DNM_DNI", "1129912025");
     await core.trackers.runDue();
     expect(await core.billing.state(userId)).toMatchObject({ activeCases: 1, freeCases: 0 });
@@ -817,6 +821,74 @@ describe("final statuses end a case", () => {
   });
 });
 
+describe("billing: what the next period pays for", () => {
+  it("counts a case finished during the trial as finished in this period", async () => {
+    const core = makeCore({
+      scraper: {
+        correo: async () =>
+          renaperAnswer({ steps: [{ date: "2026-10-12", title: "ENTREGADO", detail: "" }], finished: true }),
+      },
+    });
+    const userId = await newUser(core); // trial, no subscription
+    await core.trackers.addTramite(userId, "CORREO", "111111");
+    await core.trackers.runDue();
+    expect(await core.billing.state(userId)).toMatchObject({ paidCases: 0, finishedCases: 1, finishedThisPeriod: 1 });
+  });
+
+  it("drops unused, finished and marked slots, and counts finished cases per period", async () => {
+    const delivered = { steps: [{ date: "2026-10-12", title: "ENTREGADO", detail: "" }] };
+    const core = makeCore({
+      scraper: {
+        correo: async (reference: string) =>
+          reference === "111111"
+            ? renaperAnswer({ ...delivered, finished: true })
+            : reference === "222222"
+              ? renaperAnswer({ ...delivered, finished: true })
+              : renaperAnswer(),
+      },
+    });
+    const userId = await newUser(core);
+    await subscribe(userId); // 5 paid slots
+    for (const number of ["111111", "333333", "444444", "555555"]) {
+      await core.trackers.addTramite(userId, "CORREO", number);
+    }
+    await core.trackers.runDue();
+    const rows = await core.trackers.list(userId);
+    const marked = rows.find((row) => row.reference === "444444")!;
+    await core.billing.setKept(userId, marked.id, false);
+
+    // 3 cases still running, one finished this period, one of them marked, one slot left empty
+    expect(await core.billing.state(userId)).toMatchObject({
+      paidCases: 5,
+      activeCases: 3,
+      freeCases: 2,
+      cancelledCases: 1,
+      keptCases: 2,
+      finishedCases: 1,
+      finishedThisPeriod: 1,
+      freedByFinished: 1,
+      unusedCases: 1,
+      nextPeriodPrice: casesPrice(2),
+    });
+
+    // a case that was already closed when added never held a slot: it is not "finished this period"
+    await core.trackers.previewTramite(userId, "CORREO", "222222");
+    await core.trackers.addTramite(userId, "CORREO", "222222");
+    expect(await core.billing.state(userId)).toMatchObject({ finishedCases: 2, finishedThisPeriod: 1 });
+
+    // filling the freed slot again keeps it in the subscription
+    await core.trackers.addTramite(userId, "CORREO", "666666");
+    await core.trackers.addTramite(userId, "CORREO", "777777");
+    expect(await core.billing.state(userId)).toMatchObject({
+      activeCases: 5,
+      freeCases: 0,
+      freedByFinished: 0,
+      unusedCases: 0,
+      keptCases: 4,
+    });
+  });
+});
+
 describe("trackers: Correo forms", () => {
   it("passes the form, prefix and code of a stored reference to the scraper", async () => {
     const asked: string[] = [];
@@ -919,6 +991,7 @@ describe("cases: the subscription is priced per tracked case", () => {
   it("lets as many cases in as were paid for, in any section", async () => {
     const core = makeCore();
     const userId = await newUser(core);
+    await endFreePlaces(userId);
     await core.billing.checkout(userId, 2);
     expect(await core.trackers.addTramite(userId, "RENAPER", "100000001")).toMatchObject({ ok: true });
     // the same section twice: nothing ties a case to a section
@@ -977,6 +1050,7 @@ describe("cases: the subscription is priced per tracked case", () => {
   it("takes a case out of the subscription at the period end and keeps it as history", async () => {
     const core = makeCore();
     const userId = await newUser(core);
+    await endFreePlaces(userId);
     await core.billing.checkout(userId, 3);
     const ids: string[] = [];
     for (const number of ["100000001", "100000002", "100000003"]) {
@@ -1125,7 +1199,7 @@ describe("replacing and releasing a case", () => {
   });
 
   it("frees the slot of a confirmed court case only after the cooldown", async () => {
-    let clock = new Date("2026-10-14T10:00:00Z");
+    let clock = new Date(); // the account is created "now": a fixed past date would predate its trial
     const core = makeCore({
       now: () => clock,
       scraper: {

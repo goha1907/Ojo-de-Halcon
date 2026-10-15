@@ -1,9 +1,10 @@
 "use client";
 
 import { API_ROUTES, APP_CONFIG, ROUTES, resetPasswordSchema } from "@ojo/shared";
-import { Alert, Button, Card, TextField } from "@ojo/ui";
+import { Alert, Button, Card } from "@ojo/ui";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { PasswordField } from "@/components/password-field";
 import { useT } from "@/components/providers/i18n-provider";
 import { ApiError, apiRequest } from "@/lib/api-client";
 import { describeApiError } from "@/lib/api-errors";
@@ -56,18 +57,16 @@ export function ResetPasswordForm({ token }: { token: string }) {
     <Card title={t("auth.reset.title")}>
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         {formError && <Alert tone="error">{formError}</Alert>}
-        <TextField
+        <PasswordField
           label={t("field.password")}
-          type="password"
           autoComplete="new-password"
           hint={t("field.passwordHint", { min: APP_CONFIG.auth.password.minLength })}
           value={values.password}
           error={errors.password}
           onChange={(e) => setValues({ ...values, password: e.target.value })}
         />
-        <TextField
+        <PasswordField
           label={t("field.passwordConfirm")}
-          type="password"
           autoComplete="new-password"
           value={values.passwordConfirm}
           error={errors.passwordConfirm}

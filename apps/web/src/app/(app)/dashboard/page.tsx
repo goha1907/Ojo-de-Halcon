@@ -2,6 +2,7 @@ import { PRICING, TRACKER_KIND_SECTION, ROUTES, sectionHref, settingsHref, type 
 import { Alert, Card } from "@ojo/ui";
 import Link from "next/link";
 import { StatTile } from "@/components/stat-tile";
+import { AddTrackerButton } from "@/components/trackers/add-tracker-button";
 import { SubscriptionSummary } from "@/components/subscription/summary";
 import { nowMs } from "@/lib/days";
 import { TONE_STYLES, toneOf } from "@/lib/status-tones";
@@ -57,7 +58,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     attention.push({
       key: "trial-expired",
       tone: "error",
-      text: t("dash.attn.trialExpired"),
+      text: t(access.endedKind && access.endedKind !== "TRIAL" ? "dash.attn.giftEnded" : "dash.attn.trialExpired"),
       href: settingsHref("subscription"),
       action: t("dash.attn.subscribe"),
     });
@@ -65,7 +66,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     attention.push({
       key: "trial-ending",
       tone: "info",
-      text: t("dash.attn.trialEnding", { date: day(untilMs!) }),
+      text: t(access.bonusCases > 0 ? "dash.attn.giftEnding" : "dash.attn.trialEnding", { date: day(untilMs!) }),
       href: settingsHref("subscription"),
       action: t("dash.attn.subscribe"),
     });
@@ -141,11 +142,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <header className="space-y-1">
-        <h1 className="text-xl font-semibold text-slate-900">
-          {user.firstName ? t("dashboard.welcome", { name: user.firstName }) : t("dashboard.welcomeAnon")}
-        </h1>
-        <p className="text-sm text-slate-600">{t("dash.subtitle")}</p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-xl font-semibold text-slate-900">
+            {user.firstName ? t("dashboard.welcome", { name: user.firstName }) : t("dashboard.welcomeAnon")}
+          </h1>
+          <p className="text-sm text-slate-600">{t("dash.subtitle")}</p>
+        </div>
+        <AddTrackerButton />
       </header>
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -160,14 +164,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         {subscribed ? (
           <StatTile
             label={t("dash.tile.slots")}
-            value={`${billing.activeCases} / ${billing.paidCases}`}
+            value={`${billing.paidUsedCases} / ${billing.paidCases}`}
             tone="slots"
             hint={t("dash.tile.free", { count: billing.freeCases })}
           />
         ) : (
           <StatTile
             label={t("dash.tile.plan")}
-            value={access.plan === "trial" ? t("dash.tile.trial") : t("dash.tile.noPlan")}
+            value={
+              access.plan === "trial"
+                ? t(access.bonusCases > 0 && access.trialCases === 0 ? "dash.tile.gift" : "dash.tile.trial")
+                : t("dash.tile.noPlan")
+            }
             hint={access.until ? t("dash.tile.until", { date: day(access.until) }) : undefined}
           />
         )}

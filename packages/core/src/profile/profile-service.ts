@@ -38,8 +38,8 @@ export function createProfileService(deps: { prisma: PrismaClient; now: () => Da
       prisma.user.update({
         where: { id: userId },
         data: {
-          firstName: input.firstName,
-          lastName: input.lastName,
+          firstName: input.firstName || null,
+          lastName: input.lastName || null,
           birthDate: input.birthDate,
           pjnJurisdiction: input.pjnJurisdiction || null,
         },

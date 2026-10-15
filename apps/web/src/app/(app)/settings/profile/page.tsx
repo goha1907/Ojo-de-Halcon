@@ -1,3 +1,4 @@
+import { ChangePasswordCard } from "@/components/settings/change-password-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { ProfileCard } from "@/components/settings/profile-card";
 import { TelegramCard } from "@/components/settings/telegram-card";
@@ -19,6 +20,7 @@ export default async function SettingsProfilePage() {
       />
       <TelegramCard linked={user.telegramLinked} username={user.telegramUsername} />
       <WhatsappCard />
+      <ChangePasswordCard />
       <DeleteAccountCard />
     </>
   );

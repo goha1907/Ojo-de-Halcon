@@ -75,6 +75,15 @@ describe("profile", () => {
     expect((await core.sessions.getUser((await core.sessions.create(userId)).token))?.profileComplete).toBe(true);
   });
 
+  it("accepts an empty profile and clears the names it had", async () => {
+    const { core, userId } = await register();
+    await core.profile.update(userId, adultProfile);
+    await core.profile.update(userId, { firstName: "", lastName: "", birthDate: null, pjnJurisdiction: "" });
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    expect([user.firstName, user.lastName, user.birthDate, user.pjnJurisdiction]).toEqual([null, null, null, null]);
+    expect((await core.sessions.getUser((await core.sessions.create(userId)).token))?.profileComplete).toBe(false);
+  });
+
   it("writes nothing when nothing changed and marks onboarding once", async () => {
     const { core, userId } = await register();
     await core.profile.update(userId, adultProfile);

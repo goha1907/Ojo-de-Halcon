@@ -9,6 +9,7 @@ import {
   parseIsoDate,
   profileSchema,
   registerSchema,
+  changePasswordSchema,
   resetPasswordSchema,
   splitIsoDate,
 } from "../domain/profile";
@@ -73,9 +74,13 @@ describe("profileSchema", () => {
   it("returns i18n keys for errors", () => {
     const result = profileSchema.safeParse({ firstName: "", lastName: "X1", birthDate: "2999-01-01" });
     const messages = result.error!.issues.map((i) => i.message);
-    expect(messages).toEqual(
-      expect.arrayContaining(["validation.required", "validation.nameInvalid", "validation.birthDateFuture"]),
-    );
+    expect(messages).toEqual(expect.arrayContaining(["validation.nameInvalid", "validation.birthDateFuture"]));
+    expect(messages).not.toContain("validation.required");
+  });
+
+  it("lets the whole profile be empty: it only serves automatic search", () => {
+    const parsed = profileSchema.parse({ firstName: "  ", lastName: "", birthDate: "", pjnJurisdiction: "" });
+    expect(parsed).toMatchObject({ firstName: "", lastName: "", birthDate: null });
   });
 
   it("rejects minors and implausible ages", () => {
@@ -138,5 +143,22 @@ describe("owner profile without birth date", () => {
     expect(profileSchema.parse({ ...base, birthDate: "" }).birthDate).toBeNull();
     expect(profileSchema.safeParse({ ...base, birthDate: "2015-05-01" }).success).toBe(false);
     expect(profileSchema.safeParse({ ...base, birthDate: "1987-07-" }).success).toBe(false);
+  });
+});
+
+describe("changePasswordSchema", () => {
+  const ok = { currentPassword: "old-password-1", password: "new-password-1", passwordConfirm: "new-password-1" };
+
+  it("accepts a new password that is confirmed and different", () => {
+    expect(changePasswordSchema.safeParse(ok).success).toBe(true);
+  });
+
+  it("rejects a mismatch, a short password and a reused one", () => {
+    expect(changePasswordSchema.safeParse({ ...ok, passwordConfirm: "other-password-1" }).success).toBe(false);
+    expect(changePasswordSchema.safeParse({ ...ok, password: "short", passwordConfirm: "short" }).success).toBe(false);
+    expect(
+      changePasswordSchema.safeParse({ ...ok, password: ok.currentPassword, passwordConfirm: ok.currentPassword })
+        .success,
+    ).toBe(false);
   });
 });

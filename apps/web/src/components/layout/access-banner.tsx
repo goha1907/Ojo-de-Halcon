@@ -1,11 +1,6 @@
 import type { AccessState } from "@ojo/core";
-import { settingsHref, type MessageKey, type TranslateFn } from "@ojo/shared";
+import { settingsHref, type TranslateFn } from "@ojo/shared";
 import Link from "next/link";
-
-const KEY: Record<Exclude<AccessState["plan"], "subscription">, MessageKey> = {
-  trial: "access.banner.trial",
-  trial_expired: "access.banner.trialExpired",
-};
 
 /** Short note about the trial / paywall shown above every signed-in page. */
 export function AccessBanner({ access, t, locale }: { access: AccessState; t: TranslateFn; locale: string }) {
@@ -17,9 +12,17 @@ export function AccessBanner({ access, t, locale }: { access: AccessState; t: Tr
     access.plan === "trial_expired"
       ? "border-amber-200 bg-amber-50 text-amber-900"
       : "border-sky-200 bg-sky-50 text-sky-900";
+  const text =
+    access.plan === "trial_expired"
+      ? t(access.endedKind && access.endedKind !== "TRIAL" ? "access.banner.giftEnded" : "access.banner.trialExpired")
+      : access.bonusCases > 0
+        ? access.until
+          ? t("access.banner.gift", { count: access.bonusCases, date })
+          : t("access.banner.giftNoEnd", { count: access.bonusCases })
+        : t("access.banner.trial", { date });
   return (
     <p className={`rounded-lg border px-3 py-2 text-sm ${tone}`}>
-      {t(KEY[access.plan], { date })}{" "}
+      {text}{" "}
       <Link href={settingsHref("subscription")} className="font-medium underline">
         {t("access.banner.link")}
       </Link>

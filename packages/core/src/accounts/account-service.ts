@@ -2,6 +2,7 @@ import type { EmailTokenType, PrismaClient } from "@ojo/db";
 import { canonicalEmail, createTranslator, normalizeEmail, resolveLocale } from "@ojo/shared";
 import { hashPassword, keyedHash, randomToken, verifyPassword } from "../crypto";
 import type { Mailer } from "../mailer";
+import { trialGrantData } from "../grants/grant-service";
 import type { CoreConfig } from "../types";
 
 export type RegisterResult = { ok: true; userId: string } | { ok: false; reason: "EMAIL_TAKEN" };
@@ -85,6 +86,8 @@ export function createAccountService(deps: {
           emailVerifiedAt: config.emailVerificationRequired ? null : now(),
         },
       });
+      // The trial is a free grant with an explicit end date.
+      await prisma.freeGrant.create({ data: trialGrantData(user.id, trialStartedAt, now()) });
       // Remember the mailbox's trial so deleting the account does not restart it.
       await prisma.trialLedger.upsert({
         where: { keyHash: ledgerHash },
@@ -134,6 +137,18 @@ export function createAccountService(deps: {
     return true;
   }
 
+  /** Sets a new password after checking the current one. Other devices are signed out by the caller. */
+  async function changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ ok: boolean }> {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !(await verifyPassword(currentPassword, user.passwordHash))) return { ok: false };
+    await prisma.user.update({ where: { id: userId }, data: { passwordHash: await hashPassword(newPassword) } });
+    return { ok: true };
+  }
+
   /** Deletes the account with everything attached (cascade). */
   async function deleteAccount(userId: string, password: string): Promise<{ ok: boolean }> {
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -159,6 +174,7 @@ export function createAccountService(deps: {
     resetPassword,
     verifyEmail,
     sendVerificationEmail,
+    changePassword,
     deleteAccount,
   };
 }

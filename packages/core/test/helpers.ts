@@ -78,7 +78,7 @@ export function tokenFromMail(message: MailMessage): string {
 
 export async function resetDb(): Promise<void> {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "TelegramOutbox", "StatusObservation", "FeedbackMessage", "PaymentIntent", "TrialLedger", "ProfileChange", "TelegramLinkCode", "EmailToken", "Session", "User" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "TelegramOutbox", "StatusObservation", "FeedbackMessage", "PaymentIntent", "TrialLedger", "FreeGrant", "ProfileChange", "TelegramLinkCode", "EmailToken", "Session", "User" RESTART IDENTITY CASCADE',
   );
 }
 
@@ -90,3 +90,8 @@ export const adultProfile = {
 };
 
 export const PASSWORD = "correct horse battery";
+
+/** Ends the free places (the trial) of an account, so a test can exercise paid places alone. */
+export async function endFreePlaces(userId: string): Promise<void> {
+  await prisma.freeGrant.updateMany({ where: { userId }, data: { revokedAt: new Date(), expiryHandledAt: new Date() } });
+}

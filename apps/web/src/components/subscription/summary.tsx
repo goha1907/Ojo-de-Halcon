@@ -34,7 +34,7 @@ export function SubscriptionSummary({
   const day = (value: string | number) => new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(value));
   const until = new Date(untilIso).getTime();
   const start = until - APP_CONFIG.limits.subscriptionDays * DAY_MS;
-  const share = billing.paidCases > 0 ? Math.min(100, Math.round((billing.activeCases / billing.paidCases) * 100)) : 0;
+  const share = billing.paidCases > 0 ? Math.min(100, Math.round((billing.paidUsedCases / billing.paidCases) * 100)) : 0;
 
   const item = (label: string, value: string, key: string) => (
     <div key={key}>
@@ -49,7 +49,7 @@ export function SubscriptionSummary({
         <div className="mb-1 flex justify-between text-sm">
           <span className="text-slate-600">{t("dash.sub.usage")}</span>
           <span className="font-medium text-slate-900">
-            {billing.activeCases} / {billing.paidCases}
+            {billing.paidUsedCases} / {billing.paidCases}
           </span>
         </div>
         <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
@@ -75,7 +75,7 @@ export function SubscriptionSummary({
         )}
         {withPlaces && item(t("dash.sub.free"), String(billing.freeCases), "free")}
         {withPlaces && item(t("settings.sub.disabledNext"), String(billing.cancelledCases), "disabled")}
-        {withPlaces && item(t("settings.sub.finished"), String(billing.finishedCases), "finished")}
+        {withPlaces && item(t("settings.sub.finishedPeriod"), String(billing.finishedThisPeriod), "finished")}
         {withLastPayment && item(
           t("dash.sub.lastPayment"),
           lastPayment

@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@ojo/db";
 import { APP_CONFIG, PRICING, casesPrice, quotePurchase } from "@ojo/shared";
+import type { GrantService } from "../grants/grant-service";
 
 const DAY_MS = 86_400_000;
 const PROVIDER = "stub";
@@ -20,14 +21,33 @@ export interface BillingStateDto {
   paidCases: number;
   /** Cases occupying a slot now (tracked, including those marked for removal). */
   activeCases: number;
-  /** Paid slots nobody occupies. */
+  /** Cases held by the free places (they take cases first) and by the paid ones: they add up to `activeCases`. */
+  giftUsedCases: number;
+  paidUsedCases: number;
+  /** Places that cases can still take: paid and free ones together, minus the occupied. */
   freeCases: number;
+  /** Cases the active free places cover (trial, bonus, gift): they cost nothing. */
+  freeGrantCases: number;
+  /** All places right now: paid plus free. */
+  capacity: number;
+  /**
+   * Why paid places are not paid for in the next period; the three add up to `paidCases - nextPeriodCases`.
+   * Marked for removal / emptied by a case that finished this period / nobody uses them.
+   */
+  leavesMarked: number;
+  freedByFinished: number;
+  unusedCases: number;
+  /** Paid places the next period is charged for. */
+  nextPeriodCases: number;
+  /** Cases that completed during the running period (they held a place). */
+  finishedThisPeriod: number;
   /** Tracked cases that stay in the subscription at renewal. */
   keptCases: number;
   /** Tracked cases marked for removal: they run until the period ends. */
   cancelledCases: number;
-  /** Cases the source reported as completed (their slot is free). */
+  /** Cases the source reported as completed, all time. */
   finishedCases: number;
+
   /** Cases left out of the subscription; kept for history. */
   pausedCases: number;
   maxCases: number;
@@ -63,8 +83,8 @@ function toQuoteDto(quote: ReturnType<typeof quotePurchase>): QuoteDto {
   return { ...quote, periodEnd: quote.periodEnd.toISOString() };
 }
 
-export function createBillingService(deps: { prisma: PrismaClient; now: () => Date }) {
-  const { prisma, now } = deps;
+export function createBillingService(deps: { prisma: PrismaClient; now: () => Date; grants: GrantService }) {
+  const { prisma, now, grants } = deps;
 
   async function counts(userId: string) {
     const rows = await prisma.tracker.groupBy({
@@ -95,14 +115,45 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
     return until !== null && until > now();
   }
 
+  /** Paid places the next period needs: the cases that stay, minus those the free places will cover. */
+  async function nextPaid(userId: string, kept: number, periodEnd: Date): Promise<number> {
+    // the trial place ends when a subscription starts, so it never covers the next period
+    return Math.max(0, kept - (await grants.casesAt(userId, periodEnd, { withoutTrial: true })));
+  }
+
   async function state(userId: string): Promise<BillingStateDto> {
-    const [user, count] = await Promise.all([load(userId), counts(userId)]);
-    // an ended period pays for nothing: the slots are bought again at renewal
-    const paid = isRunning(user.subscriptionUntil) ? user.paidCases : 0;
+    const at = now();
+    const [user, count, freeNow] = await Promise.all([load(userId), counts(userId), grants.casesAt(userId, at)]);
+    const running = isRunning(user.subscriptionUntil);
+    // an ended period pays for nothing: the places are bought again at renewal
+    const paid = running ? user.paidCases : 0;
+    // the period started one subscription length before its end (extra purchases do not move it);
+    // without a subscription the last month is the period
+    const periodEnd = running ? user.subscriptionUntil! : new Date(at.getTime() + APP_CONFIG.limits.subscriptionDays * DAY_MS);
+    const periodStart = new Date(periodEnd.getTime() - APP_CONFIG.limits.subscriptionDays * DAY_MS);
+    const finishedThisPeriod = await prisma.tracker.count({
+      where: { userId, status: "FINISHED", finishedAt: { gt: running ? periodStart : new Date(at.getTime() - APP_CONFIG.limits.subscriptionDays * DAY_MS) } },
+    });
+    const next = await nextPaid(userId, count.kept, periodEnd);
+    // paid places that will not be paid for again: what the next period needs is `next`, the rest leaves.
+    // (A case on a free place today may move to a paid one when the free place ends: that place stays.)
+    const leaving = Math.max(0, paid - next);
+    const leavesMarked = Math.min(count.cancelled, leaving);
+    const rest = leaving - leavesMarked;
+    const freedByFinished = Math.min(finishedThisPeriod, rest);
     return {
       paidCases: paid,
       activeCases: count.active,
-      freeCases: Math.max(0, paid - count.active),
+      freeCases: Math.max(0, paid + freeNow - count.active),
+      freeGrantCases: freeNow,
+      giftUsedCases: Math.min(count.active, freeNow),
+      paidUsedCases: Math.max(0, count.active - freeNow),
+      capacity: paid + freeNow,
+      freedByFinished,
+      unusedCases: rest - freedByFinished,
+      leavesMarked,
+      nextPeriodCases: next,
+      finishedThisPeriod,
       keptCases: count.kept,
       cancelledCases: count.cancelled,
       finishedCases: count.finished,
@@ -111,7 +162,7 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
       renews: user.subscriptionCancelledAt === null,
       currency: PRICING.currency,
       currentPrice: casesPrice(paid),
-      nextPeriodPrice: casesPrice(count.kept),
+      nextPeriodPrice: casesPrice(next),
     };
   }
 
@@ -125,9 +176,11 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
     if (targetCases > APP_CONFIG.limits.maxCases) return { ok: false, reason: "LIMIT_REACHED" };
     const [user, count] = await Promise.all([load(userId), counts(userId)]);
     const running = isRunning(user.subscriptionUntil);
-    if (running ? targetCases < user.paidCases : targetCases < count.kept) {
-      return { ok: false, reason: "INVALID_CASES" };
-    }
+    // a new period must at least hold the cases that stay, less those the free places cover
+    const minimum = running
+      ? user.paidCases
+      : await nextPaid(userId, count.kept, new Date(now().getTime() + APP_CONFIG.limits.subscriptionDays * DAY_MS));
+    if (targetCases < minimum) return { ok: false, reason: "INVALID_CASES" };
     return {
       ok: true,
       quote: toQuoteDto(
@@ -165,6 +218,11 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
     if (q.addCases === 0) return priced;
     await prisma.$transaction([
       ...(q.mode === "new_period" ? [pauseCancelled(userId)] : []),
+      // buying a subscription ends the trial place: the case moves to a paid place
+      prisma.freeGrant.updateMany({
+        where: { userId, kind: "TRIAL", revokedAt: null },
+        data: { revokedAt: now(), expiryHandledAt: now() },
+      }),
       prisma.user.update({
         where: { id: userId },
         data: {
@@ -198,15 +256,17 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
   async function renew(userId: string): Promise<RenewResult> {
     const [user, count] = await Promise.all([load(userId), counts(userId)]);
     if (user.subscriptionCancelledAt !== null) return { ok: false, reason: "CANCELLED" };
-    if (count.kept === 0) return { ok: false, reason: "NO_CASES" };
     const from = isRunning(user.subscriptionUntil) ? user.subscriptionUntil! : now();
     const until = new Date(from.getTime() + APP_CONFIG.limits.subscriptionDays * DAY_MS);
-    const amount = casesPrice(count.kept);
+    // free places cover cases first: only the rest is paid for
+    const payFor = await nextPaid(userId, count.kept, until);
+    if (payFor === 0) return { ok: false, reason: "NO_CASES" };
+    const amount = casesPrice(payFor);
     await prisma.$transaction([
       pauseCancelled(userId),
       prisma.user.update({
         where: { id: userId },
-        data: { subscriptionUntil: until, paidCases: count.kept },
+        data: { subscriptionUntil: until, paidCases: payFor },
       }),
       prisma.payment.create({
         data: {
@@ -226,7 +286,7 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
         amount,
         currency: PRICING.currency,
         periodEnd: until.toISOString(),
-        casesAfter: count.kept,
+        casesAfter: payFor,
         addCases: 0,
       },
     };
@@ -270,9 +330,10 @@ export function createBillingService(deps: { prisma: PrismaClient; now: () => Da
   async function resume(userId: string, trackerId: string): Promise<TrackerBillingResult> {
     const tracker = await prisma.tracker.findFirst({ where: { id: trackerId, userId, status: "PAUSED" } });
     if (!tracker) return { ok: false, reason: "NOT_FOUND" };
-    const [user, count] = await Promise.all([load(userId), counts(userId)]);
-    if (!isRunning(user.subscriptionUntil)) return { ok: false, reason: "SUBSCRIPTION_REQUIRED" };
-    if (count.active >= user.paidCases) return { ok: false, reason: "NO_FREE_SLOT" };
+    const [user, count, freeNow] = await Promise.all([load(userId), counts(userId), grants.casesAt(userId, now())]);
+    const capacity = (isRunning(user.subscriptionUntil) ? user.paidCases : 0) + freeNow;
+    if (capacity === 0) return { ok: false, reason: "SUBSCRIPTION_REQUIRED" };
+    if (count.active >= capacity) return { ok: false, reason: "NO_FREE_SLOT" };
     await prisma.tracker.update({
       where: { id: tracker.id },
       data: { status: "ACTIVE", pausedAt: null, keepNext: true, lastError: null, nextCheckAt: now() },

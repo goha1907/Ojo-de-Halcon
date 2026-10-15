@@ -1,9 +1,10 @@
 "use client";
 
 import { API_ROUTES, ROUTES } from "@ojo/shared";
-import { Alert, Button, Card, TextField } from "@ojo/ui";
+import { Alert, Button, Card } from "@ojo/ui";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { PasswordField } from "@/components/password-field";
 import { useT } from "@/components/providers/i18n-provider";
 import { ApiError, apiRequest } from "@/lib/api-client";
 import { describeApiError } from "@/lib/api-errors";
@@ -37,9 +38,8 @@ export function DeleteAccountCard() {
     <Card title={t("settings.account.title")} description={t("settings.account.warning")}>
       <form onSubmit={onSubmit} className="space-y-4">
         {error && <Alert tone="error">{error}</Alert>}
-        <TextField
+        <PasswordField
           label={t("settings.account.passwordLabel")}
-          type="password"
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}

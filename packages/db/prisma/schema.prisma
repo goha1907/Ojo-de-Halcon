@@ -49,6 +49,7 @@ model User {
   payments         Payment[]
   feedback         FeedbackMessage[]
   paymentIntents   PaymentIntent[]
+  freeGrants       FreeGrant[]
 }
 
 model Session {
@@ -130,6 +131,8 @@ model Tracker {
   keepNext        Boolean       @default(true)
   /// When it was paused; paused trackers are removed after a retention period.
   pausedAt        DateTime?
+  /// When an open case reached its final status (its slot became free). Null for cases added already closed.
+  finishedAt      DateTime?
   /// The "case added" notification was produced (it waits while Telegram is switched off for the case).
   initialNotified Boolean       @default(false)
   kind            TrackerKind
@@ -264,6 +267,31 @@ model TelegramOutbox {
   sentAt     DateTime?
 
   @@index([sentAt, createdAt])
+}
+
+/// Free places: the trial, bonuses, gifts, partner access. They cost nothing and are only counted; paid places
+/// live in `User.paidCases`. A grant without `expiresAt` goes on without an end until it is revoked.
+model FreeGrant {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// "TRIAL" | "BONUS" | "GIFT" | "PROMO" | "ADMIN"
+  kind            String
+  /// How many cases the grant covers.
+  cases           Int
+  note            String?
+  /// Who gave it ("system" for the trial, an admin label otherwise).
+  grantedBy       String?
+  startsAt        DateTime  @default(now())
+  /// Null: no end date, it keeps going (renewed every month like a paid place).
+  expiresAt       DateTime?
+  revokedAt       DateTime?
+  /// The ending of this grant was processed (the owner was told when cases were left without a place).
+  expiryHandledAt DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt, expiryHandledAt])
 }
 
 /// Remembers used trials after an account is deleted. Only keyed hashes are

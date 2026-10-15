@@ -58,7 +58,7 @@ export default async function ServicePage({
         {kind && (
           <div className="flex flex-col items-end gap-1">
             <AddTrackerButton kind={kind} />
-            <span className="text-xs text-slate-500">{billing && access.plan === "subscription" ? t("track.usage", { used: billing.activeCases, limit: billing.paidCases }) : null}</span>
+            <span className="text-xs text-slate-500">{billing && billing.capacity > 0 ? t("track.usage", { used: billing.activeCases, limit: billing.capacity }) : null}</span>
           </div>
         )}
       </header>

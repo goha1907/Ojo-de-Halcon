@@ -18,10 +18,11 @@ export default async function SettingsSubscriptionPage({
   const requested = Math.trunc(Number((await searchParams).cases));
   const { t } = await getT();
   const core = getCore();
-  const [access, billing, payments] = await Promise.all([
+  const [access, billing, payments, grants] = await Promise.all([
     core.access.get(user.id),
     core.billing.state(user.id),
     core.billing.history(user.id, PAYMENTS_LIMIT),
+    core.grants.list(user.id),
   ]);
 
   return (
@@ -31,6 +32,7 @@ export default async function SettingsSubscriptionPage({
         access={access}
         billing={billing}
         payments={payments}
+        grants={grants}
         methods={core.payments.methods()}
         testMode={getEnv().PAYMENTS_STUB}
         daysLeft={access.until ? Math.ceil((new Date(access.until).getTime() - nowMs()) / 86_400_000) : 0}

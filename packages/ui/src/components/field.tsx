@@ -2,7 +2,7 @@ import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react
 import { useId } from "react";
 import { cn } from "../lib/cn";
 
-interface FieldShellProps {
+export interface FieldShellProps {
   id: string;
   label: ReactNode;
   error?: string | undefined;
@@ -10,7 +10,7 @@ interface FieldShellProps {
   children: ReactNode;
 }
 
-function FieldShell({ id, label, error, hint, children }: FieldShellProps) {
+export function FieldShell({ id, label, error, hint, children }: FieldShellProps) {
   return (
     <div className="space-y-1.5">
       <label htmlFor={id} className="block text-sm font-medium text-slate-800">

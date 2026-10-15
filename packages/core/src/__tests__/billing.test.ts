@@ -52,7 +52,13 @@ describe("billing service", () => {
     const result = await core.billing.checkout(userId, 5);
     expect(result).toMatchObject({ ok: true, quote: { mode: "new_period", amount: 15000 } });
     expect((await core.access.get(userId)).plan).toBe("subscription");
-    expect(await core.billing.state(userId)).toMatchObject({ paidCases: 5, freeCases: 5, currentPrice: 15000 });
+    expect(await core.billing.state(userId)).toMatchObject({
+      paidCases: 5,
+      // buying a subscription ended the trial place
+      freeGrantCases: 0,
+      freeCases: 5,
+      currentPrice: 15000,
+    });
     const [payment] = await core.billing.history(userId);
     expect(payment).toMatchObject({ kind: "subscription", amount: 15000, casesDelta: 5 });
     expect(Number.isNaN(Date.parse(payment!.createdAt))).toBe(false);

@@ -52,6 +52,8 @@ export const APP_CONFIG = {
     replaceCooldownDays: 30,
     /** Free trial length, counted from account creation. */
     trialDays: 7,
+    /** Cases the free trial covers. */
+    trialCases: 1,
     /** Length of one paid period. */
     subscriptionDays: 30,
   },
@@ -68,6 +70,8 @@ export const APP_CONFIG = {
     payment: { windowMs: 10 * 60_000, max: 60 },
     /** Feedback messages from the landing page, per client IP. */
     feedback: { windowMs: 60 * 60_000, max: 5 },
+    /** Password change attempts (each checks the current password), per user. */
+    password: { windowMs: 10 * 60_000, max: 10 },
     /** Creating Telegram link codes and polling their status, per user. */
     telegramLink: { windowMs: 60_000, max: 90 },
   },
@@ -129,6 +133,7 @@ export const API_ROUTES = {
   telegramLink: "/api/telegram/link",
   telegram: "/api/telegram",
   account: "/api/account",
+  changePassword: "/api/account/password",
   trackers: "/api/trackers",
   pjnSearch: "/api/trackers/pjn/search",
   pjnConfirm: "/api/trackers/pjn/confirm",
