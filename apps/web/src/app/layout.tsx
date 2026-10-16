@@ -6,7 +6,17 @@ import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT();
-  return { title: t("app.name"), description: t("app.tagline") };
+  return {
+    title: t("app.name"),
+    description: t("app.tagline"),
+    icons: {
+      icon: [
+        { url: "/brand/favicon.svg", type: "image/svg+xml" },
+        { url: "/brand/favicon.ico", sizes: "48x48" },
+      ],
+      apple: "/images/brand/apple-touch-icon.png",
+    },
+  };
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {

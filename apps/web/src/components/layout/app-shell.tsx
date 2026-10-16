@@ -2,6 +2,7 @@ import type { AccessState } from "@ojo/core";
 import { ROUTES } from "@ojo/shared";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Logo } from "@/components/brand/logo";
 import { AccessBanner } from "@/components/layout/access-banner";
 import { LogoutButton } from "@/components/logout-button";
 import { AddTrackerButton } from "@/components/trackers/add-tracker-button";
@@ -38,8 +39,8 @@ export async function AppShell({
   const { t, locale } = await getT();
 
   const brand = (
-    <Link href={ROUTES.home} className="text-lg font-semibold text-slate-900">
-      {t("app.name")}
+    <Link href={ROUTES.home} className="flex items-center">
+      <Logo alt={t("app.name")} height={32} />
     </Link>
   );
   const account = (

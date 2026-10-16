@@ -1,5 +1,6 @@
 import { ROUTES, type TranslateFn } from "@ojo/shared";
 import Link from "next/link";
+import { Logo } from "@/components/brand/logo";
 import { LANDING_SECTIONS } from "./sections";
 import { PreferenceSelectors } from "./preference-selectors";
 
@@ -35,9 +36,9 @@ export function LandingHeader({ t, signedIn }: { t: TranslateFn; signedIn: boole
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
-        <Link href={ROUTES.home} className="flex items-center gap-2 text-base font-semibold text-slate-900">
-          <span aria-hidden="true" className="text-xl">👁</span>
-          {t("app.name")}
+        <Link href={ROUTES.home} className="flex items-center">
+          <Logo alt={t("app.name")} height={36} className="hidden sm:block" priority />
+          <Logo variant="icon" alt={t("app.name")} height={36} className="sm:hidden" priority />
         </Link>
         <nav aria-label={t("landing.nav.label")} className="ml-4 hidden items-center gap-1 md:flex">
           {links}

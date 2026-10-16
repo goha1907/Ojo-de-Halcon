@@ -1,5 +1,6 @@
 import { APP_CONFIG, ROUTES, type TranslateFn } from "@ojo/shared";
 import Link from "next/link";
+import { Logo } from "@/components/brand/logo";
 import { LegalLinks } from "./legal-links";
 import { PreferenceSelectors } from "./preference-selectors";
 import { LANDING_SECTIONS } from "./sections";
@@ -14,8 +15,8 @@ export function LandingFooter({ t }: { t: TranslateFn }) {
     <footer className="bg-slate-900 text-slate-300">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 md:grid-cols-3">
         <div className="space-y-3 text-sm">
-          <Link href={ROUTES.home} className="block text-base font-semibold text-white">
-            {t("app.name")}
+          <Link href={ROUTES.home} className="inline-block">
+            <Logo tone="dark" alt={t("app.name")} height={40} />
           </Link>
           <p>{t("landing.footer.company")}</p>
           <p>
