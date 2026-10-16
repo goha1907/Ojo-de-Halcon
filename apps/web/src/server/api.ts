@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type { ZodType } from "zod";
 import { getEnv } from "./env";
 import { clientIp, rateLimit } from "./rate-limit";
+import { can, isStaff, type AdminPermission } from "@ojo/shared";
 import { getCurrentUser } from "./session";
 
 export type ApiErrorCode =
@@ -96,6 +97,17 @@ export function limitByIp(
 export async function withUser(handler: (user: UserDto) => Promise<Response>): Promise<Response> {
   const user = await getCurrentUser();
   if (!user) return apiError("UNAUTHORIZED");
+  return handler(user);
+}
+
+/** Runs `handler` for a staff member holding the permission; 401 without a session, 403 otherwise. */
+export async function withStaff(
+  permission: AdminPermission,
+  handler: (user: UserDto) => Promise<Response>,
+): Promise<Response> {
+  const user = await getCurrentUser();
+  if (!user) return apiError("UNAUTHORIZED");
+  if (!isStaff(user.role) || !can(user.role, permission)) return apiError("FORBIDDEN");
   return handler(user);
 }
 

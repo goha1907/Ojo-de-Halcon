@@ -128,7 +128,6 @@ export function createAccessService(deps: {
     } else {
       await prisma.$transaction([
         grants.endTrial(userId),
-        prisma.user.update({ where: { id: userId }, data: { trialStartedAt: now() } }),
         prisma.freeGrant.create({ data: trialGrantData(userId, now(), now()) }),
       ]);
     }

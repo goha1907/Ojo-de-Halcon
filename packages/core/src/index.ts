@@ -1,3 +1,4 @@
+import { createAdminService } from "./admin/admin-service";
 import { createAccountService } from "./accounts/account-service";
 import { createSessionService } from "./auth/session-service";
 import { createAccessService } from "./access/access-service";
@@ -25,23 +26,20 @@ export function createCore(deps: CoreDeps) {
       ? [createStubProvider({ processingSeconds: config.payments.stubProcessingSeconds, now })]
       : []),
   ];
+  const trackers = createTrackerService({ prisma, scraper, now, grants, capacity });
+  const access = createAccessService({ prisma, now, capacity, grants });
   return {
     sessions: createSessionService({ prisma, config, now }),
     accounts: createAccountService({ prisma, config, mailer, now }),
     telegram: createTelegramService({ prisma, config, now }),
     profile: createProfileService({ prisma, now }),
-    trackers: createTrackerService({
-      prisma,
-      scraper,
-      now,
-      grants,
-      capacity,
-    }),
+    trackers,
     grants,
     capacity,
-    access: createAccessService({ prisma, now, capacity, grants }),
+    access,
     billing,
     feedback: createFeedbackService({ prisma }),
+    admin: createAdminService({ prisma, now, access, billing, capacity, grants, trackers }),
     payments: createPaymentService({ prisma, billing, providers, config: config.payments, now }),
   };
 }
@@ -75,6 +73,17 @@ export type {
 } from "./trackers/tracker-service";
 export type { AccessPlan, AccessState } from "./access/access-service";
 export type { FreeGrantDto, GrantKind, GrantService } from "./grants/grant-service";
+export type {
+  Actor,
+  AdminService,
+  FeedbackStatus,
+  MutationResult,
+  OverviewDto,
+  Page,
+  SourceHealthRow,
+  UserRow,
+} from "./admin/admin-service";
+export { FEEDBACK_STATUS_LIST } from "./admin/admin-service";
 export type { PlaceBreakdown, CapacityService } from "./capacity/capacity-service";
 export { GRANT_KINDS } from "./grants/grant-service";
 export { resolveAccess } from "./access/access-service";

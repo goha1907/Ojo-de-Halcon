@@ -193,7 +193,9 @@ describe("one account per mailbox and a remembered trial", () => {
     const core = makeCore();
     const first = await core.accounts.register({ email: "again@example.com", password: PASSWORD });
     if (!first.ok) throw new Error("registration failed");
-    const started = (await prisma.user.findUniqueOrThrow({ where: { id: first.userId } })).trialStartedAt;
+    const trialOf = async (userId: string) =>
+      (await prisma.freeGrant.findFirstOrThrow({ where: { userId, kind: "TRIAL" } })).startsAt;
+    const started = await trialOf(first.userId);
     // no tracker was added, the trial still runs from registration
     expect(started.getTime()).toBeGreaterThanOrEqual(before - 1000);
     expect((await core.access.get(first.userId)).plan).toBe("granted");
@@ -201,7 +203,6 @@ describe("one account per mailbox and a remembered trial", () => {
     await core.accounts.deleteAccount(first.userId, PASSWORD);
     const second = await core.accounts.register({ email: "AGAIN@example.com", password: PASSWORD });
     if (!second.ok) throw new Error("registration failed");
-    const row = await prisma.user.findUniqueOrThrow({ where: { id: second.userId } });
-    expect(row.trialStartedAt.getTime()).toBe(started.getTime());
+    expect((await trialOf(second.userId)).getTime()).toBe(started.getTime());
   });
 });

@@ -12,11 +12,19 @@ enum EmailTokenType {
   RESET_PASSWORD
 }
 
+/// Who an account is: a customer, or staff of the admin area.
+enum UserRole {
+  USER
+  SUPPORT
+  ADMIN
+}
+
 model User {
   id                    String    @id @default(cuid())
   email                 String    @unique
   /// One key per real mailbox (see canonicalEmail); blocks address variations.
   emailCanonical        String    @unique
+  role                  UserRole  @default(USER)
   passwordHash          String
   emailVerifiedAt       DateTime?
   firstName             String?
@@ -30,8 +38,6 @@ model User {
   locale                String    @default("ru")
   termsAcceptedAt       DateTime
   onboardingCompletedAt DateTime?
-  /// The free trial runs from account creation (or from the first account of the same mailbox).
-  trialStartedAt        DateTime  @default(now())
   /// Paid access end (payments are not connected yet; set manually).
   subscriptionUntil     DateTime?
   /// Cases the subscription pays for in the running period (free slots = paidCases - active cases).
@@ -292,6 +298,24 @@ model FreeGrant {
 
   @@index([userId])
   @@index([expiresAt, expiryHandledAt])
+}
+
+/// Everything staff do in the admin area. Kept after accounts are deleted, so it stores copies of the e-mails.
+model AuditLog {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  actorId      String?
+  actorEmail   String
+  /// e.g. "grant.give", "grant.revoke", "grant.expiry", "feedback.status"
+  action       String
+  targetUserId String?
+  targetEmail  String?
+  details      Json?
+  /// Idempotency key of a form submit: sending the same form twice acts once.
+  requestId    String?  @unique
+
+  @@index([targetUserId, createdAt])
+  @@index([createdAt])
 }
 
 /// Remembers used trials after an account is deleted. Only keyed hashes are

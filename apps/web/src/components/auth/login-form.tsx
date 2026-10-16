@@ -11,7 +11,7 @@ import { ApiError, apiRequest } from "@/lib/api-client";
 import { describeApiError } from "@/lib/api-errors";
 import { issuesToFieldErrors } from "@/lib/form-errors";
 
-export function LoginForm() {
+export function LoginForm({ next = null }: { next?: string | null }) {
   const t = useT();
   const router = useRouter();
   const [values, setValues] = useState({ email: "", password: "" });
@@ -31,7 +31,7 @@ export function LoginForm() {
     setLoading(true);
     try {
       await apiRequest(API_ROUTES.login, { method: "POST", body: values });
-      router.replace(ROUTES.dashboard);
+      router.replace(next ?? ROUTES.dashboard);
       router.refresh();
     } catch (error) {
       setFormError(

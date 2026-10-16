@@ -14,6 +14,7 @@ import { getT } from "@/server/i18n";
 /** Signed-in layout: menu on the left, content on the right (menu folds on small screens). */
 export async function AppShell({
   userLabel,
+  staff = false,
   showMenu,
   defaultJurisdiction,
   access,
@@ -24,6 +25,8 @@ export async function AppShell({
   children,
 }: {
   userLabel: string;
+  /** Staff accounts get a link to the admin area. */
+  staff?: boolean;
   showMenu: boolean;
   defaultJurisdiction: string | null;
   access: AccessState;
@@ -47,6 +50,11 @@ export async function AppShell({
   const account = (
     <div className="space-y-3 border-t border-line pt-3">
       {showMenu && <AddTrackerButton fullWidth />}
+      {staff && (
+        <Link href="/admin" className="block rounded-field border border-line px-3 py-2 text-center text-sm font-medium text-fg hover:bg-line/40">
+          Admin
+        </Link>
+      )}
       <PreferenceSelectors t={t} />
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-sm text-fg-muted">{userLabel}</span>

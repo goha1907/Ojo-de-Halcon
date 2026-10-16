@@ -48,4 +48,6 @@ export interface UserDto {
   telegramUsername: string | null;
   locale: string;
   onboardingDone: boolean;
+  /** Staff role; USER for customers. */
+  role: "USER" | "SUPPORT" | "ADMIN";
 }

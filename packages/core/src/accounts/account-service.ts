@@ -78,7 +78,6 @@ export function createAccountService(deps: {
         data: {
           email,
           emailCanonical,
-          trialStartedAt,
           passwordHash,
           locale: resolveLocale(input.locale),
           termsAcceptedAt: now(),
@@ -149,6 +148,44 @@ export function createAccountService(deps: {
     return { ok: true };
   }
 
+  /**
+   * Creates (or updates) a staff account: verified, no trial place, the given role. An existing account
+   * keeps its password unless `resetPassword` is set. Used by the command line, never by a web route.
+   */
+  async function createOperator(input: {
+    email: string;
+    password: string;
+    role: "SUPPORT" | "ADMIN";
+    resetPassword?: boolean;
+  }): Promise<{ userId: string; created: boolean }> {
+    const email = normalizeEmail(input.email);
+    const existing = await prisma.user.findFirst({ where: { OR: [{ email }, { emailCanonical: canonicalEmail(email) }] } });
+    if (existing) {
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          role: input.role,
+          emailVerifiedAt: existing.emailVerifiedAt ?? now(),
+          ...(input.resetPassword ? { passwordHash: await hashPassword(input.password) } : {}),
+        },
+      });
+      if (input.resetPassword) await prisma.session.deleteMany({ where: { userId: existing.id } });
+      return { userId: existing.id, created: false };
+    }
+    const user = await prisma.user.create({
+      data: {
+        email,
+        emailCanonical: canonicalEmail(email),
+        passwordHash: await hashPassword(input.password),
+        role: input.role,
+        termsAcceptedAt: now(),
+        emailVerifiedAt: now(),
+        onboardingCompletedAt: now(),
+      },
+    });
+    return { userId: user.id, created: true };
+  }
+
   /** Deletes the account with everything attached (cascade). */
   async function deleteAccount(userId: string, password: string): Promise<{ ok: boolean }> {
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -175,6 +212,7 @@ export function createAccountService(deps: {
     verifyEmail,
     sendVerificationEmail,
     changePassword,
+    createOperator,
     deleteAccount,
   };
 }

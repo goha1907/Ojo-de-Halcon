@@ -15,3 +15,4 @@ export * from "./config/pricing";
 export * from "./domain/billing";
 export * from "./domain/feedback";
 export * from "./domain/correo";
+export * from "./domain/admin";

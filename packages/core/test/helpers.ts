@@ -78,7 +78,7 @@ export function tokenFromMail(message: MailMessage): string {
 
 export async function resetDb(): Promise<void> {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "TelegramOutbox", "StatusObservation", "FeedbackMessage", "PaymentIntent", "TrialLedger", "FreeGrant", "ProfileChange", "TelegramLinkCode", "EmailToken", "Session", "User" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "TelegramOutbox", "StatusObservation", "FeedbackMessage", "PaymentIntent", "TrialLedger", "FreeGrant", "AuditLog", "ProfileChange", "TelegramLinkCode", "EmailToken", "Session", "User" RESTART IDENTITY CASCADE',
   );
 }
 

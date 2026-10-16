@@ -6,7 +6,10 @@ import { shouldRedirectToLogin } from "@/lib/route-guard";
 export function proxy(request: NextRequest) {
   const hasSession = request.cookies.has(APP_CONFIG.cookies.session);
   if (shouldRedirectToLogin(request.nextUrl.pathname, hasSession)) {
-    return NextResponse.redirect(new URL(ROUTES.login, request.url));
+    // remember the page the visitor wanted: the login sends them back there
+    const target = new URL(ROUTES.login, request.url);
+    target.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
+    return NextResponse.redirect(target);
   }
   return NextResponse.next();
 }
@@ -18,5 +21,6 @@ export const config = {
     "/onboarding",
     "/links",
     "/services/:path*",
+    "/admin/:path*",
   ],
 };

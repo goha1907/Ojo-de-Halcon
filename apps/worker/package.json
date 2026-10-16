@@ -8,7 +8,8 @@
     "start": "tsx --env-file=../../.env src/index.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vitest run"
+    "test": "vitest run",
+    "admin:create": "tsx --env-file=../../.env src/cli/create-admin.ts"
   },
   "dependencies": {
     "@ojo/core": "workspace:*",

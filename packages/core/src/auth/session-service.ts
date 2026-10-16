@@ -16,6 +16,7 @@ export function toUserDto(user: User): UserDto {
     telegramUsername: user.telegramUsername,
     locale: user.locale,
     onboardingDone: user.onboardingCompletedAt !== null,
+    role: user.role,
   };
 }
 

@@ -18,7 +18,8 @@
     "db:generate": "pnpm --filter @ojo/db generate",
     "db:migrate": "pnpm --filter @ojo/db migrate",
     "db:studio": "pnpm --filter @ojo/db studio",
-    "db:down": "docker compose stop db"
+    "db:down": "docker compose stop db",
+    "admin:create": "pnpm --filter @ojo/worker admin:create"
   },
   "devDependencies": {
     "typescript": "5.9.3",

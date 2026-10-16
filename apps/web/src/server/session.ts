@@ -1,8 +1,8 @@
-import { APP_CONFIG, ROUTES } from "@ojo/shared";
+import { APP_CONFIG, ROUTES, can, isStaff, type AdminPermission } from "@ojo/shared";
 import type { CreatedSession, UserDto } from "@ojo/core";
 import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { getCore } from "./core";
 import { getEnv } from "./env";
@@ -33,5 +33,16 @@ export const getCurrentUser = cache(async (): Promise<UserDto | null> => {
 export async function requireUser(): Promise<UserDto> {
   const user = await getCurrentUser();
   if (!user) redirect(ROUTES.login);
+  return user;
+}
+
+/**
+ * For the admin area: staff only, optionally with one permission. Everyone else gets a plain "not found",
+ * so the area does not reveal itself to customers or visitors.
+ */
+export async function requireStaff(permission?: AdminPermission): Promise<UserDto> {
+  const user = await getCurrentUser();
+  if (!user || !isStaff(user.role)) notFound();
+  if (permission && !can(user.role, permission)) notFound();
   return user;
 }

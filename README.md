@@ -12,6 +12,7 @@ Argentino, гражданство) **в одном месте** и получа�
 |---|---|
 | [docs/PLAN.md](docs/PLAN.md) | конкретные задачи, которые нужно проверить и сделать |
 | [docs/IDEAS.md](docs/IDEAS.md) | идеи развития, новые сервисы, масштабирование, продажи |
+| [docs/ADMIN.md](docs/ADMIN.md) | админка: как войти, роли и права, что внутри |
 | [docs/PAYMENTS.md](docs/PAYMENTS.md) | как подключить реальные платёжные системы |
 | [docs/TELEGRAM_BOT.md](docs/TELEGRAM_BOT.md) | как создать и оформить Telegram-бота в BotFather |
 | [docs/ACCOUNTANT_QUESTIONS.md](docs/ACCOUNTANT_QUESTIONS.md) | вопросы для contador (налоги, чеки, SAS) |
