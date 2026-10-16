@@ -130,27 +130,27 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
           />
         ) : trial ? (
           <div className="space-y-3 text-sm">
-            <p className="text-slate-700">
+            <p className="text-fg">
               {t("settings.access.trial", { date: access.until ? day(access.until) : "" })}
             </p>
             <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
               <div>
-                <dt className="text-xs text-slate-500">{t("settings.sub.trialLeft")}</dt>
-                <dd className="font-medium text-slate-900">{Math.max(0, daysLeft)}</dd>
+                <dt className="text-xs text-fg-muted">{t("settings.sub.trialLeft")}</dt>
+                <dd className="font-medium text-fg">{Math.max(0, daysLeft)}</dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">{t("settings.sub.trialUsage")}</dt>
-                <dd className="font-medium text-slate-900">
+                <dt className="text-xs text-fg-muted">{t("settings.sub.trialUsage")}</dt>
+                <dd className="font-medium text-fg">
                   {trialUsed > 0 ? t("settings.sub.trialUsed") : t("settings.sub.trialFree")}
                 </dd>
               </div>
             </dl>
-            <p className="text-slate-500">{t("settings.sub.trialNote")}</p>
+            <p className="text-fg-muted">{t("settings.sub.trialNote")}</p>
           </div>
         ) : giftCases > 0 ? (
-          <p className="text-sm text-slate-700">{t("settings.sub.giftOnly")}</p>
+          <p className="text-sm text-fg">{t("settings.sub.giftOnly")}</p>
         ) : (
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-fg">
             {t(access.endedKind && access.endedKind !== "TRIAL" ? "settings.sub.giftEnded" : "settings.sub.trialEnded")}
           </p>
         )}
@@ -213,55 +213,55 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
                   onChange={(e) => onCountChange(e.target.value)}
                   onBlur={() => raw === "" && setRaw("0")}
                 />
-                <p className="text-xs text-slate-500">{t("billing.buy.limit", { max: billing.maxCases })}</p>
-                {subscribed && <p className="text-xs text-slate-500">{t("billing.buy.moreHelp")}</p>}
+                <p className="text-xs text-fg-muted">{t("billing.buy.limit", { max: billing.maxCases })}</p>
+                {subscribed && <p className="text-xs text-fg-muted">{t("billing.buy.moreHelp")}</p>}
                 {!subscribed && count > 0 && count < minBuy && (
-                  <p className="text-xs text-amber-700">{t("settings.sub.minHint", { min: minBuy })}</p>
+                  <p className="text-xs text-warning-fg">{t("settings.sub.minHint", { min: minBuy })}</p>
                 )}
                 <div className="space-y-3 pt-3">
-                  <div className="flex items-baseline justify-between gap-3 border-t border-slate-200 pt-3">
-                    <span className="text-slate-600">{t("settings.sub.toPay")}</span>
-                    <span className="text-xl font-bold text-slate-900">{money(valid ? price : 0)}</span>
+                  <div className="flex items-baseline justify-between gap-3 border-t border-line pt-3">
+                    <span className="text-fg-muted">{t("settings.sub.toPay")}</span>
+                    <span className="text-xl font-bold text-fg">{money(valid ? price : 0)}</span>
                   </div>
                   <Button fullWidth disabled={!valid || price <= 0} onClick={() => setPaying(true)}>
                     {t("settings.sub.buyNow")}
                   </Button>
                 </div>
               </div>
-              <div className="space-y-3 rounded-xl bg-slate-50 p-4 text-sm">
+              <div className="space-y-3 rounded-xl bg-bg-subtle p-4 text-sm">
                 <div className="flex justify-between gap-3">
-                  <span className="text-slate-500">{t("settings.sub.nowHave")}</span>
-                  <span className="font-medium text-slate-900">{nowTotal}</span>
+                  <span className="text-fg-muted">{t("settings.sub.nowHave")}</span>
+                  <span className="font-medium text-fg">{nowTotal}</span>
                 </div>
                 {leaves.map((row) => (
                   <div key={row.key} className="flex justify-between gap-3 pl-3 text-xs">
-                    <span className="text-slate-500">{row.label}</span>
-                    <span className="font-medium text-slate-700">−{row.value}</span>
+                    <span className="text-fg-muted">{row.label}</span>
+                    <span className="font-medium text-fg">−{row.value}</span>
                   </div>
                 ))}
                 {incoming > 0 && (
                   <div className="flex justify-between gap-3 pl-3 text-xs">
-                    <span className="text-slate-500">{t("settings.sub.leaves.incoming")}</span>
-                    <span className="font-medium text-slate-700">+{incoming}</span>
+                    <span className="text-fg-muted">{t("settings.sub.leaves.incoming")}</span>
+                    <span className="font-medium text-fg">+{incoming}</span>
                   </div>
                 )}
                 {added > 0 && (
                   <div className="flex justify-between gap-3 pl-3 text-xs">
-                    <span className="text-slate-500">{t("settings.sub.leaves.added")}</span>
-                    <span className="font-medium text-slate-700">{added}</span>
+                    <span className="text-fg-muted">{t("settings.sub.leaves.added")}</span>
+                    <span className="font-medium text-fg">{added}</span>
                   </div>
                 )}
                 <div className="flex justify-between gap-3">
-                  <span className="text-slate-500">{t("settings.sub.willHave")}</span>
-                  <span className="font-medium text-slate-900">{nextTotal}</span>
+                  <span className="text-fg-muted">{t("settings.sub.willHave")}</span>
+                  <span className="font-medium text-fg">{nextTotal}</span>
                 </div>
-                {subscribed && <p className="text-xs text-slate-500">{t("settings.sub.leaves.help")}</p>}
+                {subscribed && <p className="text-xs text-fg-muted">{t("settings.sub.leaves.help")}</p>}
                 {giftCases > 0 && (
-                  <p className="text-xs text-slate-500">{t("settings.sub.giftFirst", { count: giftCases })}</p>
+                  <p className="text-xs text-fg-muted">{t("settings.sub.giftFirst", { count: giftCases })}</p>
                 )}
-                <div className="flex items-baseline justify-between gap-3 border-t border-slate-200 pt-3">
-                  <span className="text-slate-600">{t("settings.sub.nextCost")}</span>
-                  <span className="text-lg font-bold text-slate-900">{money(nextPrice)}</span>
+                <div className="flex items-baseline justify-between gap-3 border-t border-line pt-3">
+                  <span className="text-fg-muted">{t("settings.sub.nextCost")}</span>
+                  <span className="text-lg font-bold text-fg">{money(nextPrice)}</span>
                 </div>
               </div>
             </div>
@@ -287,7 +287,7 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
 
       {!(subscribed && until) && (
         <Card title={t("settings.sub.manageTitle")}>
-          <p className="text-sm text-slate-500">{t("settings.sub.manageNone")}</p>
+          <p className="text-sm text-fg-muted">{t("settings.sub.manageNone")}</p>
         </Card>
       )}
 
@@ -300,7 +300,7 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
             <div className="space-y-1">
                 {cancelled ? (
                   <>
-                    <p className="text-sm font-medium text-amber-700">{t("billing.cancelledAll", { date: day(until) })}</p>
+                    <p className="text-sm font-medium text-warning-fg">{t("billing.cancelledAll", { date: day(until) })}</p>
                     <Button
                       variant="secondary"
                       loading={busy === "resume"}
@@ -326,14 +326,14 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
                     >
                       {t("billing.cancelAll")}
                     </Button>
-                    <p className="text-xs text-slate-500">{t("billing.cancelAllHelp", { date: day(until) })}</p>
+                    <p className="text-xs text-fg-muted">{t("billing.cancelAllHelp", { date: day(until) })}</p>
                   </>
                 )}
               </div>
 
             {testMode && (
-              <details className="border-t border-slate-100 pt-3 text-sm">
-                <summary className="cursor-pointer text-slate-500">{t("settings.access.testActions")}</summary>
+              <details className="border-t border-line pt-3 text-sm">
+                <summary className="cursor-pointer text-fg-muted">{t("settings.access.testActions")}</summary>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {subscribed && billing.renews && billing.keptCases > 0 && (
                     <Button
@@ -397,23 +397,23 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
 
       <Card title={t("billing.history")}>
         {payments.length === 0 ? (
-          <p className="text-sm text-slate-500">{t("billing.historyEmpty")}</p>
+          <p className="text-sm text-fg-muted">{t("billing.historyEmpty")}</p>
         ) : (
           <div className="space-y-3">
-            <ul className="divide-y divide-slate-100 text-sm">
+            <ul className="divide-y divide-line text-sm">
               {payments.slice((logPage - 1) * LOG_PAGE_SIZE, logPage * LOG_PAGE_SIZE).map((payment) => (
-                <li key={payment.id} className="flex justify-between gap-3 py-2 text-slate-700">
+                <li key={payment.id} className="flex justify-between gap-3 py-2 text-fg">
                   <span>
                     {dateTime(payment.createdAt)} ·{" "}
                     {t(`billing.kind.${payment.kind}` as MessageKey, { count: payment.casesDelta })}
-                    <span className="text-slate-400"> ({t("billing.stubBadge")})</span>
+                    <span className="text-fg-muted"> ({t("billing.stubBadge")})</span>
                   </span>
                   <span className="font-medium">{formatMoney(payment.amount, payment.currency, locale)}</span>
                 </li>
               ))}
             </ul>
               <nav aria-label={t("dash.table.pages")} className="flex flex-wrap items-center justify-between gap-3 text-sm">
-                <span className="text-slate-500">
+                <span className="text-fg-muted">
                   {t("dash.table.range", {
                     from: (logPage - 1) * LOG_PAGE_SIZE + 1,
                     to: Math.min(logPage * LOG_PAGE_SIZE, payments.length),
@@ -425,7 +425,7 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
                     type="button"
                     disabled={logPage <= 1}
                     onClick={() => setLogPage(logPage - 1)}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40"
+                    className="rounded-lg border border-line px-3 py-1.5 hover:bg-line/40 disabled:opacity-40"
                   >
                     ←
                   </button>
@@ -436,7 +436,7 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
                       aria-current={n === logPage ? "page" : undefined}
                       onClick={() => setLogPage(n)}
                       className={`rounded-lg border px-3 py-1.5 ${
-                        n === logPage ? "border-brand-600 bg-brand-600 text-white" : "border-slate-300 hover:bg-slate-50"
+                        n === logPage ? "border-brand bg-brand text-brand-fg" : "border-line hover:bg-line/40"
                       }`}
                     >
                       {n}
@@ -446,7 +446,7 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
                     type="button"
                     disabled={logPage >= logPages}
                     onClick={() => setLogPage(logPage + 1)}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40"
+                    className="rounded-lg border border-line px-3 py-1.5 hover:bg-line/40 disabled:opacity-40"
                   >
                     →
                   </button>

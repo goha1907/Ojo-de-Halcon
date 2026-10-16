@@ -82,8 +82,8 @@ export function CourtFinder() {
     <Card title={t("pjn.find.title")}>
       <div className="space-y-4">
         {state.phase === "searching" && (
-          <p className="flex items-center gap-2 text-sm text-slate-600">
-            <Spinner className="size-4 text-slate-500" /> {t("pjn.find.searching")}
+          <p className="flex items-center gap-2 text-sm text-fg-muted">
+            <Spinner className="size-4 text-fg-muted" /> {t("pjn.find.searching")}
           </p>
         )}
         {state.phase === "noCourt" && <Alert tone="info">{t("pjn.find.noCourt")}</Alert>}
@@ -93,13 +93,13 @@ export function CourtFinder() {
 
         {state.phase === "found" && (
           <>
-            <p className="text-sm text-slate-700">{t("pjn.find.found")}</p>
+            <p className="text-sm text-fg">{t("pjn.find.found")}</p>
             <ul className="space-y-3">
               {state.candidates.map((candidate) => (
-                <li key={candidate.expediente} className="rounded-lg border border-slate-200 p-3 text-sm">
-                  <p className="font-medium text-slate-900">{candidate.expediente}</p>
-                  <p className="text-slate-700">{candidate.caratula}</p>
-                  <p className="mb-3 text-slate-500">{candidate.dependencia}</p>
+                <li key={candidate.expediente} className="rounded-lg border border-line p-3 text-sm">
+                  <p className="font-medium text-fg">{candidate.expediente}</p>
+                  <p className="text-fg">{candidate.caratula}</p>
+                  <p className="mb-3 text-fg-muted">{candidate.dependencia}</p>
                   {candidate.closed && <Alert tone="info">{t("pjn.find.closed")}</Alert>}
                   <Button
                     className={candidate.closed ? "mt-3" : undefined}

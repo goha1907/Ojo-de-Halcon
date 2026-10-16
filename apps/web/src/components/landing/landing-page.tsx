@@ -29,14 +29,14 @@ export async function LandingPage() {
         <HowItWorks />
         <Pricing t={t} locale={locale} signedIn={signedIn} />
         <section id="news" className="scroll-mt-20 mx-auto max-w-3xl space-y-4 px-4 pb-16">
-          <h2 className="text-2xl font-bold text-slate-900">{t("landing.news.title")}</h2>
+          <h2 className="text-2xl font-bold text-fg">{t("landing.news.title")}</h2>
           <NewsFeed initial={news} />
         </section>
         <Faq t={t} />
         <section id="feedback" className="scroll-mt-20 mx-auto max-w-3xl space-y-4 px-4 py-16">
           <div className="space-y-1">
-            <h2 className="text-2xl font-bold text-slate-900">{t("feedback.title")}</h2>
-            <p className="text-slate-600">{t("feedback.subtitle")}</p>
+            <h2 className="text-2xl font-bold text-fg">{t("feedback.title")}</h2>
+            <p className="text-fg-muted">{t("feedback.subtitle")}</p>
           </div>
           <FeedbackForm defaultEmail={user?.email ?? ""} />
         </section>

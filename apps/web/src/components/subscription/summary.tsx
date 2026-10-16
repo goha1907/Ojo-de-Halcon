@@ -38,8 +38,8 @@ export function SubscriptionSummary({
 
   const item = (label: string, value: string, key: string) => (
     <div key={key}>
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="font-medium text-slate-900">{value}</dd>
+      <dt className="text-xs text-fg-muted">{label}</dt>
+      <dd className="font-medium text-fg">{value}</dd>
     </div>
   );
 
@@ -47,13 +47,13 @@ export function SubscriptionSummary({
     <div className="space-y-5">
       <div>
         <div className="mb-1 flex justify-between text-sm">
-          <span className="text-slate-600">{t("dash.sub.usage")}</span>
-          <span className="font-medium text-slate-900">
+          <span className="text-fg-muted">{t("dash.sub.usage")}</span>
+          <span className="font-medium text-fg">
             {billing.paidUsedCases} / {billing.paidCases}
           </span>
         </div>
-        <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-          <div className="h-full rounded-full bg-brand-600" style={{ width: `${share}%` }} />
+        <div className="h-2.5 overflow-hidden rounded-full bg-line/40">
+          <div className="h-full rounded-full bg-brand" style={{ width: `${share}%` }} />
         </div>
       </div>
       <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-4">

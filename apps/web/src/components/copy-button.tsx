@@ -52,8 +52,8 @@ export function CopyButton({ text, className }: { text: string; className?: stri
       className={cn(
         "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-xs",
         copied
-          ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-          : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800",
+          ? "border-success-fg/25 bg-success-bg text-success-fg"
+          : "border-line bg-surface text-fg-muted hover:bg-line/40 hover:text-fg",
         className,
       )}
     >

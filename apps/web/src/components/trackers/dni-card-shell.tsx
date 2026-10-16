@@ -28,8 +28,8 @@ interface Props {
 }
 
 const ICON_BUTTON = "rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50";
-const ICON_NEUTRAL = `${ICON_BUTTON} border-slate-200 bg-white text-slate-700 hover:bg-slate-50`;
-const ICON_PRIMARY = `${ICON_BUTTON} border-brand-600 bg-brand-600 text-white hover:bg-brand-700`;
+const ICON_NEUTRAL = `${ICON_BUTTON} border-line bg-surface text-fg hover:bg-line/40`;
+const ICON_PRIMARY = `${ICON_BUTTON} border-brand bg-brand text-brand-fg hover:bg-brand-hover`;
 
 /** Folding frame of a tracking card: clickable header with an in-place rename, body below. */
 export function DniCardShell({ id, tone, label, number, summary, renameTitle, toggleTitle, strip, children }: Props) {
@@ -70,7 +70,7 @@ export function DniCardShell({ id, tone, label, number, summary, renameTitle, to
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-2xl border border-l-4 border-slate-200 bg-white shadow-sm",
+        "overflow-hidden rounded-2xl border border-l-4 border-line bg-surface shadow-sm",
         TONE_STYLES[tone].edge,
       )}
     >
@@ -88,13 +88,13 @@ export function DniCardShell({ id, tone, label, number, summary, renameTitle, to
         }}
         className={cn(
           "flex select-none flex-wrap items-center gap-3 px-5 py-3.5",
-          editing ? "cursor-default" : "cursor-pointer hover:bg-slate-50",
+          editing ? "cursor-default" : "cursor-pointer hover:bg-line/40",
         )}
       >
-        <span aria-hidden="true" className={cn("w-3.5 text-slate-400 transition-transform", !open && "-rotate-90")}>
+        <span aria-hidden="true" className={cn("w-3.5 text-fg-subtle transition-transform", !open && "-rotate-90")}>
           ▾
         </span>
-        <div className="flex min-w-[12rem] flex-1 items-baseline gap-2 text-base font-bold text-slate-900">
+        <div className="flex min-w-[12rem] flex-1 items-baseline gap-2 text-base font-bold text-fg">
           {editing ? (
             <input
               ref={input}
@@ -110,15 +110,15 @@ export function DniCardShell({ id, tone, label, number, summary, renameTitle, to
                 if (event.key === "Enter") void save();
                 if (event.key === "Escape") setEditing(false);
               }}
-              className="w-full min-w-0 max-w-sm rounded-lg border border-slate-300 px-2.5 py-1 text-base font-bold text-slate-900 focus-visible:outline-2 focus-visible:outline-brand-600"
+              className="w-full min-w-0 max-w-sm rounded-lg border border-line px-2.5 py-1 text-base font-bold text-fg focus-visible:outline-2 focus-visible:outline-ring"
             />
           ) : (
             label && <span>{label}</span>
           )}
-          <small className="whitespace-nowrap font-medium text-slate-500">№ {number}</small>
+          <small className="whitespace-nowrap font-medium text-fg-muted">№ {number}</small>
           <CopyButton text={number} className="self-center" />
         </div>
-        {!editing && <span className="whitespace-nowrap text-xs text-slate-500">{summary}</span>}
+        {!editing && <span className="whitespace-nowrap text-xs text-fg-muted">{summary}</span>}
         {editing ? (
           <div className="flex gap-2" onClick={(event) => event.stopPropagation()}>
             <button
@@ -157,8 +157,8 @@ export function DniCardShell({ id, tone, label, number, summary, renameTitle, to
           </button>
         )}
       </div>
-      {open && <div className="border-t border-slate-200">{children}</div>}
-      <div className="border-t border-slate-200 px-5 py-2.5 empty:hidden">{strip}</div>
+      {open && <div className="border-t border-line">{children}</div>}
+      <div className="border-t border-line px-5 py-2.5 empty:hidden">{strip}</div>
     </section>
   );
 }

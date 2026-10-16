@@ -90,8 +90,8 @@ export function TelegramCard({ linked, username }: { linked: boolean; username: 
 
         {linked ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-slate-700">
-              <span className="font-medium text-emerald-700">{t("settings.telegram.linked")}</span>
+            <p className="text-sm text-fg">
+              <span className="font-medium text-success-fg">{t("settings.telegram.linked")}</span>
               {" · "}
               {t("settings.telegram.account", {
                 username: username ? `@${username}` : t("settings.telegram.noUsername"),
@@ -103,25 +103,25 @@ export function TelegramCard({ linked, username }: { linked: boolean; username: 
           </div>
         ) : link ? (
           <div className="space-y-4">
-            <p className="text-sm text-slate-700">{t("settings.telegram.instruction")}</p>
+            <p className="text-sm text-fg">{t("settings.telegram.instruction")}</p>
             <a
               href={link.deepLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex w-full items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700"
+              className="inline-flex w-full items-center justify-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-fg hover:bg-brand-hover"
             >
               {t("settings.telegram.openBot")}
             </a>
             <div className="space-y-2">
-              <p className="text-xs text-slate-500">{t("settings.telegram.orCode")}</p>
+              <p className="text-xs text-fg-muted">{t("settings.telegram.orCode")}</p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 rounded-lg bg-slate-100 px-3 py-2 text-sm break-all">{link.code}</code>
+                <code className="flex-1 rounded-lg bg-line/40 px-3 py-2 text-sm break-all">{link.code}</code>
                 <Button variant="secondary" onClick={copyCode}>
                   {copied ? t("common.copied") : t("common.copy")}
                 </Button>
               </div>
             </div>
-            <div className="flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center justify-between text-xs text-fg-muted">
               <span className="inline-flex items-center gap-2">
                 <Spinner className="size-4" />
                 {t("settings.telegram.waiting")}
@@ -132,7 +132,7 @@ export function TelegramCard({ linked, username }: { linked: boolean; username: 
         ) : (
           <div className="space-y-3">
             {expired && <Alert tone="error">{t("settings.telegram.expired")}</Alert>}
-            <p className="text-sm text-slate-600">{t("settings.telegram.notLinked")}</p>
+            <p className="text-sm text-fg-muted">{t("settings.telegram.notLinked")}</p>
             <Button loading={busy} onClick={connect}>
               {t("settings.telegram.connect")}
             </Button>

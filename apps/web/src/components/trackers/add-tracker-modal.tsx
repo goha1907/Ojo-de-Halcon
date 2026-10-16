@@ -217,7 +217,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
             <Link
               href={settingsHref("subscription")}
               onClick={onClose}
-              className="inline-flex items-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700"
+              className="inline-flex items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-fg hover:bg-brand-hover"
             >
               {t("track.limit.go")}
             </Link>
@@ -247,7 +247,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
               <Link
                 href={settingsHref("subscription")}
                 onClick={onClose}
-                className="inline-flex items-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700"
+                className="inline-flex items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-fg hover:bg-brand-hover"
               >
                 {t("track.limit.go")}
               </Link>
@@ -258,24 +258,24 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
           {step === "confirm" ? (
             <div className="space-y-4">
               {label.trim() && (
-                <p className="text-sm text-slate-600">{t("track.step.name", { name: label.trim() })}</p>
+                <p className="text-sm text-fg-muted">{t("track.step.name", { name: label.trim() })}</p>
               )}
               {found && (isCourt || Object.keys(found).some((key) => key !== "closed")) ? (
                 <>
-                  <h3 className="text-base font-semibold text-slate-900">
+                  <h3 className="text-base font-semibold text-fg">
                     {isCourt ? t("track.step.confirmCase") : t("track.dnm.confirmTitle")}
                   </h3>
-                  <dl className="space-y-2 rounded-lg border border-slate-200 p-3 text-sm">
+                  <dl className="space-y-2 rounded-lg border border-line p-3 text-sm">
                     {Object.entries(found)
                       .filter(([key, value]) => value && key !== "closed")
                       .map(([key, value]) => (
                         <div key={key}>
-                          <dt className="text-xs uppercase tracking-wide text-slate-500">
+                          <dt className="text-xs uppercase tracking-wide text-fg-muted">
                             {isCourt
                               ? t(`track.header.${key}` as MessageKey)
                               : t((IDENTITY_LABELS[key] ?? "track.dnm.state") as MessageKey)}
                           </dt>
-                          <dd className="text-slate-900">{value}</dd>
+                          <dd className="text-fg">{value}</dd>
                         </div>
                       ))}
                   </dl>
@@ -291,8 +291,8 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
                 </>
               ) : (
                 <>
-                  <h3 className="text-base font-semibold text-slate-900">{t("track.step.confirmNumber")}</h3>
-                  <p className="rounded-lg border border-slate-200 p-3 text-2xl font-semibold tracking-wide text-slate-900">
+                  <h3 className="text-base font-semibold text-fg">{t("track.step.confirmNumber")}</h3>
+                  <p className="rounded-lg border border-line p-3 text-2xl font-semibold tracking-wide text-fg">
                     {shownNumber}
                   </p>
                   <Alert tone="info">
@@ -347,7 +347,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
               error={errors.birthDate}
               onChange={setBirthDate}
             />
-            <p className="text-xs text-slate-500">{t("track.dnm.birthHint")}</p>
+            <p className="text-xs text-fg-muted">{t("track.dnm.birthHint")}</p>
           </div>
         )}
         {isCourt && (

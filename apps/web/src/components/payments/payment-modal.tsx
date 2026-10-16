@@ -152,14 +152,14 @@ export function PaymentModal({
     >
       <div className="space-y-5">
         {step !== "success" && (
-          <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm">
-            <div className="flex justify-between gap-3 text-slate-600">
+          <div className="rounded-xl bg-line/40 px-4 py-3 text-sm">
+            <div className="flex justify-between gap-3 text-fg-muted">
               <span>{subscribed ? t("pay.summary.add", { count: addCases }) : t("pay.summary.cases", { count: targetCases })}</span>
               {subscribed && <span>{t("pay.summary.total", { count: targetCases })}</span>}
             </div>
             <div className="mt-1 flex items-baseline justify-between gap-3">
-              <span className="text-slate-600">{t("pay.summary.amount")}</span>
-              <span className="text-xl font-bold text-slate-900">{money}</span>
+              <span className="text-fg-muted">{t("pay.summary.amount")}</span>
+              <span className="text-xl font-bold text-fg">{money}</span>
             </div>
           </div>
         )}
@@ -168,36 +168,36 @@ export function PaymentModal({
 
         {step === "method" && (
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-slate-900">{t("pay.method.title")}</h3>
+            <h3 className="text-sm font-semibold text-fg">{t("pay.method.title")}</h3>
             {ordered.map((method) => (
               <button
                 key={method}
                 type="button"
                 disabled={busy}
                 onClick={() => void choose(method)}
-                className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left hover:border-brand-600 hover:bg-brand-50 disabled:opacity-60"
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-line px-4 py-3 text-left hover:border-fg-subtle hover:bg-line/40 disabled:opacity-60"
               >
                 <span>
-                  <span className="block font-medium text-slate-900">{t(`pay.method.${method}` as MessageKey)}</span>
-                  <span className="block text-xs text-slate-500">{t(`pay.method.${method}.hint` as MessageKey)}</span>
+                  <span className="block font-medium text-fg">{t(`pay.method.${method}` as MessageKey)}</span>
+                  <span className="block text-xs text-fg-muted">{t(`pay.method.${method}.hint` as MessageKey)}</span>
                 </span>
-                <span aria-hidden="true" className="text-slate-400">→</span>
+                <span aria-hidden="true" className="text-fg-subtle">→</span>
               </button>
             ))}
-            {testMode && <p className="text-xs text-slate-400">{t("pay.testMode")}</p>}
+            {testMode && <p className="text-xs text-fg-muted">{t("pay.testMode")}</p>}
           </div>
         )}
 
         {step === "qr" && intent && (
           <div className="flex flex-col items-center gap-3 text-center">
-            <h3 className="text-sm font-semibold text-slate-900">{t("pay.qr.title")}</h3>
+            <h3 className="text-sm font-semibold text-fg">{t("pay.qr.title")}</h3>
             <FakeQr payload={intent.qrPayload ?? intent.id} />
-            <p className="text-sm text-slate-600">{t("pay.qr.text")}</p>
-            <p className="flex items-center gap-2 text-sm text-slate-500">
-              <Spinner className="size-4 text-slate-400" /> {t("pay.qr.waiting")}
+            <p className="text-sm text-fg-muted">{t("pay.qr.text")}</p>
+            <p className="flex items-center gap-2 text-sm text-fg-muted">
+              <Spinner className="size-4 text-fg-muted" /> {t("pay.qr.waiting")}
             </p>
-            <p className="text-xs text-slate-400">{t("pay.qr.expires", { minutes: minutesLeft })}</p>
-            {testMode && <p className="text-xs text-slate-400">{t("pay.qr.placeholder")}</p>}
+            <p className="text-xs text-fg-muted">{t("pay.qr.expires", { minutes: minutesLeft })}</p>
+            {testMode && <p className="text-xs text-fg-muted">{t("pay.qr.placeholder")}</p>}
           </div>
         )}
 
@@ -210,7 +210,7 @@ export function PaymentModal({
               void payByCard();
             }}
           >
-            <h3 className="text-sm font-semibold text-slate-900">{t("pay.card.title")}</h3>
+            <h3 className="text-sm font-semibold text-fg">{t("pay.card.title")}</h3>
             <TextField
               label={t("pay.card.number")}
               inputMode="numeric"
@@ -252,8 +252,8 @@ export function PaymentModal({
                 onChange={(e) => field("cvc", e.target.value.replace(/\D/g, ""))}
               />
             </div>
-            <p className="text-xs text-slate-500">{t("pay.card.secure")}</p>
-            {testMode && <p className="text-xs text-slate-400">{t("pay.card.test")}</p>}
+            <p className="text-xs text-fg-muted">{t("pay.card.secure")}</p>
+            {testMode && <p className="text-xs text-fg-muted">{t("pay.card.test")}</p>}
             <Button type="submit" fullWidth loading={busy}>
               {t("pay.card.submit", { amount: money })}
             </Button>
@@ -262,19 +262,19 @@ export function PaymentModal({
 
         {step === "processing" && (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <Spinner className="size-8 text-brand-600" />
-            <h3 className="text-base font-semibold text-slate-900">{t("pay.processing.title")}</h3>
-            <p className="text-sm text-slate-500">{t("pay.processing.text")}</p>
+            <Spinner className="size-8 text-fg" />
+            <h3 className="text-base font-semibold text-fg">{t("pay.processing.title")}</h3>
+            <p className="text-sm text-fg-muted">{t("pay.processing.text")}</p>
           </div>
         )}
 
         {step === "success" && (
           <div className="flex flex-col items-center gap-3 py-4 text-center">
-            <span aria-hidden="true" className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-3xl text-emerald-600">
+            <span aria-hidden="true" className="flex h-14 w-14 items-center justify-center rounded-full bg-success-bg text-3xl text-success-fg">
               ✓
             </span>
-            <h3 className="text-lg font-semibold text-slate-900">{t("pay.success.title")}</h3>
-            <p className="text-sm text-slate-600">
+            <h3 className="text-lg font-semibold text-fg">{t("pay.success.title")}</h3>
+            <p className="text-sm text-fg-muted">
               {subscribed ? t("pay.success.textMore") : t("pay.success.text")} {money}
             </p>
             <Button onClick={close}>{t("pay.success.done")}</Button>
@@ -307,7 +307,7 @@ export function PaymentModal({
         )}
 
         {(step === "qr" || step === "card") && (
-          <div className="flex justify-between border-t border-slate-100 pt-3">
+          <div className="flex justify-between border-t border-line pt-3">
             <Button
               variant="ghost"
               onClick={() => {

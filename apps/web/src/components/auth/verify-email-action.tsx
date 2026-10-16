@@ -24,7 +24,7 @@ export function VerifyEmailAction({ token }: { token: string }) {
   if (state === "pending") {
     return (
       <Card title={t("auth.verify.pendingTitle")}>
-        <Spinner className="size-5 text-slate-500" label={t("common.loading")} />
+        <Spinner className="size-5 text-fg-muted" label={t("common.loading")} />
       </Card>
     );
   }
@@ -37,7 +37,7 @@ export function VerifyEmailAction({ token }: { token: string }) {
   }
   return (
     <Card title={t("auth.verify.doneTitle")} description={t("auth.verify.doneText")}>
-      <Link href={ROUTES.dashboard} className="text-sm font-medium text-brand-600 hover:underline">
+      <Link href={ROUTES.dashboard} className="text-sm font-medium text-fg underline underline-offset-2 hover:text-fg-muted">
         {t("auth.verify.toApp")}
       </Link>
     </Card>

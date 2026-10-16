@@ -85,13 +85,13 @@ export function CorreoFields({
           />
         </div>
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-fg-muted">
         {t(`track.correo.hint.${def.layout}` as MessageKey)}{" "}
         <a
           href={correoFormUrl(value.form)}
           target="_blank"
           rel="noreferrer"
-          className="text-brand-600 hover:underline"
+          className="text-fg underline underline-offset-2 hover:text-fg-muted"
         >
           correoargentino.com.ar
         </a>

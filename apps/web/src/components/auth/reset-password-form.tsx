@@ -23,7 +23,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
       <Card title={t("auth.reset.title")}>
         <div className="space-y-4">
           <Alert tone="success">{t("auth.reset.done")}</Alert>
-          <Link href={ROUTES.login} className="text-sm font-medium text-brand-600 hover:underline">
+          <Link href={ROUTES.login} className="text-sm font-medium text-fg underline underline-offset-2 hover:text-fg-muted">
             {t("auth.reset.toLogin")}
           </Link>
         </div>

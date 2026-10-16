@@ -29,7 +29,7 @@ export function SubscriptionControl({ trackerId, status, kept, subscribed, perio
   if (status === "PENDING_CONFIRMATION") return null;
   if (status === "FINISHED") {
     return subscribed ? (
-      <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
+      <p className="rounded-lg border border-error-fg/25 bg-error-bg px-3 py-2 text-sm font-medium text-error-fg">
         {t("track.sub.finished")}
       </p>
     ) : null;
@@ -54,7 +54,7 @@ export function SubscriptionControl({ trackerId, status, kept, subscribed, perio
     : "";
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-muted">
       <Button
         variant="secondary"
         loading={busy}
@@ -64,9 +64,9 @@ export function SubscriptionControl({ trackerId, status, kept, subscribed, perio
       </Button>
       {status === "PAUSED" && <span>{t("track.sub.paused")}</span>}
       {status !== "PAUSED" && !kept && (
-        <span className="font-medium text-amber-700">{t("track.sub.removing", { date })}</span>
+        <span className="font-medium text-warning-fg">{t("track.sub.removing", { date })}</span>
       )}
-      {error && <span className="text-red-600">{error}</span>}
+      {error && <span className="text-error-fg">{error}</span>}
     </div>
   );
 }

@@ -12,7 +12,7 @@ export default async function SettingsProfilePage() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold text-slate-900">{t("nav.settings.profile")}</h1>
+      <h1 className="text-xl font-semibold text-fg">{t("nav.settings.profile")}</h1>
       <ProfileCard
         email={user.email}
         emailVerified={user.emailVerified}

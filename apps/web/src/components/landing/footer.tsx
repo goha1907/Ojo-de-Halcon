@@ -12,27 +12,27 @@ const PAYMENT_METHODS = [
 
 export function LandingFooter({ t }: { t: TranslateFn }) {
   return (
-    <footer className="bg-slate-900 text-slate-300">
+    <footer className="border-t border-line bg-bg-subtle text-fg-muted">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 md:grid-cols-3">
         <div className="space-y-3 text-sm">
           <Link href={ROUTES.home} className="inline-block">
-            <Logo tone="dark" alt={t("app.name")} height={40} />
+            <Logo alt={t("app.name")} height={40} />
           </Link>
           <p>{t("landing.footer.company")}</p>
           <p>
             {t("landing.footer.support")}{" "}
-            <a href={`mailto:${APP_CONFIG.contact.supportEmail}`} className="underline hover:text-white">
+            <a href={`mailto:${APP_CONFIG.contact.supportEmail}`} className="underline hover:text-fg">
               {APP_CONFIG.contact.supportEmail}
             </a>
           </p>
-          <p className="text-slate-400">{t("landing.footer.disclaimer")}</p>
+          <p className="text-fg-muted">{t("landing.footer.disclaimer")}</p>
         </div>
         <div className="space-y-3">
-          <div className="text-sm font-semibold text-white">{t("landing.footer.menu")}</div>
+          <div className="text-sm font-semibold text-fg">{t("landing.footer.menu")}</div>
           <ul className="space-y-2 text-sm">
             {LANDING_SECTIONS.map((section) => (
               <li key={section.id}>
-                <a href={`#${section.id}`} className="hover:text-white">
+                <a href={`#${section.id}`} className="hover:text-fg">
                   {t(section.labelKey)}
                 </a>
               </li>
@@ -40,12 +40,12 @@ export function LandingFooter({ t }: { t: TranslateFn }) {
           </ul>
         </div>
         <div className="space-y-3">
-          <div className="text-sm font-semibold text-white">{t("landing.footer.docs")}</div>
+          <div className="text-sm font-semibold text-fg">{t("landing.footer.docs")}</div>
           <LegalLinks />
         </div>
       </div>
-      <div className="border-t border-slate-800">
-        <div className="mx-auto grid max-w-6xl items-center gap-4 px-4 py-6 text-xs text-slate-400 md:grid-cols-3">
+      <div className="border-t border-line">
+        <div className="mx-auto grid max-w-6xl items-center gap-4 px-4 py-6 text-xs text-fg-muted md:grid-cols-3">
           <span className="text-center md:text-left">
             {t("landing.footer.copyright", { year: new Date().getFullYear() })}
           </span>
@@ -55,7 +55,7 @@ export function LandingFooter({ t }: { t: TranslateFn }) {
           <div className="flex items-center justify-center gap-2 md:justify-end">
             <span>{t("landing.footer.payments")}:</span>
             {PAYMENT_METHODS.map((method) => (
-              // the logos are dark artwork: they sit on a white chip, as payment badges usually do
+              // official dark artwork: the chip stays white in both themes, as payment badges usually do
               <span key={method.name} className="inline-flex items-center rounded-md bg-white px-2.5 py-1.5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={method.logo} alt={method.name} width={method.width} height={method.height} className="h-7 w-auto" />

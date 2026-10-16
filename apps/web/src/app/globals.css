@@ -11,6 +11,7 @@
 :root {
   color-scheme: light;
   --bg: #ffffff;
+  --page: #f8fafc;
   --bg-subtle: #f8fafc;
   --surface: #ffffff;
   --line: #e5e7eb;
@@ -39,6 +40,7 @@
 [data-theme="dark"] {
   color-scheme: dark;
   --bg: #0f172a;
+  --page: #0f172a;
   --bg-subtle: #1e293b;
   --surface: #1e293b;
   --line: #334155;
@@ -67,6 +69,7 @@
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   --color-bg: var(--bg);
+  --color-page: var(--page);
   --color-bg-subtle: var(--bg-subtle);
   --color-surface: var(--surface);
   --color-line: var(--line);
@@ -99,7 +102,7 @@
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-page text-fg antialiased;
 }
 
 html {

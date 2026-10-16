@@ -29,7 +29,7 @@ export function LegalLinks() {
       <ul className="space-y-2 text-sm">
         {LEGAL_DOCUMENTS.map((doc) => (
           <li key={doc}>
-            <button type="button" onClick={() => setOpen(doc)} className="text-slate-300 hover:text-white">
+            <button type="button" onClick={() => setOpen(doc)} className="hover:text-fg">
               {title(doc)}
             </button>
           </li>
@@ -41,7 +41,7 @@ export function LegalLinks() {
         title={open ? title(open) : ""}
         closeLabel={t("landing.legal.close")}
       >
-        <p className="text-sm text-slate-600">{t("landing.legal.stub")}</p>
+        <p className="text-sm text-fg-muted">{t("landing.legal.stub")}</p>
       </Modal>
     </>
   );

@@ -66,13 +66,13 @@ export function LoginForm() {
           {t("auth.login.submit")}
         </Button>
         <p className="text-center text-sm">
-          <Link href={ROUTES.forgotPassword} className="text-brand-600 hover:underline">
+          <Link href={ROUTES.forgotPassword} className="text-fg underline underline-offset-2 hover:text-fg-muted">
             {t("auth.login.forgot")}
           </Link>
         </p>
-        <p className="text-center text-sm text-slate-600">
+        <p className="text-center text-sm text-fg-muted">
           {t("auth.login.noAccount")}{" "}
-          <Link href={ROUTES.register} className="font-medium text-brand-600 hover:underline">
+          <Link href={ROUTES.register} className="font-medium text-fg underline underline-offset-2 hover:text-fg-muted">
             {t("auth.login.registerLink")}
           </Link>
         </p>

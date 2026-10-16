@@ -145,10 +145,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     <>
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold text-slate-900">
+          <h1 className="text-xl font-semibold text-fg">
             {user.firstName ? t("dashboard.welcome", { name: user.firstName }) : t("dashboard.welcomeAnon")}
           </h1>
-          <p className="text-sm text-slate-600">{t("dash.subtitle")}</p>
+          <p className="text-sm text-fg-muted">{t("dash.subtitle")}</p>
         </div>
         <AddTrackerButton />
       </header>
@@ -206,13 +206,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <Card title={t("dash.table.title")}>
         {byChange.length === 0 ? (
-          <p className="text-sm text-slate-500">{t("dash.table.empty")}</p>
+          <p className="text-sm text-fg-muted">{t("dash.table.empty")}</p>
         ) : (
           <div className="space-y-4">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr className="text-left text-xs uppercase tracking-wide text-fg-muted">
                     <th className="py-2 pr-3 font-semibold">{t("settings.notifications.case")}</th>
                     <th className="px-2 py-2 font-semibold">{t("dash.table.section")}</th>
                     <th className="px-2 py-2 font-semibold">{t("dash.table.status")}</th>
@@ -226,26 +226,26 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     const href = sectionHref(TRACKER_KIND_SECTION[item.kind]) ?? ROUTES.dashboard;
                     const status = currentStatus(item);
                     return (
-                      <tr key={item.id} className="border-t border-slate-100 align-top">
+                      <tr key={item.id} className="border-t border-line align-top">
                         <td className="py-3 pr-3">
                           <div className="flex items-center gap-2">
-                            <Link href={href} className="font-medium text-slate-900 hover:underline">
+                            <Link href={href} className="font-medium text-fg hover:underline">
                               {item.label ?? `№ ${displayNumber(item)}`}
                             </Link>
                             {!item.label && <CopyButton text={displayNumber(item)} />}
                           </div>
                           {item.label && (
-                            <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
+                            <div className="mt-0.5 flex items-center gap-2 text-xs text-fg-muted">
                               № {displayNumber(item)}
                               <CopyButton text={displayNumber(item)} />
                             </div>
                           )}
                         </td>
-                        <td className="px-2 py-3 text-slate-600">{sectionLabel(item.kind)}</td>
-                        <td className="px-2 py-3 text-slate-800">
-                          {status || <span className="text-slate-400">{t("dash.table.noData")}</span>}
+                        <td className="px-2 py-3 text-fg-muted">{sectionLabel(item.kind)}</td>
+                        <td className="px-2 py-3 text-fg">
+                          {status || <span className="text-fg-muted">{t("dash.table.noData")}</span>}
                         </td>
-                        <td className="whitespace-nowrap px-2 py-3 text-slate-600">
+                        <td className="whitespace-nowrap px-2 py-3 text-fg-muted">
                           {status ? day(lastChange(item)) : "—"}
                         </td>
                         <td className="px-2 py-3">
@@ -260,7 +260,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               </table>
             </div>
               <nav aria-label={t("dash.table.pages")} className="flex flex-wrap items-center justify-between gap-3 text-sm">
-                <span className="text-slate-500">
+                <span className="text-fg-muted">
                   {t("dash.table.range", {
                     from: (page - 1) * PAGE_SIZE + 1,
                     to: Math.min(page * PAGE_SIZE, byChange.length),
@@ -269,11 +269,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </span>
                 <div className="flex items-center gap-1">
                   {page > 1 ? (
-                    <Link href={pageHref(page - 1)} className="rounded-lg border border-slate-300 px-3 py-1.5 hover:bg-slate-50">
+                    <Link href={pageHref(page - 1)} className="rounded-lg border border-line px-3 py-1.5 hover:bg-line/40">
                       ←
                     </Link>
                   ) : (
-                    <span className="rounded-lg border border-slate-200 px-3 py-1.5 text-slate-300">←</span>
+                    <span className="rounded-lg border border-line px-3 py-1.5 text-fg-subtle">←</span>
                   )}
                   {Array.from({ length: pages }, (_, index) => index + 1).map((n) => (
                     <Link
@@ -282,19 +282,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                       aria-current={n === page ? "page" : undefined}
                       className={`rounded-lg border px-3 py-1.5 ${
                         n === page
-                          ? "border-brand-600 bg-brand-600 text-white"
-                          : "border-slate-300 hover:bg-slate-50"
+                          ? "border-brand bg-brand text-brand-fg"
+                          : "border-line hover:bg-line/40"
                       }`}
                     >
                       {n}
                     </Link>
                   ))}
                   {page < pages ? (
-                    <Link href={pageHref(page + 1)} className="rounded-lg border border-slate-300 px-3 py-1.5 hover:bg-slate-50">
+                    <Link href={pageHref(page + 1)} className="rounded-lg border border-line px-3 py-1.5 hover:bg-line/40">
                       →
                     </Link>
                   ) : (
-                    <span className="rounded-lg border border-slate-200 px-3 py-1.5 text-slate-300">→</span>
+                    <span className="rounded-lg border border-line px-3 py-1.5 text-fg-subtle">→</span>
                   )}
                 </div>
               </nav>
@@ -311,9 +311,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             lastPayment={payments[0] ?? null}
           />
         ) : (
-          <p className="text-sm text-slate-600">{t("settings.sub.noSubscription")}</p>
+          <p className="text-sm text-fg-muted">{t("settings.sub.noSubscription")}</p>
         )}
-        <Link href={settingsHref("subscription")} className="mt-4 inline-block text-sm text-brand-600 hover:underline">
+        <Link href={settingsHref("subscription")} className="mt-4 inline-block text-sm text-fg underline underline-offset-2 hover:text-fg-muted">
           {t("dash.sub.open")}
         </Link>
       </Card>

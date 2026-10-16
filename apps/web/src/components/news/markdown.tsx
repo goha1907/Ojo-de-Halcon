@@ -10,14 +10,14 @@ function styled<T extends ElementType>(Tag: T, className: string, extra?: Compon
 }
 
 const COMPONENTS = {
-  h1: styled("h2", "mt-6 text-xl font-semibold text-slate-900"),
-  h2: styled("h2", "mt-6 text-lg font-semibold text-slate-900"),
-  h3: styled("h3", "mt-4 font-semibold text-slate-900"),
-  p: styled("p", "mt-3 text-sm leading-6 text-slate-700"),
-  ul: styled("ul", "mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700"),
-  ol: styled("ol", "mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-700"),
-  a: styled("a", "text-brand-600 underline", { target: "_blank", rel: "noopener noreferrer" }),
-  strong: styled("strong", "font-semibold text-slate-900"),
+  h1: styled("h2", "mt-6 text-xl font-semibold text-fg"),
+  h2: styled("h2", "mt-6 text-lg font-semibold text-fg"),
+  h3: styled("h3", "mt-4 font-semibold text-fg"),
+  p: styled("p", "mt-3 text-sm leading-6 text-fg"),
+  ul: styled("ul", "mt-3 list-disc space-y-1 pl-5 text-sm text-fg"),
+  ol: styled("ol", "mt-3 list-decimal space-y-1 pl-5 text-sm text-fg"),
+  a: styled("a", "text-fg underline underline-offset-2 hover:text-fg-muted", { target: "_blank", rel: "noopener noreferrer" }),
+  strong: styled("strong", "font-semibold text-fg"),
 };
 
 /** Renders trusted project Markdown (news) with the app's typography. Raw HTML is not rendered. */

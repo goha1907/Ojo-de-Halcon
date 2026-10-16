@@ -81,9 +81,9 @@ export function RegisterForm() {
         <Button type="submit" fullWidth loading={loading}>
           {t("auth.register.submit")}
         </Button>
-        <p className="text-center text-sm text-slate-600">
+        <p className="text-center text-sm text-fg-muted">
           {t("auth.register.haveAccount")}{" "}
-          <Link href={ROUTES.login} className="font-medium text-brand-600 hover:underline">
+          <Link href={ROUTES.login} className="font-medium text-fg underline underline-offset-2 hover:text-fg-muted">
             {t("auth.register.loginLink")}
           </Link>
         </p>

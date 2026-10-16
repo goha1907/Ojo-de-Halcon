@@ -2,12 +2,13 @@ import Image from "next/image";
 import { logoAsset, type LogoTone, type LogoVariant } from "@/lib/brand";
 
 /**
- * Brand logo. `tone` is the background it sits on: the light-background artwork is graphite,
- * the dark-background artwork is white. Width and height are fixed up front, so nothing shifts.
+ * Brand logo. By default it follows the theme: graphite artwork on light, white on dark
+ * (both are rendered, CSS shows one, so nothing flashes or shifts). Pass `tone` to pin the
+ * artwork to a surface that never changes theme. Width and height are fixed up front.
  */
 export function Logo({
   variant = "horizontal",
-  tone = "light",
+  tone,
   height = 36,
   alt,
   className,
@@ -20,7 +21,15 @@ export function Logo({
   className?: string;
   priority?: boolean;
 }) {
-  const asset = logoAsset(variant, tone, height);
   // SVG artwork needs no resizing pipeline, so it is served as-is
-  return <Image {...asset} alt={alt} className={className} priority={priority} unoptimized />;
+  const image = (t: LogoTone, imgClass?: string) => (
+    <Image {...logoAsset(variant, t, height)} alt={alt} className={imgClass} priority={priority} unoptimized />
+  );
+  if (tone) return <span className={className}>{image(tone, "block")}</span>;
+  return (
+    <span className={className}>
+      {image("light", "block dark:hidden")}
+      {image("dark", "hidden dark:block")}
+    </span>
+  );
 }

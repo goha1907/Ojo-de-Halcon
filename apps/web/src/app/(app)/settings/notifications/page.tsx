@@ -23,7 +23,7 @@ export default async function SettingsNotificationsPage() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold text-slate-900">{t("nav.settings.notifications")}</h1>
+      <h1 className="text-xl font-semibold text-fg">{t("nav.settings.notifications")}</h1>
       <NotificationsCard
         telegramLinked={user.telegramLinked}
         cases={open.map((item) => ({

@@ -4,7 +4,7 @@ import { getEnv } from "@/server/env";
 import { getT } from "@/server/i18n";
 
 const OPEN_LINK_CLASS =
-  "shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-50";
+  "shrink-0 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-fg hover:bg-line/40";
 
 export default async function LinksPage() {
   const { t } = await getT();
@@ -13,8 +13,8 @@ export default async function LinksPage() {
   return (
     <>
       <header className="space-y-1">
-        <h1 className="text-xl font-semibold text-slate-900">{t("links.title")}</h1>
-        <p className="text-sm text-slate-600">{t("links.subtitle")}</p>
+        <h1 className="text-xl font-semibold text-fg">{t("links.title")}</h1>
+        <p className="text-sm text-fg-muted">{t("links.subtitle")}</p>
       </header>
 
       {botUsername && (
@@ -32,10 +32,10 @@ export default async function LinksPage() {
 
       {LINK_GROUPS.map((group) => (
         <Card key={group} title={t(`links.group.${group}` as MessageKey)}>
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line">
             {USEFUL_LINKS.filter((link) => link.group === group).map((link) => (
               <li key={link.id} className="flex items-center justify-between gap-4 py-3">
-                <span className="text-sm text-slate-800">{t(`links.item.${link.id}` as MessageKey)}</span>
+                <span className="text-sm text-fg">{t(`links.item.${link.id}` as MessageKey)}</span>
                 <a href={link.url} target="_blank" rel="noopener noreferrer" className={OPEN_LINK_CLASS}>
                   {t("links.open")}
                 </a>

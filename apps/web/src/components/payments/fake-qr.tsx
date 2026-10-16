@@ -32,7 +32,7 @@ export function FakeQr({ payload, size = 29 }: { payload: string; size?: number 
       viewBox={`-2 -2 ${size + 4} ${size + 4}`}
       role="img"
       aria-label="QR"
-      className="h-48 w-48 rounded-lg border border-slate-200 bg-white"
+      className="h-48 w-48 rounded-lg border border-line bg-surface"
     >
       {cells.map(({ x, y }) => (
         <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="#0f172a" />

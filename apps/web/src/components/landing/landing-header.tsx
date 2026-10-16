@@ -13,32 +13,32 @@ export function LandingHeader({ t, signedIn }: { t: TranslateFn; signedIn: boole
     <a
       key={section.id}
       href={`#${section.id}`}
-      className="rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+      className="rounded-md px-2 py-1.5 text-sm text-fg hover:bg-line/40 hover:text-fg"
     >
       {t(section.labelKey)}
     </a>
   ));
   const auth = signedIn ? (
-    <Link href={ROUTES.dashboard} className={`${BUTTON} bg-brand-600 text-white hover:bg-brand-700`}>
+    <Link href={ROUTES.dashboard} className={`${BUTTON} bg-brand text-brand-fg hover:bg-brand-hover`}>
       {t("landing.cta.cabinet")}
     </Link>
   ) : (
     <>
-      <Link href={ROUTES.login} className={`${BUTTON} text-slate-800 hover:bg-slate-100`}>
+      <Link href={ROUTES.login} className={`${BUTTON} text-fg hover:bg-line/40`}>
         {t("landing.cta.login")}
       </Link>
-      <Link href={ROUTES.register} className={`${BUTTON} bg-brand-600 text-white hover:bg-brand-700`}>
+      <Link href={ROUTES.register} className={`${BUTTON} bg-brand text-brand-fg hover:bg-brand-hover`}>
         {t("landing.cta.register")}
       </Link>
     </>
   );
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-line bg-bg/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
         <Link href={ROUTES.home} className="flex items-center">
-          <Logo alt={t("app.name")} height={36} className="hidden sm:block" priority />
-          <Logo variant="icon" alt={t("app.name")} height={36} className="sm:hidden" priority />
+          <Logo alt={t("app.name")} height={36} className="hidden sm:block" />
+          <Logo variant="icon" alt={t("app.name")} height={36} className="sm:hidden" />
         </Link>
         <nav aria-label={t("landing.nav.label")} className="ml-4 hidden items-center gap-1 md:flex">
           {links}
@@ -51,13 +51,13 @@ export function LandingHeader({ t, signedIn }: { t: TranslateFn; signedIn: boole
           <details className="relative md:hidden">
             <summary
               aria-label={t("landing.menu.open")}
-              className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-lg border border-slate-300 text-lg [&::-webkit-details-marker]:hidden"
+              className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-lg border border-line text-lg [&::-webkit-details-marker]:hidden"
             >
               ☰
             </summary>
-            <div className="absolute right-0 mt-2 flex w-56 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+            <div className="absolute right-0 mt-2 flex w-56 flex-col gap-1 rounded-xl border border-line bg-surface p-2 shadow-lg">
               {links}
-              <div className="border-t border-slate-100 pt-2 lg:hidden">
+              <div className="border-t border-line pt-2 lg:hidden">
                 <PreferenceSelectors t={t} />
               </div>
             </div>

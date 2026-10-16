@@ -17,29 +17,29 @@ export function Calculator({ signedIn }: { signedIn: boolean }) {
   const ladder = PRICING.ladder;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-slate-900">{t("landing.calc.title")}</h3>
+    <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
+      <h3 className="text-lg font-semibold text-fg">{t("landing.calc.title")}</h3>
       <div className="mt-4 grid items-end gap-6 sm:grid-cols-2">
         <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-slate-700">{t("landing.calc.label")}</span>
+          <span className="text-sm font-medium text-fg">{t("landing.calc.label")}</span>
           <input
             type="number"
             min={1}
             max={max}
             value={Number.isNaN(count) ? "" : count}
             onChange={(event) => setCount(event.target.value === "" ? Number.NaN : Number(event.target.value))}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base focus-visible:outline-2 focus-visible:outline-brand-600"
+            className="w-full rounded-lg border border-line px-3 py-2.5 text-base focus-visible:outline-2 focus-visible:outline-ring"
           />
-          <span className="block text-xs text-slate-500">{t("landing.calc.max", { max })}</span>
+          <span className="block text-xs text-fg-muted">{t("landing.calc.max", { max })}</span>
         </label>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div aria-live="polite">
-            <div className="text-sm text-slate-500">
+            <div className="text-sm text-fg-muted">
               {t("landing.calc.total", { days: APP_CONFIG.limits.subscriptionDays })}
             </div>
-            <div className="text-3xl font-bold text-slate-900">{valid ? money(total) : "—"}</div>
+            <div className="text-3xl font-bold text-fg">{valid ? money(total) : "—"}</div>
             {valid && (
-              <div className="text-sm text-slate-500">
+              <div className="text-sm text-fg-muted">
                 {t("landing.calc.avg", { amount: money(Math.round(total / count)) })}
               </div>
             )}
@@ -47,18 +47,18 @@ export function Calculator({ signedIn }: { signedIn: boolean }) {
           {valid ? (
             <Link
               href={signedIn ? `${settingsHref("subscription")}?cases=${count}` : ROUTES.login}
-              className="inline-flex rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+              className="inline-flex rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-brand-fg hover:bg-brand-hover"
             >
               {t("landing.pricing.buy")}
             </Link>
           ) : (
-            <span className="inline-flex cursor-not-allowed rounded-lg bg-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-500">
+            <span className="inline-flex cursor-not-allowed rounded-lg bg-line px-5 py-2.5 text-sm font-semibold text-fg-muted">
               {t("landing.pricing.buy")}
             </span>
           )}
         </div>
       </div>
-      <p className="mt-4 text-xs text-slate-500">
+      <p className="mt-4 text-xs text-fg-muted">
         {t("landing.calc.rule", {
           p1: money(ladder[0]),
           p2: money(ladder[1]),

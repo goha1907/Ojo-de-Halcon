@@ -49,16 +49,16 @@ export default async function ServicePage({
     <>
       <header className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
             {t(`menu.group.${service.group}` as MessageKey)}
           </p>
-          <h1 className="text-xl font-semibold text-slate-900">{t(`sections.${service.section}` as MessageKey)}</h1>
+          <h1 className="text-xl font-semibold text-fg">{t(`sections.${service.section}` as MessageKey)}</h1>
         </div>
         {/* opens the modal of this very section, without the kind dropdown */}
         {kind && (
           <div className="flex flex-col items-end gap-1">
             <AddTrackerButton kind={kind} />
-            <span className="text-xs text-slate-500">{billing && billing.capacity > 0 ? t("track.usage", { used: billing.activeCases, limit: billing.capacity }) : null}</span>
+            <span className="text-xs text-fg-muted">{billing && billing.capacity > 0 ? t("track.usage", { used: billing.activeCases, limit: billing.capacity }) : null}</span>
           </div>
         )}
       </header>
@@ -96,7 +96,7 @@ export default async function ServicePage({
                   href={official.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-brand-700 underline"
+                  className="text-sm text-fg underline underline-offset-2 hover:text-fg-muted"
                 >
                   {t("service.officialSite")}
                 </a>
@@ -111,7 +111,7 @@ export default async function ServicePage({
               href={official.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700"
+              className="inline-flex rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-fg hover:bg-brand-hover"
             >
               {t("service.officialSite")}
             </a>

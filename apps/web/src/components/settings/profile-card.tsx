@@ -52,14 +52,14 @@ export function ProfileCard({
     <Card id={SETTINGS_SECTIONS.profile} title={t("settings.profile.title")} description={t("settings.profile.help")}>
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         <div className="space-y-1.5">
-          <span className="block text-sm font-medium text-slate-800">{t("settings.profile.email")}</span>
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-            <span className="min-w-0 truncate text-slate-900">{email}</span>
+          <span className="block text-sm font-medium text-fg">{t("settings.profile.email")}</span>
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-subtle px-3 py-2 text-sm">
+            <span className="min-w-0 truncate text-fg">{email}</span>
             <span
               className={
                 emailVerified
-                  ? "inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
-                  : "inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+                  ? "inline-flex shrink-0 items-center gap-1 rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success-fg"
+                  : "inline-flex shrink-0 items-center gap-1 rounded-full bg-warning-bg px-2 py-0.5 text-xs font-medium text-warning-fg"
               }
             >
               <span aria-hidden="true">{emailVerified ? "✓" : "!"}</span>

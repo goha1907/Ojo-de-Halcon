@@ -93,19 +93,19 @@ export function FeedbackForm({ defaultEmail }: { defaultEmail: string }) {
         onChange={(event) => setEmail(event.target.value)}
       />
       <label className="block space-y-1.5">
-        <span className="text-sm font-medium text-slate-800">{t("feedback.message")}</span>
+        <span className="text-sm font-medium text-fg">{t("feedback.message")}</span>
         <textarea
           rows={5}
           maxLength={FEEDBACK_LIMITS.messageMax}
           value={message}
           aria-invalid={Boolean(errors.message)}
           onChange={(event) => setMessage(event.target.value)}
-          className={`block w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:outline-2 focus:outline-brand-600 ${
-            errors.message ? "border-red-400" : "border-slate-300"
+          className={`block w-full rounded-lg border bg-surface px-3 py-2 text-sm text-fg shadow-sm focus:outline-2 focus:outline-ring ${
+            errors.message ? "border-error" : "border-line"
           }`}
         />
-        {errors.message && <span className="block text-xs text-red-600">{errors.message}</span>}
-        <span className="block text-right text-xs text-slate-400">
+        {errors.message && <span className="block text-xs text-error-fg">{errors.message}</span>}
+        <span className="block text-right text-xs text-fg-muted">
           {message.length} / {FEEDBACK_LIMITS.messageMax}
         </span>
       </label>

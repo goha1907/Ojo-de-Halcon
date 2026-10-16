@@ -7,8 +7,8 @@ import { useT } from "@/components/providers/i18n-provider";
 import { NAVIGATION, isActive } from "@/lib/navigation";
 
 const ITEM = "block rounded-lg px-3 py-2 text-sm transition-colors";
-const ACTIVE = "bg-brand-50 font-medium text-brand-700";
-const IDLE = "text-slate-700 hover:bg-slate-100";
+const ACTIVE = "bg-line/70 font-medium text-fg";
+const IDLE = "text-fg hover:bg-line/40";
 
 /** `counts` maps a section id to the number of cases the user has there. */
 export function SidebarNav({ counts = {} }: { counts?: Record<string, number> }) {
@@ -24,8 +24,8 @@ export function SidebarNav({ counts = {} }: { counts?: Record<string, number> })
               href={entry.href}
               aria-current={isActive(pathname, entry.href) ? "page" : undefined}
               className={cn(
-                "block px-3 py-1 text-xs font-semibold uppercase tracking-wide hover:text-slate-900",
-                isActive(pathname, entry.href) ? "text-brand-700" : "text-slate-500",
+                "block px-3 py-1 text-xs font-semibold uppercase tracking-wide hover:text-fg",
+                isActive(pathname, entry.href) ? "text-fg" : "text-fg-muted",
               )}
             >
               {t(entry.labelKey)}
@@ -42,7 +42,7 @@ export function SidebarNav({ counts = {} }: { counts?: Record<string, number> })
           </Link>
         ) : (
           <div key={entry.id} className="pt-3">
-            <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-fg-muted">
               {t(entry.labelKey)}
             </p>
             <div className="space-y-1">
@@ -55,7 +55,7 @@ export function SidebarNav({ counts = {} }: { counts?: Record<string, number> })
                 >
                   {t(item.labelKey)}
                   {(counts[item.id] ?? 0) > 0 && (
-                    <span className="ml-1 text-slate-500">({counts[item.id]})</span>
+                    <span className="ml-1 text-fg-muted">({counts[item.id]})</span>
                   )}
                 </Link>
               ))}

@@ -54,7 +54,7 @@ export function ForgotPasswordForm() {
           {t("auth.forgot.submit")}
         </Button>
         <p className="text-center text-sm">
-          <Link href={ROUTES.login} className="text-brand-600 hover:underline">
+          <Link href={ROUTES.login} className="text-fg underline underline-offset-2 hover:text-fg-muted">
             {t("auth.forgot.back")}
           </Link>
         </p>

@@ -98,14 +98,14 @@ export function FixNumberForm({
     <form
       onSubmit={onSubmit}
       noValidate
-      className={bare ? "space-y-3" : "space-y-3 rounded-lg border border-slate-200 p-3"}
+      className={bare ? "space-y-3" : "space-y-3 rounded-lg border border-line p-3"}
     >
       {!bare && (
         <>
-          <h3 className="text-sm font-semibold text-slate-900">
+          <h3 className="text-sm font-semibold text-fg">
             {mode === "replace" ? t("track.replace.title") : t("track.fix.title")}
           </h3>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-fg-muted">
             {mode === "replace" ? t("track.replace.help") : t("track.fix.help")}
           </p>
         </>

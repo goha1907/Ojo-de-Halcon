@@ -10,8 +10,8 @@ export function AccessBanner({ access, t, locale }: { access: AccessState; t: Tr
     : "";
   const tone =
     access.plan === "none"
-      ? "border-amber-200 bg-amber-50 text-amber-900"
-      : "border-sky-200 bg-sky-50 text-sky-900";
+      ? "border-warning-fg/25 bg-warning-bg text-warning-fg"
+      : "border-info-fg/25 bg-info-bg text-info-fg";
   const text =
     access.plan === "none"
       ? t(access.endedKind && access.endedKind !== "TRIAL" ? "access.banner.giftEnded" : "access.banner.trialExpired")

@@ -44,10 +44,10 @@ export async function AppShell({
     </Link>
   );
   const account = (
-    <div className="space-y-3 border-t border-slate-200 pt-3">
+    <div className="space-y-3 border-t border-line pt-3">
       {showMenu && <AddTrackerButton fullWidth />}
       <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-sm text-slate-600">{userLabel}</span>
+        <span className="truncate text-sm text-fg-muted">{userLabel}</span>
         <LogoutButton />
       </div>
     </div>
@@ -56,21 +56,21 @@ export async function AppShell({
   return (
     <div className="min-h-screen md:grid md:grid-cols-[260px_1fr]">
       {/* Desktop sidebar: pinned to the viewport while the content scrolls */}
-      <aside className="hidden border-r border-slate-200 bg-white md:sticky md:top-0 md:flex md:h-screen md:flex-col md:gap-4 md:self-start md:overflow-y-auto md:p-4">
+      <aside className="hidden border-r border-line bg-surface md:sticky md:top-0 md:flex md:h-screen md:flex-col md:gap-4 md:self-start md:overflow-y-auto md:p-4">
         {brand}
         <div className="flex-1">{showMenu && <SidebarNav counts={sectionCounts} />}</div>
         {account}
       </aside>
 
       {/* Mobile top bar with a folding menu */}
-      <header className="border-b border-slate-200 bg-white p-3 md:hidden">
+      <header className="border-b border-line bg-surface p-3 md:hidden">
         <div className="flex items-center justify-between">
           {brand}
           <LogoutButton />
         </div>
         {showMenu && (
           <details className="mt-2">
-            <summary className="cursor-pointer text-sm font-medium text-slate-700">{t("nav.menu")}</summary>
+            <summary className="cursor-pointer text-sm font-medium text-fg">{t("nav.menu")}</summary>
             <div className="mt-2 space-y-3">
               <SidebarNav counts={sectionCounts} />
               <AddTrackerButton fullWidth />

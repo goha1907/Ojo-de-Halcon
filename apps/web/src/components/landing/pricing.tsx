@@ -27,8 +27,8 @@ export function Pricing({ t, locale, signedIn }: { t: TranslateFn; locale: strin
   return (
     <section id="pricing" className="scroll-mt-20 mx-auto max-w-6xl space-y-8 px-4 py-16">
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold text-slate-900">{t("landing.pricing.title")}</h2>
-        <p className="text-slate-600">{t("landing.pricing.subtitle", { days })}</p>
+        <h2 className="text-2xl font-bold text-fg">{t("landing.pricing.title")}</h2>
+        <p className="text-fg-muted">{t("landing.pricing.subtitle", { days })}</p>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         {PLANS.map((count) => {
@@ -37,25 +37,25 @@ export function Pricing({ t, locale, signedIn }: { t: TranslateFn; locale: strin
           return (
             <div
               key={count}
-              className={`relative flex flex-col rounded-2xl border bg-white p-6 shadow-sm ${
-                popular ? "border-brand-600 ring-2 ring-brand-600/20" : "border-slate-200"
+              className={`relative flex flex-col rounded-2xl border bg-surface p-6 shadow-sm ${
+                popular ? "border-brand ring-2 ring-brand/20" : "border-line"
               }`}
             >
               {popular && (
-                <span className="absolute -top-3 left-6 rounded-full bg-brand-600 px-3 py-0.5 text-xs font-semibold text-white">
+                <span className="absolute -top-3 left-6 rounded-full bg-brand px-3 py-0.5 text-xs font-semibold text-brand-fg">
                   {t("landing.pricing.popular")}
                 </span>
               )}
-              <h3 className="text-lg font-semibold text-slate-900">{t("landing.pricing.cases", { count })}</h3>
-              <div className="mt-3 text-3xl font-bold text-slate-900">{money(total)}</div>
-              <div className="text-sm text-slate-500">{t("landing.pricing.period", { days })}</div>
-              <div className="mt-1 text-sm text-slate-500">
+              <h3 className="text-lg font-semibold text-fg">{t("landing.pricing.cases", { count })}</h3>
+              <div className="mt-3 text-3xl font-bold text-fg">{money(total)}</div>
+              <div className="text-sm text-fg-muted">{t("landing.pricing.period", { days })}</div>
+              <div className="mt-1 text-sm text-fg-muted">
                 {t("landing.pricing.perCase", { amount: money(Math.round(total / count)) })}
               </div>
-              <ul className="mt-5 flex-1 space-y-2 text-sm text-slate-700">
+              <ul className="mt-5 flex-1 space-y-2 text-sm text-fg">
                 {(["f1", "f2", "f3"] as const).map((key) => (
                   <li key={key} className="flex gap-2">
-                    <span aria-hidden="true" className="text-emerald-600">✓</span>
+                    <span aria-hidden="true" className="text-success-fg">✓</span>
                     {t(`landing.pricing.${key}`)}
                   </li>
                 ))}
@@ -64,8 +64,8 @@ export function Pricing({ t, locale, signedIn }: { t: TranslateFn; locale: strin
                 href={buyHref(count)}
                 className={`mt-6 inline-flex justify-center rounded-lg px-4 py-2.5 text-sm font-semibold ${
                   popular
-                    ? "bg-brand-600 text-white hover:bg-brand-700"
-                    : "border border-slate-300 text-slate-900 hover:bg-slate-50"
+                    ? "bg-brand text-brand-fg hover:bg-brand-hover"
+                    : "border border-line text-fg hover:bg-line/40"
                 }`}
               >
                 {t("landing.pricing.buy")}
@@ -75,17 +75,17 @@ export function Pricing({ t, locale, signedIn }: { t: TranslateFn; locale: strin
         })}
       </div>
       <Calculator signedIn={signedIn} />
-      <p className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-700">
+      <p className="rounded-2xl border border-line bg-bg-subtle px-5 py-4 text-sm text-fg">
         {t(`landing.pricing.corporate.${randomVariant(CORPORATE_VARIANTS)}` as MessageKey)}{" "}
         <a
           href={`mailto:${APP_CONFIG.contact.supportEmail}`}
-          className="font-medium text-brand-700 underline hover:text-brand-600"
+          className="font-medium text-fg underline underline-offset-2 hover:text-fg-muted"
         >
           {APP_CONFIG.contact.supportEmail}
         </a>
       </p>
-      <p className="text-sm text-slate-500">{t("landing.pricing.trial", { days: APP_CONFIG.limits.trialDays })}</p>
-      <p className="text-sm text-slate-500">{t("landing.pricing.note")}</p>
+      <p className="text-sm text-fg-muted">{t("landing.pricing.trial", { days: APP_CONFIG.limits.trialDays })}</p>
+      <p className="text-sm text-fg-muted">{t("landing.pricing.note")}</p>
     </section>
   );
 }
