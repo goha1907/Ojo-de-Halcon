@@ -100,7 +100,7 @@ export function FeedbackForm({ defaultEmail }: { defaultEmail: string }) {
           value={message}
           aria-invalid={Boolean(errors.message)}
           onChange={(event) => setMessage(event.target.value)}
-          className={`block w-full rounded-lg border bg-surface px-3 py-2 text-sm text-fg shadow-sm focus:outline-2 focus:outline-ring ${
+          className={`block w-full rounded-field border bg-surface px-3 py-2 text-sm text-fg shadow-sm focus:outline-2 focus:outline-ring ${
             errors.message ? "border-error" : "border-line"
           }`}
         />

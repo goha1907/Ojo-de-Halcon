@@ -23,8 +23,8 @@ function contrast(a: string, b: string): number {
 }
 
 const TEXT_PAIRS: [string, string][] = [
-  ["fg", "bg"], ["fg", "bg-subtle"], ["fg", "surface"],
-  ["fg-muted", "bg"], ["fg-muted", "bg-subtle"], ["fg-muted", "surface"],
+  ["fg", "bg"], ["fg", "page"], ["fg", "bg-subtle"], ["fg", "surface"],
+  ["fg-muted", "bg"], ["fg-muted", "page"], ["fg-muted", "bg-subtle"], ["fg-muted", "surface"],
   ["brand-fg", "brand"], ["brand-fg", "brand-hover"],
   ["success-fg", "success-bg"], ["warning-fg", "warning-bg"],
   ["error-fg", "error-bg"], ["info-fg", "info-bg"],

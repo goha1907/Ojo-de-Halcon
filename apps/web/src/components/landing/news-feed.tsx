@@ -65,7 +65,7 @@ export function NewsFeed({ initial }: { initial: Page }) {
       {data.items.length === 0 ? (
         <p className="text-sm text-fg-muted">{t("landing.news.empty")}</p>
       ) : (
-        <ul className={`divide-y divide-line rounded-2xl border border-line bg-surface ${busy ? "opacity-60" : ""}`}>
+        <ul className={`divide-y divide-line rounded-card border border-line bg-surface ${busy ? "opacity-60" : ""}`}>
           {data.items.map((item) => (
             <li key={item.slug}>
               <button
@@ -88,7 +88,7 @@ export function NewsFeed({ initial }: { initial: Page }) {
             type="button"
             disabled={busy || data.page <= 1}
             onClick={() => void load(data.page - 1)}
-            className="rounded-lg border border-line px-3 py-1.5 disabled:opacity-40"
+            className="rounded-field border border-line px-3 py-1.5 disabled:opacity-40"
           >
             ← {t("landing.news.newer")}
           </button>
@@ -99,7 +99,7 @@ export function NewsFeed({ initial }: { initial: Page }) {
             type="button"
             disabled={busy || data.page >= data.pages}
             onClick={() => void load(data.page + 1)}
-            className="rounded-lg border border-line px-3 py-1.5 disabled:opacity-40"
+            className="rounded-field border border-line px-3 py-1.5 disabled:opacity-40"
           >
             {t("landing.news.older")} →
           </button>
@@ -128,7 +128,7 @@ export function NewsFeed({ initial }: { initial: Page }) {
                   <button
                     type="button"
                     onClick={() => void open(entry.newer!.slug)}
-                    className="rounded-lg border border-line px-3 py-2 text-left text-sm hover:bg-line/40"
+                    className="rounded-field border border-line px-3 py-2 text-left text-sm hover:bg-line/40"
                   >
                     <span className="block text-xs text-fg-muted">← {t("landing.news.newerEntry")}</span>
                     <span className="block truncate font-medium text-fg">{entry.newer.title}</span>
@@ -140,7 +140,7 @@ export function NewsFeed({ initial }: { initial: Page }) {
                   <button
                     type="button"
                     onClick={() => void open(entry.older!.slug)}
-                    className="rounded-lg border border-line px-3 py-2 text-right text-sm hover:bg-line/40"
+                    className="rounded-field border border-line px-3 py-2 text-right text-sm hover:bg-line/40"
                   >
                     <span className="block text-xs text-fg-muted">{t("landing.news.olderEntry")} →</span>
                     <span className="block truncate font-medium text-fg">{entry.older.title}</span>

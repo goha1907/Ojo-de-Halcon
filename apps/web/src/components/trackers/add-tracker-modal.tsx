@@ -217,7 +217,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
             <Link
               href={settingsHref("subscription")}
               onClick={onClose}
-              className="inline-flex items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-fg hover:bg-brand-hover"
+              className="inline-flex items-center rounded-field bg-brand px-4 py-2.5 text-sm font-medium text-brand-fg hover:bg-brand-hover"
             >
               {t("track.limit.go")}
             </Link>
@@ -247,7 +247,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
               <Link
                 href={settingsHref("subscription")}
                 onClick={onClose}
-                className="inline-flex items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-fg hover:bg-brand-hover"
+                className="inline-flex items-center rounded-field bg-brand px-4 py-2.5 text-sm font-medium text-brand-fg hover:bg-brand-hover"
               >
                 {t("track.limit.go")}
               </Link>
@@ -265,7 +265,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
                   <h3 className="text-base font-semibold text-fg">
                     {isCourt ? t("track.step.confirmCase") : t("track.dnm.confirmTitle")}
                   </h3>
-                  <dl className="space-y-2 rounded-lg border border-line p-3 text-sm">
+                  <dl className="space-y-2 rounded-field border border-line p-3 text-sm">
                     {Object.entries(found)
                       .filter(([key, value]) => value && key !== "closed")
                       .map(([key, value]) => (
@@ -292,7 +292,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
               ) : (
                 <>
                   <h3 className="text-base font-semibold text-fg">{t("track.step.confirmNumber")}</h3>
-                  <p className="rounded-lg border border-line p-3 text-2xl font-semibold tracking-wide text-fg">
+                  <p className="rounded-field border border-line p-3 text-2xl font-semibold tracking-wide text-fg">
                     {shownNumber}
                   </p>
                   <Alert tone="info">

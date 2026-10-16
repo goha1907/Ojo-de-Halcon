@@ -20,7 +20,7 @@ export const TONE_STYLES: Record<StatusTone, { edge: string; dot: string; badge:
   paused: {
     edge: "border-l-fg-subtle shadow-[-8px_0_16px_-10px_color-mix(in_srgb,var(--fg-subtle)_60%,transparent)]",
     dot: "bg-fg-subtle",
-    badge: "bg-line/40 text-fg-muted",
+    badge: "bg-line/40 text-fg",
   },
   pending: {
     edge: "border-l-info shadow-[-8px_0_16px_-10px_color-mix(in_srgb,var(--info)_70%,transparent)]",

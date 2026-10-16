@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useT } from "@/components/providers/i18n-provider";
 import { NAVIGATION, isActive } from "@/lib/navigation";
 
-const ITEM = "block rounded-lg px-3 py-2 text-sm transition-colors";
+const ITEM = "block rounded-field px-3 py-2 text-sm transition-colors";
 const ACTIVE = "bg-line/70 font-medium text-fg";
 const IDLE = "text-fg hover:bg-line/40";
 

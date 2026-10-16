@@ -10,6 +10,8 @@ export const APP_CONFIG = {
   cookies: {
     session: "ojo_session",
     locale: "ojo_locale",
+    /** Colour theme choice: "light", "dark" or absent (follow the system). */
+    theme: "ojo_theme",
   },
   auth: {
     /** Random bytes of the one-time Telegram link code (24 base64url chars). */

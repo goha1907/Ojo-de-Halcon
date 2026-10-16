@@ -108,14 +108,14 @@ export function TelegramCard({ linked, username }: { linked: boolean; username: 
               href={link.deepLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex w-full items-center justify-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-fg hover:bg-brand-hover"
+              className="inline-flex w-full items-center justify-center rounded-field bg-brand px-4 py-2.5 text-sm font-medium text-brand-fg hover:bg-brand-hover"
             >
               {t("settings.telegram.openBot")}
             </a>
             <div className="space-y-2">
               <p className="text-xs text-fg-muted">{t("settings.telegram.orCode")}</p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 rounded-lg bg-line/40 px-3 py-2 text-sm break-all">{link.code}</code>
+                <code className="flex-1 rounded-field bg-line/40 px-3 py-2 text-sm break-all">{link.code}</code>
                 <Button variant="secondary" onClick={copyCode}>
                   {copied ? t("common.copied") : t("common.copy")}
                 </Button>

@@ -111,7 +111,7 @@ export default async function ServicePage({
               href={official.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-fg hover:bg-brand-hover"
+              className="inline-flex rounded-field bg-brand px-4 py-2.5 text-sm font-medium text-brand-fg hover:bg-brand-hover"
             >
               {t("service.officialSite")}
             </a>

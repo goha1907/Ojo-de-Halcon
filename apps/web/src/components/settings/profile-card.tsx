@@ -53,7 +53,7 @@ export function ProfileCard({
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         <div className="space-y-1.5">
           <span className="block text-sm font-medium text-fg">{t("settings.profile.email")}</span>
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg-subtle px-3 py-2 text-sm">
+          <div className="flex items-center justify-between gap-3 rounded-field border border-line bg-bg-subtle px-3 py-2 text-sm">
             <span className="min-w-0 truncate text-fg">{email}</span>
             <span
               className={

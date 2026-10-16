@@ -29,7 +29,7 @@ export function SubscriptionControl({ trackerId, status, kept, subscribed, perio
   if (status === "PENDING_CONFIRMATION") return null;
   if (status === "FINISHED") {
     return subscribed ? (
-      <p className="rounded-lg border border-error-fg/25 bg-error-bg px-3 py-2 text-sm font-medium text-error-fg">
+      <p className="rounded-field border border-error-fg/25 bg-error-bg px-3 py-2 text-sm font-medium text-error-fg">
         {t("track.sub.finished")}
       </p>
     ) : null;

@@ -152,7 +152,7 @@ export function PaymentModal({
     >
       <div className="space-y-5">
         {step !== "success" && (
-          <div className="rounded-xl bg-line/40 px-4 py-3 text-sm">
+          <div className="rounded-field bg-line/40 px-4 py-3 text-sm">
             <div className="flex justify-between gap-3 text-fg-muted">
               <span>{subscribed ? t("pay.summary.add", { count: addCases }) : t("pay.summary.cases", { count: targetCases })}</span>
               {subscribed && <span>{t("pay.summary.total", { count: targetCases })}</span>}
@@ -175,7 +175,7 @@ export function PaymentModal({
                 type="button"
                 disabled={busy}
                 onClick={() => void choose(method)}
-                className="flex w-full items-center justify-between gap-3 rounded-xl border border-line px-4 py-3 text-left hover:border-fg-subtle hover:bg-line/40 disabled:opacity-60"
+                className="flex w-full items-center justify-between gap-3 rounded-field border border-line px-4 py-3 text-left hover:border-fg-subtle hover:bg-line/40 disabled:opacity-60"
               >
                 <span>
                   <span className="block font-medium text-fg">{t(`pay.method.${method}` as MessageKey)}</span>

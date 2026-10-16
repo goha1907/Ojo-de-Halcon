@@ -163,14 +163,14 @@ export function TrackerBoard({ items, storageKey }: { items: BoardItem[]; storag
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t("board.search.placeholder")}
             aria-label={t("board.search.label")}
-            className="min-w-48 flex-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-ring"
+            className="min-w-48 flex-1 rounded-field border border-line bg-surface px-3 py-1.5 text-sm text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-ring"
           />
           <label className="flex items-center gap-2 text-sm text-fg-muted">
             {t("board.filter.label")}
             <select
               value={filter}
               onChange={(event) => choose({ filter: event.target.value as Filter })}
-              className="rounded-lg border border-line bg-surface px-2 py-1.5 text-sm text-fg"
+              className="rounded-field border border-line bg-surface px-2 py-1.5 text-sm text-fg"
             >
               {visibleFilters.map((name) => (
                 <option key={name} value={name}>
@@ -184,7 +184,7 @@ export function TrackerBoard({ items, storageKey }: { items: BoardItem[]; storag
             <select
               value={sort}
               onChange={(event) => choose({ sort: event.target.value as Sort })}
-              className="rounded-lg border border-line bg-surface px-2 py-1.5 text-sm text-fg"
+              className="rounded-field border border-line bg-surface px-2 py-1.5 text-sm text-fg"
             >
               {(Object.keys(SORTS) as Sort[]).map((name) => (
                 <option key={name} value={name}>
@@ -196,7 +196,7 @@ export function TrackerBoard({ items, storageKey }: { items: BoardItem[]; storag
         </div>
       )}
       {shown.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-line p-6 text-center text-sm text-fg-muted">
+        <p className="rounded-field border border-dashed border-line p-6 text-center text-sm text-fg-muted">
           {words.length > 0 ? t("board.search.empty", { query: query.trim() }) : t("board.empty")}
         </p>
       ) : (

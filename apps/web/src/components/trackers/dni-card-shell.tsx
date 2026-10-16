@@ -27,7 +27,7 @@ interface Props {
   children: ReactNode;
 }
 
-const ICON_BUTTON = "rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50";
+const ICON_BUTTON = "rounded-field border px-3 py-1.5 text-sm disabled:opacity-50";
 const ICON_NEUTRAL = `${ICON_BUTTON} border-line bg-surface text-fg hover:bg-line/40`;
 const ICON_PRIMARY = `${ICON_BUTTON} border-brand bg-brand text-brand-fg hover:bg-brand-hover`;
 
@@ -70,7 +70,7 @@ export function DniCardShell({ id, tone, label, number, summary, renameTitle, to
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-2xl border border-l-4 border-line bg-surface shadow-sm",
+        "overflow-hidden rounded-card border border-l-4 border-line bg-surface shadow-sm",
         TONE_STYLES[tone].edge,
       )}
     >
@@ -110,7 +110,7 @@ export function DniCardShell({ id, tone, label, number, summary, renameTitle, to
                 if (event.key === "Enter") void save();
                 if (event.key === "Escape") setEditing(false);
               }}
-              className="w-full min-w-0 max-w-sm rounded-lg border border-line px-2.5 py-1 text-base font-bold text-fg focus-visible:outline-2 focus-visible:outline-ring"
+              className="w-full min-w-0 max-w-sm rounded-field border border-line px-2.5 py-1 text-base font-bold text-fg focus-visible:outline-2 focus-visible:outline-ring"
             />
           ) : (
             label && <span>{label}</span>

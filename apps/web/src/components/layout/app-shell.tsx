@@ -8,6 +8,7 @@ import { LogoutButton } from "@/components/logout-button";
 import { AddTrackerButton } from "@/components/trackers/add-tracker-button";
 import { AddTrackerHost } from "@/components/trackers/add-tracker-host";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
+import { PreferenceSelectors } from "@/components/landing/preference-selectors";
 import { getT } from "@/server/i18n";
 
 /** Signed-in layout: menu on the left, content on the right (menu folds on small screens). */
@@ -46,9 +47,10 @@ export async function AppShell({
   const account = (
     <div className="space-y-3 border-t border-line pt-3">
       {showMenu && <AddTrackerButton fullWidth />}
+      <PreferenceSelectors t={t} />
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-sm text-fg-muted">{userLabel}</span>
-        <LogoutButton />
+        <LogoutButton variant="label" />
       </div>
     </div>
   );

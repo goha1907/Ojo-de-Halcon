@@ -1,7 +1,7 @@
 "use client";
 
 import type { MessageKey } from "@ojo/shared";
-import { cn } from "@ojo/ui";
+import { ArrowLeftIcon, ArrowRightIcon, cn } from "@ojo/ui";
 import { useState, type ReactNode } from "react";
 import { useT } from "@/components/providers/i18n-provider";
 
@@ -10,14 +10,14 @@ const STEPS = [1, 2, 3, 4] as const;
 /** Small static mock-ups of the real interface, one per step (no screenshots to maintain). */
 function Mock({ step }: { step: (typeof STEPS)[number] }) {
   const t = useT();
-  const frame = "w-full max-w-md rounded-2xl border border-line bg-surface p-5 shadow-sm";
-  const tile = "rounded-xl border border-line px-3 py-2";
+  const frame = "w-full max-w-md rounded-card border border-line bg-surface p-5 shadow-sm";
+  const tile = "rounded-field border border-line px-3 py-2";
   if (step === 1) {
     return (
       <div className={cn(frame, "space-y-3")}>
         <div className="text-xs font-medium text-fg-muted">RENAPER</div>
-        <div className={cn(tile, "text-fg-subtle")}>{t("landing.mock.number")}: 123456789</div>
-        <div className="inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-fg">
+        <div className={cn(tile, "text-fg-muted")}>{t("landing.mock.number")}: 123456789</div>
+        <div className="inline-flex rounded-field bg-brand px-4 py-2 text-sm font-medium text-brand-fg">
           {t("landing.mock.add")}
         </div>
       </div>
@@ -70,7 +70,7 @@ export function HowItWorks(): ReactNode {
   return (
     <section id="how" className="scroll-mt-20 bg-surface">
       <div className="mx-auto max-w-6xl space-y-8 px-4 py-16">
-        <h2 className="text-2xl font-bold text-fg">{t("landing.how.title")}</h2>
+        <h2 className="text-3xl font-bold tracking-tight text-fg sm:text-4xl">{t("landing.how.title")}</h2>
         <div className="grid items-center gap-8 md:grid-cols-2">
           <div className="space-y-4">
             {/* every step sits in the same grid cell: the cell is as tall as the tallest one,
@@ -95,9 +95,9 @@ export function HowItWorks(): ReactNode {
                 type="button"
                 onClick={() => go(index - 1)}
                 aria-label={t("landing.how.prev")}
-                className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-line/40"
+                className="grid size-9 place-items-center rounded-full border border-line text-fg transition hover:border-fg-subtle hover:bg-line/40 active:scale-95"
               >
-                ←
+                <ArrowLeftIcon className="size-4" />
               </button>
               <div className="flex gap-2">
                 {STEPS.map((n, i) => (
@@ -107,7 +107,7 @@ export function HowItWorks(): ReactNode {
                     onClick={() => setIndex(i)}
                     aria-label={t("landing.how.step", { n })}
                     aria-current={i === index}
-                    className={cn("h-2.5 w-2.5 rounded-full", i === index ? "bg-brand" : "bg-line")}
+                    className={cn("h-2.5 rounded-full transition-all duration-300", i === index ? "w-6 bg-brand" : "w-2.5 bg-line")}
                   />
                 ))}
               </div>
@@ -115,13 +115,13 @@ export function HowItWorks(): ReactNode {
                 type="button"
                 onClick={() => go(index + 1)}
                 aria-label={t("landing.how.next")}
-                className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-line/40"
+                className="grid size-9 place-items-center rounded-full border border-line text-fg transition hover:border-fg-subtle hover:bg-line/40 active:scale-95"
               >
-                →
+                <ArrowRightIcon className="size-4" />
               </button>
             </div>
           </div>
-          <div className="grid rounded-2xl bg-bg-subtle p-6">
+          <div className="grid rounded-card bg-bg-subtle p-6">
             {STEPS.map((n) => (
               <div
                 key={n}

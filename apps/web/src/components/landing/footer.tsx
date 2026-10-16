@@ -50,7 +50,7 @@ export function LandingFooter({ t }: { t: TranslateFn }) {
             {t("landing.footer.copyright", { year: new Date().getFullYear() })}
           </span>
           <div className="flex justify-center">
-            <PreferenceSelectors t={t} />
+            <PreferenceSelectors t={t} className="flex-wrap justify-center" />
           </div>
           <div className="flex items-center justify-center gap-2 md:justify-end">
             <span>{t("landing.footer.payments")}:</span>

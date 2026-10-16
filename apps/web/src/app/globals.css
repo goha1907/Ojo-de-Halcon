@@ -94,11 +94,11 @@
   --color-info-fg: var(--info-fg);
 }
 
-/* Legacy blue palette: remove once every component is moved to the tokens above. */
+/* Shapes: round. Cards 24px, fields 14px, buttons and chips are pills. */
 @theme {
-  --color-brand-50: #eef6ff;
-  --color-brand-600: #1d5fd1;
-  --color-brand-700: #184fb0;
+  --radius-card: 1.5rem;
+  --radius-field: 0.875rem;
+  --radius-btn: 9999px;
 }
 
 body {
@@ -113,4 +113,96 @@ html {
 ::highlight(ojo-search) {
   background-color: #fde68a;
   color: inherit;
+}
+
+/* ---------- brand mark as a background shape (colour = currentColor, any theme) ---------- */
+.hawk-mask {
+  aspect-ratio: 119.2 / 104;
+  background-color: currentColor;
+  -webkit-mask: url("/brand/logo-icon.svg") center / contain no-repeat;
+  mask: url("/brand/logo-icon.svg") center / contain no-repeat;
+}
+
+/* ---------- motion: every effect below is switched off for visitors who ask for less ---------- */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes marquee {
+  to { transform: translateX(-50%); }
+}
+@keyframes ping-soft {
+  from { transform: scale(0.5); opacity: 0.9; }
+  to { transform: scale(1.8); opacity: 0; }
+}
+@keyframes row-flash {
+  from { background-color: color-mix(in srgb, var(--line) 70%, transparent); }
+  to { background-color: transparent; }
+}
+@keyframes dot-glow {
+  50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--success) 6%, transparent); }
+}
+@property --ring-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes ring-turn {
+  to { --ring-angle: 360deg; }
+}
+
+/* blocks fade in as they scroll into view; where unsupported they are simply there */
+@supports (animation-timeline: view()) {
+  .reveal {
+    animation: rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 45%;
+  }
+}
+.marquee-track { animation: marquee 32s linear infinite; }
+.live-dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  animation: ping-soft 1.8s ease-out infinite;
+}
+.row-flash { animation: row-flash 1.6s ease; }
+.timeline-new { animation: dot-glow 2s ease-in-out infinite; }
+
+/* light sweep over primary buttons on hover */
+.btn-shine { position: relative; overflow: hidden; }
+.btn-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgb(255 255 255 / 0.28) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.6s;
+  pointer-events: none;
+}
+.btn-shine:hover::after { transform: translateX(120%); }
+
+/* the popular plan: a thin ring of light travels around its border */
+.popular-ring { position: relative; }
+.popular-ring::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(from var(--ring-angle), var(--brand), transparent 30%, var(--fg-subtle), transparent 65%, var(--brand));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: ring-turn 6s linear infinite;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .marquee-track, .live-dot::after, .row-flash, .timeline-new, .popular-ring::after {
+    animation: none;
+  }
+  .btn-shine::after { display: none; }
 }

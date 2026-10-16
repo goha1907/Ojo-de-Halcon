@@ -28,7 +28,7 @@ export function StatTile({
 }) {
   const style = TILE_TONES[tone];
   return (
-    <div className={`rounded-2xl border border-l-4 border-line bg-surface p-4 shadow-sm ${style.edge}`}>
+    <div className={`rounded-card border border-l-4 border-line bg-surface p-4 shadow-sm ${style.edge}`}>
       <div className="text-xs text-fg-muted">{label}</div>
       <div className={`mt-1 text-2xl font-bold ${style.number}`}>{value}</div>
       {hint && <div className="mt-0.5 text-xs text-fg-muted">{hint}</div>}

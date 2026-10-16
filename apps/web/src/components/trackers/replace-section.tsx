@@ -20,7 +20,7 @@ export function ReplaceSection({
   if (tracker.kind !== "PJN") {
     if (tracker.canReplace) {
       return (
-        <details className="w-full rounded-lg border border-line p-3">
+        <details className="w-full rounded-field border border-line p-3">
           <summary className="cursor-pointer text-sm font-medium text-fg">
             {t("track.replace.title")}
           </summary>

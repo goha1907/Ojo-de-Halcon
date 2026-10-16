@@ -228,7 +228,7 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
                   </Button>
                 </div>
               </div>
-              <div className="space-y-3 rounded-xl bg-bg-subtle p-4 text-sm">
+              <div className="space-y-3 rounded-field bg-bg-subtle p-4 text-sm">
                 <div className="flex justify-between gap-3">
                   <span className="text-fg-muted">{t("settings.sub.nowHave")}</span>
                   <span className="font-medium text-fg">{nowTotal}</span>
@@ -425,7 +425,7 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
                     type="button"
                     disabled={logPage <= 1}
                     onClick={() => setLogPage(logPage - 1)}
-                    className="rounded-lg border border-line px-3 py-1.5 hover:bg-line/40 disabled:opacity-40"
+                    className="rounded-field border border-line px-3 py-1.5 hover:bg-line/40 disabled:opacity-40"
                   >
                     ←
                   </button>
@@ -435,7 +435,7 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
                       type="button"
                       aria-current={n === logPage ? "page" : undefined}
                       onClick={() => setLogPage(n)}
-                      className={`rounded-lg border px-3 py-1.5 ${
+                      className={`rounded-field border px-3 py-1.5 ${
                         n === logPage ? "border-brand bg-brand text-brand-fg" : "border-line hover:bg-line/40"
                       }`}
                     >
@@ -446,7 +446,7 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
                     type="button"
                     disabled={logPage >= logPages}
                     onClick={() => setLogPage(logPage + 1)}
-                    className="rounded-lg border border-line px-3 py-1.5 hover:bg-line/40 disabled:opacity-40"
+                    className="rounded-field border border-line px-3 py-1.5 hover:bg-line/40 disabled:opacity-40"
                   >
                     →
                   </button>

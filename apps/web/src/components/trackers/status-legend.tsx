@@ -40,7 +40,7 @@ export function StatusLegend({
   return (
     <div
       ref={root}
-      className="relative flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-xs text-fg-muted"
+      className="relative flex flex-wrap items-center gap-x-5 gap-y-2 rounded-field border border-line bg-surface px-4 py-2.5 text-xs text-fg-muted"
     >
       <span className="font-semibold uppercase tracking-wide text-fg-muted">{title}</span>
       {items.map((item) => (
@@ -59,7 +59,7 @@ export function StatusLegend({
           {open === item.tone && (
             <span
               role="note"
-              className="absolute left-0 top-full z-20 mt-2 w-64 rounded-lg border border-line bg-surface p-3 text-xs leading-5 text-fg shadow-lg"
+              className="absolute left-0 top-full z-20 mt-2 w-64 rounded-field border border-line bg-surface p-3 text-xs leading-5 text-fg shadow-lg"
             >
               <b className="mb-0.5 block text-fg">{item.label}</b>
               {item.hint}

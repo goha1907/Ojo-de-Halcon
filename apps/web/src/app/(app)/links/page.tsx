@@ -4,7 +4,7 @@ import { getEnv } from "@/server/env";
 import { getT } from "@/server/i18n";
 
 const OPEN_LINK_CLASS =
-  "shrink-0 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-fg hover:bg-line/40";
+  "shrink-0 rounded-field border border-line px-3 py-1.5 text-sm font-medium text-fg hover:bg-line/40";
 
 export default async function LinksPage() {
   const { t } = await getT();

@@ -269,18 +269,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </span>
                 <div className="flex items-center gap-1">
                   {page > 1 ? (
-                    <Link href={pageHref(page - 1)} className="rounded-lg border border-line px-3 py-1.5 hover:bg-line/40">
+                    <Link href={pageHref(page - 1)} className="rounded-field border border-line px-3 py-1.5 hover:bg-line/40">
                       ←
                     </Link>
                   ) : (
-                    <span className="rounded-lg border border-line px-3 py-1.5 text-fg-subtle">←</span>
+                    <span className="rounded-field border border-line px-3 py-1.5 text-fg-subtle">←</span>
                   )}
                   {Array.from({ length: pages }, (_, index) => index + 1).map((n) => (
                     <Link
                       key={n}
                       href={pageHref(n)}
                       aria-current={n === page ? "page" : undefined}
-                      className={`rounded-lg border px-3 py-1.5 ${
+                      className={`rounded-field border px-3 py-1.5 ${
                         n === page
                           ? "border-brand bg-brand text-brand-fg"
                           : "border-line hover:bg-line/40"
@@ -290,11 +290,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     </Link>
                   ))}
                   {page < pages ? (
-                    <Link href={pageHref(page + 1)} className="rounded-lg border border-line px-3 py-1.5 hover:bg-line/40">
+                    <Link href={pageHref(page + 1)} className="rounded-field border border-line px-3 py-1.5 hover:bg-line/40">
                       →
                     </Link>
                   ) : (
-                    <span className="rounded-lg border border-line px-3 py-1.5 text-fg-subtle">→</span>
+                    <span className="rounded-field border border-line px-3 py-1.5 text-fg-subtle">→</span>
                   )}
                 </div>
               </nav>

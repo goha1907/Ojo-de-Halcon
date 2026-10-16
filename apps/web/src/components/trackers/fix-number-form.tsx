@@ -98,7 +98,7 @@ export function FixNumberForm({
     <form
       onSubmit={onSubmit}
       noValidate
-      className={bare ? "space-y-3" : "space-y-3 rounded-lg border border-line p-3"}
+      className={bare ? "space-y-3" : "space-y-3 rounded-field border border-line p-3"}
     >
       {!bare && (
         <>

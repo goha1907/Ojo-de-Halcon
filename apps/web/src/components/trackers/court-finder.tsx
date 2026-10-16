@@ -96,7 +96,7 @@ export function CourtFinder() {
             <p className="text-sm text-fg">{t("pjn.find.found")}</p>
             <ul className="space-y-3">
               {state.candidates.map((candidate) => (
-                <li key={candidate.expediente} className="rounded-lg border border-line p-3 text-sm">
+                <li key={candidate.expediente} className="rounded-field border border-line p-3 text-sm">
                   <p className="font-medium text-fg">{candidate.expediente}</p>
                   <p className="text-fg">{candidate.caratula}</p>
                   <p className="mb-3 text-fg-muted">{candidate.dependencia}</p>

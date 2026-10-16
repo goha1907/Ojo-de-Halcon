@@ -1,33 +1,38 @@
 import { ROUTES, type TranslateFn } from "@ojo/shared";
+import { buttonClass } from "@ojo/ui";
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { LANDING_SECTIONS } from "./sections";
 import { PreferenceSelectors } from "./preference-selectors";
+import { UserMenu, type UserMenuStats } from "./user-menu";
 
-const BUTTON =
-  "inline-flex items-center rounded-lg px-3.5 py-2 text-sm font-medium transition-colors";
 
 /** Sticky header: logo, in-page menu, auth buttons. The menu folds into a drop-down on phones. */
-export function LandingHeader({ t, signedIn }: { t: TranslateFn; signedIn: boolean }) {
+export function LandingHeader({
+  t,
+  user,
+}: {
+  t: TranslateFn;
+  /** The signed-in visitor, or null. `stats` is null while the cabinet is not open to them yet. */
+  user: { email: string; name: string | null; stats: UserMenuStats | null } | null;
+}) {
   const links = LANDING_SECTIONS.map((section) => (
     <a
       key={section.id}
       href={`#${section.id}`}
-      className="rounded-md px-2 py-1.5 text-sm text-fg hover:bg-line/40 hover:text-fg"
+      className="rounded-full px-3 py-1.5 text-sm text-fg-muted transition-colors hover:bg-line/40 hover:text-fg"
     >
       {t(section.labelKey)}
     </a>
   ));
-  const auth = signedIn ? (
-    <Link href={ROUTES.dashboard} className={`${BUTTON} bg-brand text-brand-fg hover:bg-brand-hover`}>
-      {t("landing.cta.cabinet")}
-    </Link>
+  const auth = user ? (
+    <UserMenu email={user.email} name={user.name} stats={user.stats} />
   ) : (
     <>
-      <Link href={ROUTES.login} className={`${BUTTON} text-fg hover:bg-line/40`}>
+      <Link href={ROUTES.login} className={buttonClass({ variant: "secondary", size: "sm" })}>
         {t("landing.cta.login")}
       </Link>
-      <Link href={ROUTES.register} className={`${BUTTON} bg-brand text-brand-fg hover:bg-brand-hover`}>
+      <Link href={ROUTES.register} className={buttonClass({ size: "sm" })}>
         {t("landing.cta.register")}
       </Link>
     </>
@@ -51,14 +56,14 @@ export function LandingHeader({ t, signedIn }: { t: TranslateFn; signedIn: boole
           <details className="relative md:hidden">
             <summary
               aria-label={t("landing.menu.open")}
-              className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-lg border border-line text-lg [&::-webkit-details-marker]:hidden"
+              className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-field border border-line text-lg [&::-webkit-details-marker]:hidden"
             >
               ☰
             </summary>
-            <div className="absolute right-0 mt-2 flex w-56 flex-col gap-1 rounded-xl border border-line bg-surface p-2 shadow-lg">
+            <div className="absolute right-0 mt-2 flex w-56 flex-col gap-1 rounded-field border border-line bg-surface p-2 shadow-lg">
               {links}
               <div className="border-t border-line pt-2 lg:hidden">
-                <PreferenceSelectors t={t} />
+                <PreferenceSelectors t={t} className="flex-wrap justify-center" />
               </div>
             </div>
           </details>

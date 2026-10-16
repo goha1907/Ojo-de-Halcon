@@ -20,7 +20,7 @@ interface Props {
 
 function Tile({ label, wide, children }: { label: string; wide?: boolean; children: React.ReactNode }) {
   return (
-    <div className={cn("rounded-xl border border-line px-3.5 py-2.5", wide && "sm:col-span-2")}>
+    <div className={cn("rounded-field border border-line px-3.5 py-2.5", wide && "sm:col-span-2")}>
       <div className="text-xs text-fg-muted">{label}</div>
       <div className="font-semibold text-fg">{children}</div>
     </div>
@@ -145,7 +145,7 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
                 )}
               </div>
               {(h.stage || stageText) && (
-                <div className="rounded-xl border border-line px-3.5 py-2.5 text-sm text-fg">
+                <div className="rounded-field border border-line px-3.5 py-2.5 text-sm text-fg">
                   {isRenaper && h.stage && <b>{h.stage}. </b>}
                   {stageText}
                 </div>

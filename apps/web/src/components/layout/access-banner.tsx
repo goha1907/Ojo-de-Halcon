@@ -21,7 +21,7 @@ export function AccessBanner({ access, t, locale }: { access: AccessState; t: Tr
           : t("access.banner.giftNoEnd", { count: access.giftCases })
         : t("access.banner.trial", { date });
   return (
-    <p className={`rounded-lg border px-3 py-2 text-sm ${tone}`}>
+    <p className={`rounded-field border px-3 py-2 text-sm ${tone}`}>
       {text}{" "}
       <Link href={settingsHref("subscription")} className="font-medium underline">
         {t("access.banner.link")}

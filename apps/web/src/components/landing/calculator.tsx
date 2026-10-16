@@ -1,6 +1,7 @@
 "use client";
 
 import { APP_CONFIG, PRICING, ROUTES, casesPrice, settingsHref } from "@ojo/shared";
+import { TextField, buttonClass } from "@ojo/ui";
 import Link from "next/link";
 import { useState } from "react";
 import { useI18n } from "@/components/providers/i18n-provider";
@@ -10,28 +11,34 @@ import { formatMoney } from "@/lib/money";
 export function Calculator({ signedIn }: { signedIn: boolean }) {
   const { t, locale } = useI18n();
   const max = APP_CONFIG.limits.maxCases;
-  const [count, setCount] = useState(5);
+  const [raw, setRaw] = useState("5");
+  const count = raw === "" ? 0 : Number(raw);
   const money = (amount: number) => formatMoney(amount, PRICING.currency, locale);
-  const valid = Number.isInteger(count) && count >= 1 && count <= max;
+  const valid = count >= 1 && count <= max;
   const total = valid ? casesPrice(count) : 0;
   const ladder = PRICING.ladder;
 
+  /** Only digits are accepted and a number above the limit becomes the limit (as on the subscription page). */
+  function onCountChange(value: string) {
+    const digits = value.replace(/\D/g, "");
+    setRaw(digits === "" ? "" : String(Math.min(Number(digits), max)));
+  }
+
   return (
-    <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
+    <div className="rounded-card border border-line bg-surface p-6 shadow-sm">
       <h3 className="text-lg font-semibold text-fg">{t("landing.calc.title")}</h3>
       <div className="mt-4 grid items-end gap-6 sm:grid-cols-2">
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-fg">{t("landing.calc.label")}</span>
-          <input
-            type="number"
-            min={1}
-            max={max}
-            value={Number.isNaN(count) ? "" : count}
-            onChange={(event) => setCount(event.target.value === "" ? Number.NaN : Number(event.target.value))}
-            className="w-full rounded-lg border border-line px-3 py-2.5 text-base focus-visible:outline-2 focus-visible:outline-ring"
-          />
-          <span className="block text-xs text-fg-muted">{t("landing.calc.max", { max })}</span>
-        </label>
+        <TextField
+          label={t("landing.calc.label")}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          value={raw}
+          onChange={(event) => onCountChange(event.target.value)}
+          onBlur={() => raw === "" && setRaw("0")}
+          error={raw !== "" && !valid ? t("landing.calc.error", { max }) : undefined}
+          hint={t("landing.calc.max", { max })}
+        />
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div aria-live="polite">
             <div className="text-sm text-fg-muted">
@@ -47,13 +54,13 @@ export function Calculator({ signedIn }: { signedIn: boolean }) {
           {valid ? (
             <Link
               href={signedIn ? `${settingsHref("subscription")}?cases=${count}` : ROUTES.login}
-              className="inline-flex rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-brand-fg hover:bg-brand-hover"
+              className={buttonClass()}
             >
-              {t("landing.pricing.buy")}
+              {t("landing.calc.cta")}
             </Link>
           ) : (
-            <span className="inline-flex cursor-not-allowed rounded-lg bg-line px-5 py-2.5 text-sm font-semibold text-fg-muted">
-              {t("landing.pricing.buy")}
+            <span aria-disabled="true" className={`${buttonClass({ variant: "secondary" })} cursor-not-allowed opacity-60`}>
+              {t("landing.calc.cta")}
             </span>
           )}
         </div>

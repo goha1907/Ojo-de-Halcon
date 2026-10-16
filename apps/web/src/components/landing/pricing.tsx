@@ -7,6 +7,7 @@ import {
   type MessageKey,
   type TranslateFn,
 } from "@ojo/shared";
+import { CheckIcon, StarIcon, buttonClass } from "@ojo/ui";
 import Link from "next/link";
 import { formatMoney } from "@/lib/money";
 import { randomVariant } from "@/lib/variant";
@@ -27,7 +28,7 @@ export function Pricing({ t, locale, signedIn }: { t: TranslateFn; locale: strin
   return (
     <section id="pricing" className="scroll-mt-20 mx-auto max-w-6xl space-y-8 px-4 py-16">
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold text-fg">{t("landing.pricing.title")}</h2>
+        <h2 className="text-3xl font-bold tracking-tight text-fg sm:text-4xl">{t("landing.pricing.title")}</h2>
         <p className="text-fg-muted">{t("landing.pricing.subtitle", { days })}</p>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
@@ -37,12 +38,13 @@ export function Pricing({ t, locale, signedIn }: { t: TranslateFn; locale: strin
           return (
             <div
               key={count}
-              className={`relative flex flex-col rounded-2xl border bg-surface p-6 shadow-sm ${
-                popular ? "border-brand ring-2 ring-brand/20" : "border-line"
+              className={`reveal relative flex flex-col rounded-card border bg-surface p-7 shadow-sm transition duration-300 ${
+                popular ? "popular-ring border-brand md:-translate-y-2.5" : "border-line hover:-translate-y-1 hover:border-fg-subtle hover:shadow-lg"
               }`}
             >
               {popular && (
-                <span className="absolute -top-3 left-6 rounded-full bg-brand px-3 py-0.5 text-xs font-semibold text-brand-fg">
+                <span className="absolute -top-3 left-6 z-10 inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-1 text-xs font-semibold text-brand-fg">
+                  <StarIcon className="size-3.5" />
                   {t("landing.pricing.popular")}
                 </span>
               )}
@@ -55,18 +57,14 @@ export function Pricing({ t, locale, signedIn }: { t: TranslateFn; locale: strin
               <ul className="mt-5 flex-1 space-y-2 text-sm text-fg">
                 {(["f1", "f2", "f3"] as const).map((key) => (
                   <li key={key} className="flex gap-2">
-                    <span aria-hidden="true" className="text-success-fg">✓</span>
+                    <CheckIcon className="mt-0.5 text-success" />
                     {t(`landing.pricing.${key}`)}
                   </li>
                 ))}
               </ul>
               <Link
                 href={buyHref(count)}
-                className={`mt-6 inline-flex justify-center rounded-lg px-4 py-2.5 text-sm font-semibold ${
-                  popular
-                    ? "bg-brand text-brand-fg hover:bg-brand-hover"
-                    : "border border-line text-fg hover:bg-line/40"
-                }`}
+                className={`${buttonClass({ variant: popular ? "primary" : "secondary", fullWidth: true })} mt-6`}
               >
                 {t("landing.pricing.buy")}
               </Link>
@@ -75,7 +73,7 @@ export function Pricing({ t, locale, signedIn }: { t: TranslateFn; locale: strin
         })}
       </div>
       <Calculator signedIn={signedIn} />
-      <p className="rounded-2xl border border-line bg-bg-subtle px-5 py-4 text-sm text-fg">
+      <p className="rounded-card border border-line bg-bg-subtle px-5 py-4 text-sm text-fg">
         {t(`landing.pricing.corporate.${randomVariant(CORPORATE_VARIANTS)}` as MessageKey)}{" "}
         <a
           href={`mailto:${APP_CONFIG.contact.supportEmail}`}
