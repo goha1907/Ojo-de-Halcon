@@ -32,8 +32,8 @@ export function Modal({ open, onClose, title, closeLabel, children, className }:
         if (event.target === ref.current) onClose();
       }}
       className={cn(
-        "m-auto w-[min(32rem,calc(100vw-2rem))] rounded-xl border border-slate-200 bg-white p-0 text-slate-900 shadow-xl",
-        "backdrop:bg-slate-900/40",
+        "m-auto w-[min(32rem,calc(100vw-2rem))] rounded-xl border border-line bg-surface p-0 text-fg shadow-xl",
+        "backdrop:bg-black/40",
         className,
       )}
     >
@@ -45,7 +45,7 @@ export function Modal({ open, onClose, title, closeLabel, children, className }:
               type="button"
               onClick={onClose}
               aria-label={closeLabel}
-              className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              className="rounded-md p-1 text-fg-muted hover:bg-bg-subtle hover:text-fg"
             >
               ✕
             </button>

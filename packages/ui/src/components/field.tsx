@@ -13,13 +13,13 @@ export interface FieldShellProps {
 export function FieldShell({ id, label, error, hint, children }: FieldShellProps) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium text-slate-800">
+      <label htmlFor={id} className="block text-sm font-medium text-fg">
         {label}
       </label>
       {children}
-      {hint && !error && <p className="text-xs text-slate-500">{hint}</p>}
+      {hint && !error && <p className="text-xs text-fg-muted">{hint}</p>}
       {error && (
-        <p id={`${id}-error`} role="alert" className="text-xs text-red-600">
+        <p id={`${id}-error`} role="alert" className="text-xs text-error-fg">
           {error}
         </p>
       )}
@@ -43,9 +43,9 @@ export function TextField({ label, error, hint, className, ...rest }: TextFieldP
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}
         className={cn(
-          "block w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 shadow-sm",
-          "placeholder:text-slate-400 focus:outline-2 focus:outline-offset-0 focus:outline-brand-600",
-          error ? "border-red-400" : "border-slate-300",
+          "block w-full rounded-lg border bg-surface px-3 py-2 text-sm text-fg shadow-sm",
+          "placeholder:text-fg-subtle focus:outline-2 focus:outline-offset-0 focus:outline-ring",
+          error ? "border-error" : "border-line",
           className,
         )}
         {...rest}
@@ -68,15 +68,15 @@ export function CheckboxField({ label, error, className, ...rest }: CheckboxFiel
           id={id}
           type="checkbox"
           aria-invalid={Boolean(error)}
-          className={cn("mt-0.5 size-4 rounded border-slate-300 accent-brand-600", className)}
+          className={cn("mt-0.5 size-4 rounded border-line accent-brand", className)}
           {...rest}
         />
-        <label htmlFor={id} className="text-sm text-slate-700">
+        <label htmlFor={id} className="text-sm text-fg">
           {label}
         </label>
       </div>
       {error && (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-xs text-error-fg">
           {error}
         </p>
       )}
@@ -107,9 +107,9 @@ export function SelectField({ label, options, placeholder, error, hint, classNam
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}
         className={cn(
-          "block w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 shadow-sm",
-          "focus:outline-2 focus:outline-offset-0 focus:outline-brand-600",
-          error ? "border-red-400" : "border-slate-300",
+          "block w-full rounded-lg border bg-surface px-3 py-2 text-sm text-fg shadow-sm",
+          "focus:outline-2 focus:outline-offset-0 focus:outline-ring",
+          error ? "border-error" : "border-line",
           className,
         )}
         {...rest}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { I18nProvider } from "@/components/providers/i18n-provider";
 import { getT } from "@/server/i18n";
+import "@fontsource-variable/inter";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {

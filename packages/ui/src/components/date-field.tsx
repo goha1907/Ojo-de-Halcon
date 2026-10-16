@@ -23,8 +23,8 @@ export interface DateFieldProps {
 }
 
 const SELECT_BASE =
-  "block w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 shadow-sm " +
-  "focus:outline-2 focus:outline-offset-0 focus:outline-brand-600";
+  "block w-full rounded-lg border bg-surface px-3 py-2 text-sm text-fg shadow-sm " +
+  "focus:outline-2 focus:outline-offset-0 focus:outline-ring";
 
 /**
  * Date entered with three dropdowns (day / month / year): the format cannot
@@ -33,7 +33,7 @@ const SELECT_BASE =
  */
 export function DateField({ label, value, onChange, labels, monthNames, years, daysInMonth, error }: DateFieldProps) {
   const id = useId();
-  const border = error ? "border-red-400" : "border-slate-300";
+  const border = error ? "border-error" : "border-line";
   const yearNumber = value.year ? Number(value.year) : null;
   const monthNumber = value.month ? Number(value.month) : null;
   const dayCount = monthNumber ? daysInMonth(yearNumber, monthNumber) : 31;
@@ -53,7 +53,7 @@ export function DateField({ label, value, onChange, labels, monthNames, years, d
 
   return (
     <fieldset className="space-y-1.5" aria-describedby={error ? `${id}-error` : undefined}>
-      <legend className="text-sm font-medium text-slate-800">{label}</legend>
+      <legend className="text-sm font-medium text-fg">{label}</legend>
       <div className="grid grid-cols-[1fr_1.6fr_1.1fr] gap-2">
         <select
           aria-label={labels.day}
@@ -102,7 +102,7 @@ export function DateField({ label, value, onChange, labels, monthNames, years, d
         </select>
       </div>
       {error && (
-        <p id={`${id}-error`} role="alert" className="text-xs text-red-600">
+        <p id={`${id}-error`} role="alert" className="text-xs text-error-fg">
           {error}
         </p>
       )}
