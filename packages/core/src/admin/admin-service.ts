@@ -192,6 +192,7 @@ export function createAdminService(deps: {
         id: user.id,
         email: user.email,
         role: user.role,
+        earlyAccess: user.earlyAccess,
         locale: user.locale,
         createdAt: user.createdAt.toISOString(),
         emailVerified: user.emailVerifiedAt !== null,
@@ -325,6 +326,16 @@ export function createAdminService(deps: {
     return { ok: true, value: undefined };
   }
 
+  /** Turns early access (services not open to everyone yet) on or off for an account. */
+  async function setEarlyAccess(actor: Actor, userId: string, enabled: boolean): Promise<MutationResult> {
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, earlyAccess: true } });
+    if (!target) return { ok: false, reason: "NOT_FOUND" };
+    if (target.earlyAccess === enabled) return { ok: true, value: undefined };
+    await prisma.user.update({ where: { id: userId }, data: { earlyAccess: enabled } });
+    await record({ actor, action: "user.earlyAccess", target, details: { from: target.earlyAccess, to: enabled } });
+    return { ok: true, value: undefined };
+  }
+
   async function listFeedback(input: { status?: string; page?: number; pageSize?: number }) {
     const pageSize = Math.min(100, Math.max(1, input.pageSize ?? 25));
     const page = Math.max(1, input.page ?? 1);
@@ -425,6 +436,7 @@ export function createAdminService(deps: {
     giveGrant,
     revokeGrant,
     setGrantExpiry,
+    setEarlyAccess,
     listFeedback,
     setFeedbackStatus,
     sourcesHealth,

@@ -17,6 +17,7 @@ export function toUserDto(user: User): UserDto {
     locale: user.locale,
     onboardingDone: user.onboardingCompletedAt !== null,
     role: user.role,
+    earlyAccess: user.earlyAccess || user.role !== "USER",
   };
 }
 

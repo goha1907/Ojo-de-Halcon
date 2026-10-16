@@ -21,7 +21,10 @@ export const SERVICE_GROUPS = [
   },
   {
     key: "post",
-    items: [{ section: "dni_post", slug: "correo" }],
+    items: [
+      { section: "dni_post", slug: "correo" },
+      { section: "post_ocasa", slug: "ocasa" },
+    ],
   },
 ] as const satisfies ReadonlyArray<{
   key: string;
@@ -45,6 +48,7 @@ export const SERVICE_OFFICIAL_LINK: Record<TrackerSection, string> = {
   dni_approval: "dni-approval",
   dni_production: "dni-production",
   dni_post: "dni-post",
+  post_ocasa: "ocasa-tracking",
   citizenship_dnm: "citizenship-status",
   citizenship_court: "court-status",
 };

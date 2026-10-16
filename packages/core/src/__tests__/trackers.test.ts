@@ -1333,3 +1333,86 @@ describe("renaming and removing a case that has not started", () => {
     expect(await core.trackers.list(userId)).toHaveLength(0);
   });
 });
+
+describe("OCASA: a manual source", () => {
+  const PAGE = `OCASA
+000755824304
+Tracking Number
+Despachado a sucursal
+16/OCT - 17:18 hs.
+El envío ha salido del centro de distribución de OCASA (A042 - Argentina).
+Pedido en centro
+16/OCT - 10:06 hs.
+El envío ha llegado al centro de distribución OCASA (Iriarte - AR).
+Referencias de ubicación
+Destino
+NOMBRE PRUEBA`;
+
+  async function setup(earlyAccess = true) {
+    // OCASA is open to everybody today; the tests hide it to check the early-access gate
+    const core = makeCore({ scraper: { renaper: async () => renaperAnswer() }, earlyAccessKinds: ["OCASA"] });
+    const userId = await newUser(core);
+    await subscribe(userId);
+    if (earlyAccess) await prisma.user.update({ where: { id: userId }, data: { earlyAccess: true } });
+    return { core, userId };
+  }
+
+  it("is open to everybody when it is not hidden", async () => {
+    const core = makeCore({ earlyAccessKinds: [] });
+    const userId = await newUser(core);
+    await subscribe(userId);
+    expect(await core.trackers.addTramite(userId, "OCASA", "000755824304")).toMatchObject({ ok: true });
+  });
+
+  it("can be hidden from ordinary accounts: staff and accounts with the flag only", async () => {
+    const { core, userId } = await setup(false);
+    expect(await core.trackers.addTramite(userId, "OCASA", "000755824304")).toEqual({ ok: false, reason: "NOT_AVAILABLE" });
+    expect(await core.trackers.previewTramite(userId, "OCASA", "000755824304")).toEqual({ ok: false, reason: "NOT_AVAILABLE" });
+    await prisma.user.update({ where: { id: userId }, data: { role: "SUPPORT" } });
+    expect(await core.trackers.addTramite(userId, "OCASA", "000755824304")).toMatchObject({ ok: true });
+  });
+
+  it("takes a place, is never polled and changes only when its owner pastes the page", async () => {
+    const { core, userId } = await setup();
+    expect(await core.trackers.previewTramite(userId, "OCASA", "000755824304")).toEqual({ ok: true, header: {} });
+    const added = await core.trackers.addTramite(userId, "OCASA", "000755824304");
+    if (!added.ok) throw new Error("add failed");
+    expect(await core.billing.state(userId)).toMatchObject({ activeCases: 1 });
+    // due, but manual: the worker never reads it
+    expect(await core.trackers.runDue()).toBe(0);
+    expect((await core.trackers.list(userId))[0]!.steps).toEqual([]);
+
+    const first = await core.trackers.refreshManual(userId, added.tracker.id, PAGE);
+    expect(first).toEqual({ ok: true, added: 2 });
+    const [tracker] = await core.trackers.list(userId);
+    expect(tracker!.header.status).toBe("Despachado a sucursal");
+    expect(tracker!.steps.map((step) => step.title)).toEqual(["Pedido en centro", "Despachado a sucursal"]);
+    expect(tracker!.lastCheckedAt).not.toBeNull();
+    // the recipient's name is not kept anywhere
+    expect(JSON.stringify(await prisma.trackerSnapshot.findMany())).not.toContain("PRUEBA");
+    // updating by hand sends no notice
+    expect(await prisma.trackerEvent.count()).toBe(0);
+    // the same page again adds nothing
+    expect(await core.trackers.refreshManual(userId, added.tracker.id, PAGE)).toEqual({ ok: true, added: 0 });
+  });
+
+  it("refuses text that is not the page, or the page of another shipment", async () => {
+    const { core, userId } = await setup();
+    const added = await core.trackers.addTramite(userId, "OCASA", "000111111111");
+    if (!added.ok) throw new Error("add failed");
+    expect(await core.trackers.refreshManual(userId, added.tracker.id, "nada")).toEqual({ ok: false, reason: "NO_STEPS" });
+    expect(await core.trackers.refreshManual(userId, added.tracker.id, PAGE)).toEqual({ ok: false, reason: "MISMATCH" });
+    expect(await core.trackers.refreshManual(userId, "missing", PAGE)).toEqual({ ok: false, reason: "NOT_FOUND" });
+  });
+
+  it("pads a replaced number and ends the case when it shows delivery", async () => {
+    const { core, userId } = await setup();
+    const added = await core.trackers.addTramite(userId, "OCASA", "000755824304");
+    if (!added.ok) throw new Error("add failed");
+    expect(await core.trackers.replaceNumber(userId, added.tracker.id, "123456789")).toBe("OK");
+    expect((await core.trackers.list(userId))[0]!.reference).toBe("000123456789");
+    const delivered = `000123456789\nTracking Number\nEntregado\n17/OCT - 11:00 hs.\nEl envío fue entregado.`;
+    expect(await core.trackers.refreshManual(userId, added.tracker.id, delivered)).toMatchObject({ ok: true });
+    expect((await core.trackers.list(userId))[0]!.status).toBe("FINISHED");
+  });
+});

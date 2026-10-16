@@ -14,6 +14,8 @@ export const FINAL_STATUSES: Record<TrackerKindValue, readonly string[]> = {
   RENAPER: ["EMBALADO"],
   /** Correo Argentino: delivered. */
   CORREO: ["ENTREGADO"],
+  /** OCASA: delivered (assumed: the final status was not seen yet, check the status tally). */
+  OCASA: ["ENTREGADO"],
   /** Court case: sent to the archive. */
   PJN: ["ARCHIVESE"],
 };

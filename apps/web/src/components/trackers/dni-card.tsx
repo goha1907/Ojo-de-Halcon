@@ -6,6 +6,7 @@ import { displayNumber } from "@/lib/tracker-view";
 import { toneOf } from "@/lib/status-tones";
 import { DniCardShell } from "./dni-card-shell";
 import { FixNumberForm } from "./fix-number-form";
+import { OcasaManual } from "./ocasa-manual";
 import { ReleaseCaseButton } from "./release-case-button";
 import { PendingCaseActions } from "./tracker-actions";
 import { ReplaceSection } from "./replace-section";
@@ -32,6 +33,7 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
   const now = new Date();
   const isRenaper = tracker.kind === "RENAPER";
   const isCourt = tracker.kind === "PJN";
+  const isOcasa = tracker.kind === "OCASA";
   const isDnm = isDnmKind(tracker.kind);
   const h = tracker.header;
   const court = isCourt ? parsePjnReference(tracker.reference) : null;
@@ -52,7 +54,7 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
     date: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(tracker.addedAt)),
   });
   // a number nothing was ever read for: it can be corrected or the tracking deleted
-  const unread = tracker.notStarted && !isCourt;
+  const unread = tracker.notStarted && !isCourt && !isOcasa;
   const deletable = tracker.notStarted && tracker.status !== "PENDING_CONFIRMATION";
   const type = [h.type, h.class].filter(Boolean).join(" · ");
 
@@ -106,14 +108,22 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
         </div>
       }
     >
-      {alert && <div className="border-b border-line px-5 py-3">{alert}</div>}
+      {isOcasa && (
+        <OcasaManual id={tracker.id} number={tracker.reference} lastCheckedAt={tracker.lastCheckedAt} locale={locale} />
+      )}
+      {isOcasa && tracker.notStarted && (
+        <div className="max-w-xl px-5 py-4">
+          <FixNumberForm id={tracker.id} current={tracker.reference} kind={tracker.kind} mode="typo" bare />
+        </div>
+      )}
+      {alert && !isOcasa && <div className="border-b border-line px-5 py-3">{alert}</div>}
       {tracker.status === "PENDING_CONFIRMATION" && (
         <div className="space-y-3 border-b border-line px-5 py-3">
           <Alert tone="info">{t("pjn.pending.text")}</Alert>
           <PendingCaseActions id={tracker.id} />
         </div>
       )}
-      {unread ? (
+      {isOcasa && tracker.notStarted ? null : unread ? (
         <div className="space-y-4 px-5 py-4">
           <p className="text-sm text-fg-muted">{t("track.notStarted.text")}</p>
           <div className="max-w-xl">
@@ -131,7 +141,7 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
       <div className="grid md:grid-cols-[1.1fr_1fr]">
         <div className="space-y-3 px-5 py-4">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
-            {t(isRenaper ? "track.dni.titleRenaper" : isCourt ? "track.court.title" : isDnm ? "track.dnm.title" : "track.dni.titleCorreo")}
+            {t(isRenaper ? "track.dni.titleRenaper" : isCourt ? "track.court.title" : isDnm ? "track.dnm.title" : isOcasa ? "track.dni.titleOcasa" : "track.dni.titleCorreo")}
           </h4>
           {status ? (
             <>

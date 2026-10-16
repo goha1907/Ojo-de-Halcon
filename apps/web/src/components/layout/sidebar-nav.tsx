@@ -11,7 +11,14 @@ const ACTIVE = "bg-line/70 font-medium text-fg";
 const IDLE = "text-fg hover:bg-line/40";
 
 /** `counts` maps a section id to the number of cases the user has there. */
-export function SidebarNav({ counts = {} }: { counts?: Record<string, number> }) {
+export function SidebarNav({
+  counts = {},
+  hidden = [],
+}: {
+  counts?: Record<string, number>;
+  /** Section ids left out of the menu (services not open to this account yet). */
+  hidden?: readonly string[];
+}) {
   const t = useT();
   const pathname = usePathname();
 
@@ -46,7 +53,7 @@ export function SidebarNav({ counts = {} }: { counts?: Record<string, number> })
               {t(entry.labelKey)}
             </p>
             <div className="space-y-1">
-              {entry.items.map((item) => (
+              {entry.items.filter((item) => !hidden.includes(item.id)).map((item) => (
                 <Link
                   key={item.id}
                   href={item.href}

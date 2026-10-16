@@ -29,7 +29,8 @@ Argentino, гражданство) **в одном месте** и получа�
 | DNI → RENAPER | изготовление DNI, этапы, почтовые этапы | mitramite.renaper.gob.ar | номер трамите |
 | CIUDADANÍA → Migraciones | трамите на гражданство | migraciones.gob.ar | номер трамите + дата рождения |
 | CIUDADANÍA → суд | ход дела и этапы (PJN) | scw.pjn.gov.ar | суд, номер и год дела (можно найти по фамилии) |
-| CORREO ARGENTINO | любое отправление: 8 типов форм сайта почты (Plus, nacional, internacional, DNI, Pasaporte, Mercadolibre, e-commerce) | correoargentino.com.ar/formularios | тип отправления + код |
+| ДОСТАВКА → Correo Argentino | любое отправление: 8 типов форм сайта почты (Plus, nacional, internacional, DNI, Pasaporte, Mercadolibre, e-commerce) | correoargentino.com.ar/formularios | тип отправления + код |
+| ДОСТАВКА → OCASA (на паузе, скрыт от обычных аккаунтов) | отправление перевозчика OCASA; **только вручную**: страница OCASA закрыта проверкой «я не робот», пользователь вставляет скопированную страницу | tracking.ocasa.com | номер трамите (дополняется нулями до 12 цифр) |
 
 **Кабинет**: дашборд (сводка, что требует внимания), разделы по сервисам с карточками дел, фильтры,
 сортировка и поиск, настройки (профиль, уведомления, подписка), обратная связь, полезные ссылки.

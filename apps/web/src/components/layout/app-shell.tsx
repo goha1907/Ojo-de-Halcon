@@ -1,5 +1,5 @@
 import type { AccessState } from "@ojo/core";
-import { ROUTES } from "@ojo/shared";
+import { EARLY_ACCESS_SECTIONS, ROUTES } from "@ojo/shared";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/brand/logo";
@@ -15,6 +15,7 @@ import { getT } from "@/server/i18n";
 export async function AppShell({
   userLabel,
   staff = false,
+  earlyAccess = false,
   showMenu,
   defaultJurisdiction,
   access,
@@ -27,6 +28,8 @@ export async function AppShell({
   userLabel: string;
   /** Staff accounts get a link to the admin area. */
   staff?: boolean;
+  /** May use services that are not open to everyone yet. */
+  earlyAccess?: boolean;
   showMenu: boolean;
   defaultJurisdiction: string | null;
   access: AccessState;
@@ -41,6 +44,7 @@ export async function AppShell({
   children: ReactNode;
 }) {
   const { t, locale } = await getT();
+  const hiddenSections: readonly string[] = earlyAccess ? [] : EARLY_ACCESS_SECTIONS;
 
   const brand = (
     <Link href={ROUTES.home} className="flex items-center">
@@ -68,7 +72,7 @@ export async function AppShell({
       {/* Desktop sidebar: pinned to the viewport while the content scrolls */}
       <aside className="hidden border-r border-line bg-surface md:sticky md:top-0 md:flex md:h-screen md:flex-col md:gap-4 md:self-start md:overflow-y-auto md:p-4">
         {brand}
-        <div className="flex-1">{showMenu && <SidebarNav counts={sectionCounts} />}</div>
+        <div className="flex-1">{showMenu && <SidebarNav counts={sectionCounts} hidden={hiddenSections} />}</div>
         {account}
       </aside>
 
@@ -82,7 +86,7 @@ export async function AppShell({
           <details className="mt-2">
             <summary className="cursor-pointer text-sm font-medium text-fg">{t("nav.menu")}</summary>
             <div className="mt-2 space-y-3">
-              <SidebarNav counts={sectionCounts} />
+              <SidebarNav counts={sectionCounts} hidden={hiddenSections} />
               <AddTrackerButton fullWidth />
             </div>
           </details>
@@ -101,6 +105,7 @@ export async function AppShell({
           lock={addLock}
           usage={usage}
           defaultBirthDate={defaultBirthDate}
+          earlyAccess={earlyAccess}
         />}
     </div>
   );

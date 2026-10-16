@@ -28,6 +28,7 @@ export const STATUS_FIELD: Record<TrackerKindValue, string> = {
   DNM_CITIZENSHIP: "status",
   RENAPER: "status",
   CORREO: "status",
+  OCASA: "status",
   PJN: "sit_actual",
 };
 

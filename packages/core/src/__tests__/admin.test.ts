@@ -138,3 +138,22 @@ describe("admin: reading", () => {
     expect(await core.admin.setFeedbackStatus(actor, message!.id, "NOPE")).toEqual({ ok: false, reason: "INVALID" });
   });
 });
+
+describe("admin: early access", () => {
+  it("turns the flag on and off for an account, audited", async () => {
+    const { core, actor, customerId } = await setup();
+    expect((await core.admin.setEarlyAccess(actor, customerId, true)).ok).toBe(true);
+    expect((await core.sessions.getUser((await core.sessions.create(customerId)).token))?.earlyAccess).toBe(true);
+    expect((await core.admin.setEarlyAccess(actor, customerId, true)).ok).toBe(true);
+    expect((await core.admin.setEarlyAccess(actor, customerId, false)).ok).toBe(true);
+    expect((await core.admin.auditLog({})).items.map((item) => item.action)).toEqual(["user.earlyAccess", "user.earlyAccess"]);
+    expect(await core.admin.setEarlyAccess(actor, "missing", true)).toEqual({ ok: false, reason: "NOT_FOUND" });
+  });
+
+  it("gives staff early access without the flag", async () => {
+    const { core, actor } = await setup();
+    const session = await core.sessions.create(actor.id);
+    expect(await core.sessions.getUser(session.token)).toMatchObject({ role: "ADMIN", earlyAccess: true });
+  });
+});
+

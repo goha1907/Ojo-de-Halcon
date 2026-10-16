@@ -22,6 +22,7 @@ export type ApiErrorCode =
   | "BIRTH_DATE_REQUIRED"
   | "MISMATCH"
   | "NOT_FOUND"
+  | "NOT_AVAILABLE"
   | "SOURCE_DOWN"
   | "PROFILE_INCOMPLETE"
   | "NO_COURT"
@@ -47,6 +48,8 @@ const STATUS: Record<ApiErrorCode, number> = {
   BIRTH_DATE_REQUIRED: 409,
   MISMATCH: 409,
   NOT_FOUND: 404,
+  // a service that is not open to this account yet looks like a page that does not exist
+  NOT_AVAILABLE: 404,
   SOURCE_DOWN: 503,
   PROFILE_INCOMPLETE: 409,
   NO_COURT: 409,

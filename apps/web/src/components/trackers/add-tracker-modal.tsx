@@ -10,6 +10,8 @@ import {
   correoDisplay,
   correoReference,
   isDnmKind,
+  isEarlyAccessKind,
+  ocasaNumberSchema,
   splitIsoDate,
   settingsHref,
   TRACKER_KINDS,
@@ -49,6 +51,8 @@ interface Props {
   usage: { used: number; limit: number } | null;
   /** Profile birth date (ISO) offered for Migraciones kinds; can be changed per case. */
   defaultBirthDate: string | null;
+  /** May add services that are not open to everyone yet. */
+  earlyAccess?: boolean;
 }
 
 /** Labels of the identifying fields shown for a trámite found at its source. */
@@ -73,7 +77,7 @@ const ERROR_KEYS: Record<string, MessageKey> = {
 };
 
 /** One window for adding any tracker (the "+ Tracking" button lives in the header). */
-export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKind, lock, usage, defaultBirthDate, fixedKind = false }: Props) {
+export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKind, lock, usage, defaultBirthDate, fixedKind = false, earlyAccess = false }: Props) {
   const t = useT();
   const router = useRouter();
   const [kind, setKind] = useState<TrackerKindValue>(initialKind ?? "RENAPER");
@@ -94,8 +98,12 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
   const [loading, setLoading] = useState(false);
 
   const kindOptions = useMemo(
-    () => TRACKER_KINDS.map((value) => ({ value, label: t(`track.kind.${value}` as MessageKey) })),
-    [t],
+    () =>
+      TRACKER_KINDS.filter((value) => earlyAccess || !isEarlyAccessKind(value)).map((value) => ({
+        value,
+        label: t(`track.kind.${value}` as MessageKey),
+      })),
+    [t, earlyAccess],
   );
   const courtOptions = useMemo(
     () => PJN_JURISDICTIONS.map((item) => ({ value: item.value, label: `${item.code} — ${item.name}` })),
@@ -114,7 +122,9 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
           return result.ok ? result.reference : correo.number;
         })(),
       )
-    : (tramiteNumberSchema.safeParse(number).data ?? number);
+    : kind === "OCASA"
+      ? (ocasaNumberSchema.safeParse(number).data ?? number)
+      : (tramiteNumberSchema.safeParse(number).data ?? number);
 
   function showError(error: unknown) {
     if (error instanceof ApiError && error.code === "VALIDATION") {
@@ -339,6 +349,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
             onChange={(e) => setNumber(e.target.value)}
           />
         )}
+        {kind === "OCASA" && <Alert tone="info">{t("track.ocasa.addHint")}</Alert>}
         {isDnmKind(kind) && (
           <div className="space-y-1.5">
             <BirthDateField

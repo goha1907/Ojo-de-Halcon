@@ -25,6 +25,8 @@ model User {
   /// One key per real mailbox (see canonicalEmail); blocks address variations.
   emailCanonical        String    @unique
   role                  UserRole  @default(USER)
+  /// May use services that are not open to everyone yet (staff always may).
+  earlyAccess           Boolean   @default(false)
   passwordHash          String
   emailVerifiedAt       DateTime?
   firstName             String?
@@ -115,6 +117,8 @@ enum TrackerKind {
   DNM_DNI
   /// Migraciones: citizenship procedure, by order number + birth date.
   DNM_CITIZENSHIP
+  /// OCASA (carrier): updated by hand only, the site is behind a human check.
+  OCASA
 }
 
 enum TrackerStatus {

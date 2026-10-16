@@ -1,4 +1,4 @@
-import { APP_CONFIG, correoReferenceSchema, holderBirthDateSchema, tramiteNumberSchema } from "@ojo/shared";
+import { APP_CONFIG, correoReferenceSchema, holderBirthDateSchema, ocasaNumberSchema, tramiteNumberSchema } from "@ojo/shared";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiError, limitByUser, parseBody, withVerifiedUser } from "@/server/api";
@@ -11,6 +11,7 @@ const bodySchema = z.discriminatedUnion("kind", [
     birthDate: holderBirthDateSchema.optional(),
   }),
   z.object({ kind: z.literal("CORREO"), number: correoReferenceSchema }),
+  z.object({ kind: z.literal("OCASA"), number: ocasaNumberSchema }),
 ]);
 
 /**

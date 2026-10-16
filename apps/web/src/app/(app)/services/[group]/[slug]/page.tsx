@@ -1,4 +1,5 @@
 import {
+  EARLY_ACCESS_SECTIONS,
   settingsHref,
   SERVICE_OFFICIAL_LINK,
   TRACKER_KIND_SECTION,
@@ -34,6 +35,8 @@ export default async function ServicePage({
   if (!service) notFound();
 
   const user = await requireUser();
+  // a service that is not open to everyone yet looks like a page that does not exist
+  if (EARLY_ACCESS_SECTIONS.includes(service.section) && !user.earlyAccess) notFound();
   const { t, locale } = await getT();
   const core = getCore();
   const official = findLink(SERVICE_OFFICIAL_LINK[service.section]);

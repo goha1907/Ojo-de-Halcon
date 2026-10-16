@@ -2,6 +2,7 @@ import { can } from "@ojo/shared";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { dateOnly, dateTime, money } from "@/components/admin/format";
+import { EarlyAccessToggle } from "@/components/admin/early-access-toggle";
 import { GiveGrantForm, GrantRowActions } from "@/components/admin/grant-controls";
 import { Badge, PageTitle, Panel, Stat, TABLE, TD, TH } from "@/components/admin/ui";
 import { getCore } from "@/server/core";
@@ -14,6 +15,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
   if (!detail) notFound();
   const { user, access, billing, grants, trackers, payments, audit } = detail;
   const canGrant = can(staff.role, "grants.manage");
+  const canManage = can(staff.role, "users.manage");
   return (
     <>
       <PageTitle title={user.email}>
@@ -28,6 +30,16 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
             <dt className="text-fg-muted">Name</dt><dd>{[user.firstName, user.lastName].filter(Boolean).join(" ") || "—"}</dd>
             <dt className="text-fg-muted">E-mail</dt><dd>{user.emailVerified ? "verified" : <Badge tone="amber">not verified</Badge>}</dd>
             <dt className="text-fg-muted">Telegram</dt><dd>{user.telegramLinked ? `linked${user.telegramUsername ? ` (@${user.telegramUsername})` : ""}` : "not linked"}</dd>
+            <dt className="text-fg-muted">Early access</dt>
+            <dd>
+              {canManage ? (
+                <EarlyAccessToggle userId={user.id} enabled={user.earlyAccess} staff={user.role !== "USER"} />
+              ) : user.role !== "USER" || user.earlyAccess ? (
+                "yes"
+              ) : (
+                "no"
+              )}
+            </dd>
             <dt className="text-fg-muted">Language</dt><dd>{user.locale}</dd>
             <dt className="text-fg-muted">Joined</dt><dd>{dateTime(user.createdAt)}</dd>
           </dl>

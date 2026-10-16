@@ -8,6 +8,7 @@ export type UserRoleValue = (typeof USER_ROLES)[number];
 export const ADMIN_PERMISSIONS = [
   "overview.read",
   "users.read",
+  "users.manage",
   "grants.manage",
   "feedback.manage",
   "sources.read",
@@ -19,7 +20,7 @@ export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
 const ROLE_PERMISSIONS: Record<UserRoleValue, readonly AdminPermission[]> = {
   /** A customer: no access to the admin area. */
   USER: [],
-  /** Support: reads accounts, answers the inbox, watches the sources. Cannot hand out places or read the audit log. */
+  /** Support: reads accounts, answers the inbox, watches the sources. Cannot hand out places, change accounts or read the audit log. */
   SUPPORT: ["overview.read", "users.read", "feedback.manage", "sources.read", "stats.read"],
   /** Everything. */
   ADMIN: ADMIN_PERMISSIONS,
@@ -27,6 +28,11 @@ const ROLE_PERMISSIONS: Record<UserRoleValue, readonly AdminPermission[]> = {
 
 export function can(role: UserRoleValue | null | undefined, permission: AdminPermission): boolean {
   return role !== null && role !== undefined && ROLE_PERMISSIONS[role].includes(permission);
+}
+
+/** May this account use services that are not open to everyone yet: staff always, others with the flag. */
+export function canUseEarlyAccess(user: { role: UserRoleValue; earlyAccess: boolean }): boolean {
+  return user.earlyAccess || isStaff(user.role);
 }
 
 /** Does this role belong to staff (may enter the admin area at all). */

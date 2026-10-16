@@ -13,6 +13,7 @@ export const USEFUL_LINKS = [
   { id: "dni-approval", group: "tracking", url: "https://www.migraciones.gob.ar/accesible/consultaTramitePrecaria/ConsultaUnificada.php" },
   { id: "dni-production", group: "tracking", url: "https://mitramite.renaper.gob.ar/" },
   { id: "dni-post", group: "tracking", url: "https://www.correoargentino.com.ar/formularios/ondng" },
+  { id: "ocasa-tracking", group: "tracking", url: "https://tracking.ocasa.com/TrackingClient" },
   { id: "citizenship-status", group: "tracking", url: "https://www.migraciones.gob.ar/accesible/consultaTramiteCiudadania/ConsultaCiudadania.php" },
   { id: "court-status", group: "tracking", url: "https://scw.pjn.gov.ar/scw/home.seam" },
   { id: "entry-certificate", group: "documents", url: "https://www.migraciones.gob.ar/transitos/" },

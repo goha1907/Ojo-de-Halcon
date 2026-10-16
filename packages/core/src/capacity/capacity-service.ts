@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@ojo/db";
+import { MANUAL_KINDS } from "@ojo/shared";
 
 /**
  * The one place that says how many places an account has and which cases they cover.
@@ -94,7 +95,8 @@ export function createCapacityService(deps: { prisma: PrismaClient; now: () => D
   /**
    * Ids of the active cases that are due and covered by a place of their owner. Cases of one owner take
    * places oldest first, so when places run out the newest ones wait without being touched, and they
-   * resume by themselves once places exist again. (SQL form of `get`.)
+   * resume by themselves once places exist again. Manual sources (OCASA) take a place but are never due: they
+   * only change when their owner updates them. (SQL form of `get`.)
    */
   async function coveredDueIds(limit: number): Promise<string[]> {
     const at = now();
@@ -109,7 +111,7 @@ export function createCapacityService(deps: { prisma: PrismaClient; now: () => D
             ), 0) AS "places"
         FROM "User" u
       ), ranked AS (
-        SELECT t."id", t."userId", t."status"::text AS "status", t."nextCheckAt",
+        SELECT t."id", t."userId", t."status"::text AS "status", t."kind"::text AS "kind", t."nextCheckAt",
           ROW_NUMBER() OVER (PARTITION BY t."userId" ORDER BY t."slotSince", t."createdAt", t."id") AS "rank"
         FROM "Tracker" t
         WHERE t."status"::text IN ('ACTIVE', 'PENDING_CONFIRMATION')
@@ -117,6 +119,7 @@ export function createCapacityService(deps: { prisma: PrismaClient; now: () => D
       SELECT r."id" FROM ranked r
       JOIN capacity c ON c."userId" = r."userId"
       WHERE r."status" = 'ACTIVE' AND r."nextCheckAt" <= ${at} AND r."rank" <= c."places"
+        AND r."kind" NOT IN (${Prisma.join(MANUAL_KINDS)})
       ORDER BY r."nextCheckAt" ASC
       LIMIT ${limit}`);
     return rows.map((row) => row.id);

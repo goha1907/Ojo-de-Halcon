@@ -6,10 +6,11 @@ import type { MessageKey } from "../i18n/ru";
 import { normalizeSpaces, holderBirthDateSchema } from "./profile";
 import { normalizeCorreoReference } from "./correo";
 import { onlyDigits } from "./trackers-utils";
+import { OCASA_NUMBER_LENGTH } from "./ocasa";
 
 const msg = (key: MessageKey) => ({ message: key });
 
-export const TRACKER_KINDS = ["DNM_DNI", "RENAPER", "CORREO", "DNM_CITIZENSHIP", "PJN"] as const;
+export const TRACKER_KINDS = ["DNM_DNI", "RENAPER", "CORREO", "OCASA", "DNM_CITIZENSHIP", "PJN"] as const;
 
 /** Kinds read from Migraciones: they also need the holder's birth date. */
 export const DNM_KINDS = ["DNM_DNI", "DNM_CITIZENSHIP"] as const;
@@ -18,6 +19,26 @@ export function isDnmKind(kind: string): kind is DnmKind {
   return (DNM_KINDS as readonly string[]).includes(kind);
 }
 export type TrackerKindValue = (typeof TRACKER_KINDS)[number];
+
+/**
+ * Sources that are never read automatically: the person updates them by hand. OCASA protects its page with a
+ * "not a robot" check, so the case is added, but it only changes when its owner pastes what the page shows.
+ * Switching a source to automatic reading later means removing it from this list and adding its reader.
+ */
+export const MANUAL_KINDS = ["OCASA"] as const satisfies readonly TrackerKindValue[];
+export function isManualKind(kind: string): boolean {
+  return (MANUAL_KINDS as readonly string[]).includes(kind);
+}
+
+/**
+ * Sources not open to everyone yet: shown to staff and to accounts with early access only. OCASA is parked here
+ * (a stub) until there is an agreement with them; a service is hidden by listing its kind here and its section in
+ * `EARLY_ACCESS_SECTIONS`, and opened by emptying both.
+ */
+export const EARLY_ACCESS_KINDS: readonly TrackerKindValue[] = ["OCASA"];
+export function isEarlyAccessKind(kind: string, kinds: readonly string[] = EARLY_ACCESS_KINDS): boolean {
+  return kinds.includes(kind);
+}
 
 export const TRACKER_STATUSES = ["PENDING_CONFIRMATION", "ACTIVE", "FINISHED", "PAUSED"] as const;
 export type TrackerStatusValue = (typeof TRACKER_STATUSES)[number];
@@ -37,6 +58,7 @@ export const TRACKER_KIND_SECTION = {
   DNM_DNI: "dni_approval",
   RENAPER: "dni_production",
   CORREO: "dni_post",
+  OCASA: "post_ocasa",
   DNM_CITIZENSHIP: "citizenship_dnm",
   PJN: "citizenship_court",
 } as const satisfies Record<TrackerKindValue, string>;
@@ -52,6 +74,9 @@ export const tramiteNumberSchema = z
       .min(TRACKER_CONFIG.tramiteNumber.minDigits, msg("validation.tramiteInvalid"))
       .max(TRACKER_CONFIG.tramiteNumber.maxDigits, msg("validation.tramiteInvalid")),
   );
+
+/** OCASA tracking number: the trámite number padded with zeros to 12 digits (000755824304). */
+export const ocasaNumberSchema = tramiteNumberSchema.transform((digits) => digits.padStart(OCASA_NUMBER_LENGTH, "0"));
 
 /** A Correo reference: plain digits (DNI) or "<form>:<…>", validated against the form's own rules. */
 export const correoReferenceSchema = z.string().transform((value, ctx) => {
@@ -101,6 +126,7 @@ export const addTrackerSchema = z.discriminatedUnion("kind", [
   }),
   z.object({ kind: z.literal("RENAPER"), number: tramiteNumberSchema }),
   z.object({ kind: z.literal("CORREO"), number: correoReferenceSchema }),
+  z.object({ kind: z.literal("OCASA"), number: ocasaNumberSchema }),
   z.object({ kind: z.literal("PJN") }).merge(pjnCaseSchema),
 ]);
 export type AddTrackerInput = z.infer<typeof addTrackerSchema>;

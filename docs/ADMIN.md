@@ -28,6 +28,7 @@ Pages, the menu and the API routes all ask it.
 |---|:-:|:-:|
 | `overview.read` (Overview) | yes | yes |
 | `users.read` (Users, user page) | yes | yes |
+| `users.manage` (early access flag) | yes | no |
 | `grants.manage` (give, change, revoke gift places) | yes | no |
 | `feedback.manage` (Inbox statuses) | yes | yes |
 | `sources.read` (Sources) | yes | yes |
@@ -48,6 +49,12 @@ To add a role or a permission: edit that file, and the menu in `apps/web/src/com
 - **Statuses**: every status and stage title seen at the sources (no personal data): the basis for deciding which
   statuses end a case.
 - **Audit log**: everything staff changed. Entries are kept after an account is deleted.
+
+## Early access
+
+Some services are held back from ordinary accounts (OCASA is parked this way until there is an agreement with it). Staff always see such services; for any other account an admin
+turns **Early access** on in the account block of the user page. The list of such services is `EARLY_ACCESS_KINDS` /
+`EARLY_ACCESS_SECTIONS` in `packages/shared`. The change is written to the audit log.
 
 ## Giving places (gift, bonus, partner)
 

@@ -26,7 +26,14 @@ export function createCore(deps: CoreDeps) {
       ? [createStubProvider({ processingSeconds: config.payments.stubProcessingSeconds, now })]
       : []),
   ];
-  const trackers = createTrackerService({ prisma, scraper, now, grants, capacity });
+  const trackers = createTrackerService({
+    prisma,
+    scraper,
+    now,
+    grants,
+    capacity,
+    ...(deps.earlyAccessKinds ? { earlyAccessKinds: deps.earlyAccessKinds } : {}),
+  });
   const access = createAccessService({ prisma, now, capacity, grants });
   return {
     sessions: createSessionService({ prisma, config, now }),

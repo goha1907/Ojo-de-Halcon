@@ -1,4 +1,4 @@
-import { parsePjnReference } from "@ojo/shared";
+import { isManualKind, parsePjnReference } from "@ojo/shared";
 import { ClosedCases, NotificationsCard } from "@/components/settings/notifications-card";
 import { getCore } from "@/server/core";
 import { getT } from "@/server/i18n";
@@ -10,7 +10,8 @@ export default async function SettingsNotificationsPage() {
   const trackers = await getCore().trackers.list(user.id);
   const shown = trackers.filter((item) => item.status !== "PENDING_CONFIRMATION");
   // finished and paused cases are not polled and not notified: they are listed apart
-  const open = shown.filter((item) => item.status === "ACTIVE");
+  // manual sources (OCASA) send no notices, so they have no switches
+  const open = shown.filter((item) => item.status === "ACTIVE" && !isManualKind(item.kind));
   const closed = shown.filter((item) => item.status === "FINISHED" || item.status === "PAUSED");
   const displayNumber = (item: (typeof trackers)[number]) =>
     item.kind === "PJN"

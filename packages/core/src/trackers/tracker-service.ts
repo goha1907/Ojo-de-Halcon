@@ -8,7 +8,12 @@ import {
   caratulaMatchesName,
   findJurisdiction,
   isDnmKind,
+  isEarlyAccessKind,
   isFinalStatus,
+  isManualKind,
+  onlyDigits,
+  OCASA_NUMBER_LENGTH,
+  parseOcasaText,
   normalizeCorreoReference,
   parseExpediente,
   parsePjnReference,
@@ -61,6 +66,7 @@ export interface PjnCandidate {
 }
 
 type AddFailure =
+  | "NOT_AVAILABLE"
   | "ALREADY_EXISTS"
   | "NO_FREE_SLOT"
   | "BIRTH_DATE_REQUIRED"
@@ -170,6 +176,7 @@ function isMeaningfulChange(
 
 /** Header field holding the state of a case, per kind (the stage titles are recorded as well). */
 const STATE_FIELD: Partial<Record<TrackerKindValue, string>> = {
+  OCASA: "status",
   DNM_DNI: "state",
   DNM_CITIZENSHIP: "status",
   RENAPER: "status",
@@ -207,6 +214,8 @@ export function createTrackerService(deps: {
   now: () => Date;
   grants: GrantService;
   capacity: CapacityService;
+  /** Kinds hidden from ordinary accounts (default: `EARLY_ACCESS_KINDS`). */
+  earlyAccessKinds?: readonly string[];
 }) {
   const { prisma, scraper, now, grants, capacity } = deps;
 
@@ -282,6 +291,13 @@ export function createTrackerService(deps: {
    * a person may wait for the DNI at either one or both, so each is added on
    * its own (and counts as its own case).
    */
+  /** Services not open to everyone yet are for staff and accounts with the early-access flag. */
+  async function mayUse(userId: string, kind: string): Promise<boolean> {
+    if (!isEarlyAccessKind(kind, deps.earlyAccessKinds)) return true;
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, earlyAccess: true } });
+    return user !== null && (user.earlyAccess || user.role !== "USER");
+  }
+
   async function addTramite(
     userId: string,
     kind: Exclude<TrackerKindValue, "PJN">,
@@ -289,6 +305,7 @@ export function createTrackerService(deps: {
     label?: string | null,
     birthDate?: Date | null,
   ): Promise<AddResult> {
+    if (!(await mayUse(userId, kind))) return { ok: false, reason: "NOT_AVAILABLE" };
     // Migraciones verifies the number together with the holder's birth date: the one
     // typed when adding, or else the holder's profile.
     let holderBirthDate: Date | null = null;
@@ -343,10 +360,16 @@ export function createTrackerService(deps: {
     reference: string,
     birthDate?: Date | null,
   ): Promise<TramitePreviewResult> {
+    if (!(await mayUse(userId, kind))) return { ok: false, reason: "NOT_AVAILABLE" };
     const existing = await prisma.tracker.findFirst({
       where: { userId, kind, reference },
     });
     if (existing) return { ok: false, reason: "ALREADY_EXISTS" };
+    if (isManualKind(kind)) {
+      // nothing to read: the source is updated by hand, so only a place is needed
+      const gate = await addGate(userId);
+      return gate === "OK" ? { ok: true, header: {} } : { ok: false, reason: gate };
+    }
     let holderBirthDate: Date | null = null;
     if (isDnmKind(kind)) {
       holderBirthDate =
@@ -426,10 +449,11 @@ export function createTrackerService(deps: {
     birthDate?: Date | null,
   ): Promise<"OK" | "NOT_ALLOWED" | "ALREADY_EXISTS"> {
     const tracker = await prisma.tracker.findFirst({
-      where: { id: trackerId, userId, kind: { in: ["RENAPER", "CORREO", "DNM_DNI", "DNM_CITIZENSHIP"] }, status: "ACTIVE" },
+      where: { id: trackerId, userId, kind: { in: ["RENAPER", "CORREO", "OCASA", "DNM_DNI", "DNM_CITIZENSHIP"] }, status: "ACTIVE" },
       include: { snapshot: true },
     });
     if (!tracker || !replaceState(tracker, now()).canReplace) return "NOT_ALLOWED";
+    if (tracker.kind === "OCASA") newReference = onlyDigits(newReference).padStart(OCASA_NUMBER_LENGTH, "0");
     // a Correo reference ("<form>:<…>") only fits a Correo slot, and a Correo slot takes only valid ones
     if (tracker.kind === "CORREO" ? normalizeCorreoReference(newReference) === null : newReference.includes(":")) {
       return "NOT_ALLOWED";
@@ -738,7 +762,7 @@ export function createTrackerService(deps: {
   async function applyResult(
     tracker: Tracker,
     data: { header: TrackerHeaderFields; steps: TrackerStep[]; finished: boolean },
-    options: { announceFinish?: boolean } = {},
+    options: { announceFinish?: boolean; silent?: boolean } = {},
   ): Promise<void> {
     const hash = contentHash(data.header, data.steps);
     // a source may say a case is over by itself, or its status may be a final one (see FINAL_STATUSES)
@@ -819,7 +843,12 @@ export function createTrackerService(deps: {
     const base = now().getTime();
     const latest = data.steps.length ? data.steps[data.steps.length - 1]! : null;
 
-    if (!tracker.initialNotified && !muted) {
+    if (options.silent) {
+      // read by hand: the person just looked at it, so no notice; the case counts as reported
+      if (!tracker.initialNotified) {
+        operations.push(prisma.tracker.update({ where: { id: tracker.id }, data: { initialNotified: true } }));
+      }
+    } else if (!tracker.initialNotified && !muted) {
       // "Case added" report: the latest stage right after the first read.
       const payload: EventPayload = {
         step: latest,
@@ -1088,9 +1117,40 @@ export function createTrackerService(deps: {
     });
   }
 
+  /**
+   * Updates a manual source (OCASA) from the page a person copied. Only the number and the stages are taken from
+   * the text; a page of another shipment is refused. No notices are sent: the person is looking at it.
+   */
+  async function refreshManual(
+    userId: string,
+    trackerId: string,
+    text: string,
+  ): Promise<
+    { ok: true; added: number } | { ok: false; reason: "NOT_FOUND" | "NOT_AVAILABLE" | "NO_STEPS" | "MISMATCH" }
+  > {
+    const tracker = await prisma.tracker.findFirst({ where: { id: trackerId, userId, status: "ACTIVE" } });
+    if (!tracker || !isManualKind(tracker.kind)) return { ok: false, reason: "NOT_FOUND" };
+    if (!(await mayUse(userId, tracker.kind))) return { ok: false, reason: "NOT_AVAILABLE" };
+    const page = parseOcasaText(text, now());
+    if (page.steps.length === 0) return { ok: false, reason: "NO_STEPS" };
+    const shown = page.number ? page.number.replace(/^0+/, "") : null;
+    if (shown !== null && shown !== tracker.reference.replace(/^0+/, "")) return { ok: false, reason: "MISMATCH" };
+    const previous = await prisma.trackerSnapshot.findUnique({ where: { trackerId: tracker.id } });
+    const known = new Set(((previous?.steps ?? []) as unknown as TrackerStep[]).map(stepKey));
+    const added = page.steps.filter((step) => !known.has(stepKey(step))).length;
+    const latest = page.steps[page.steps.length - 1]!;
+    await applyResult(
+      tracker,
+      { header: { status: latest.title, statusDate: latest.date.slice(0, 10) }, steps: page.steps, finished: false },
+      { silent: true },
+    );
+    return { ok: true, added };
+  }
+
   return {
     list,
     addTramite,
+    refreshManual,
     previewTramite,
     closeFinished,
     statusStats,

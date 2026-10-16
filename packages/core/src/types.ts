@@ -30,6 +30,8 @@ export interface CoreDeps {
   scraper: Scraper;
   /** Injectable clock for tests. */
   now?: () => Date;
+  /** Source kinds hidden from ordinary accounts (default: the list in the shared config). */
+  earlyAccessKinds?: readonly string[];
 }
 
 /** User as exposed to the application (no secrets, JSON-safe). */
@@ -50,4 +52,6 @@ export interface UserDto {
   onboardingDone: boolean;
   /** Staff role; USER for customers. */
   role: "USER" | "SUPPORT" | "ADMIN";
+  /** Staff or an account with the early-access flag: may use services not open to everyone yet. */
+  earlyAccess: boolean;
 }

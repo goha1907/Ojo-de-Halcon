@@ -56,6 +56,7 @@ export function makeCore(options: {
   now?: () => Date;
   verification?: boolean;
   mailer?: Mailer;
+  earlyAccessKinds?: readonly string[];
 } = {}) {
   return createCore({
     prisma,
@@ -66,6 +67,7 @@ export function makeCore(options: {
     mailer: options.mailer ?? makeMailbox().mailer,
     scraper: { ...unusedScraper, ...options.scraper },
     now: options.now ?? (() => new Date()),
+    ...(options.earlyAccessKinds ? { earlyAccessKinds: options.earlyAccessKinds } : {}),
   });
 }
 

@@ -16,11 +16,13 @@ export function AddTrackerHost({
   lock,
   usage,
   defaultBirthDate,
+  earlyAccess = false,
 }: {
   defaultJurisdiction: string | null;
   lock: "trial" | "expired" | null;
   usage: { used: number; limit: number } | null;
   defaultBirthDate: string | null;
+  earlyAccess?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   // Bumped on every open so the form starts fresh.
@@ -46,6 +48,7 @@ export function AddTrackerHost({
       lock={lock}
       usage={usage}
       defaultBirthDate={defaultBirthDate}
+      earlyAccess={earlyAccess}
       {...(request.kind ? { initialKind: request.kind } : {})}
       fixedKind={Boolean(request.fixed && request.kind)}
     />
