@@ -1,8 +1,98 @@
 @import "tailwindcss";
 @source "../../../../packages/ui/src";
 
-@theme {
+/* `dark:` works under `<html data-theme="dark">`, the same switch the colour tokens below use. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Colour tokens, the single source of truth (see docs/DESIGN.md). The brand is monochrome:
+ * graphite on light, white on dark. Utilities: bg-surface, text-fg-muted, border-line, bg-brand, ...
+ */
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --bg-subtle: #f8fafc;
+  --surface: #ffffff;
+  --line: #e5e7eb;
+  --fg: #111827;
+  --fg-muted: #6b7280;
+  /* decorative and disabled only: 2.6:1 on white, never for text people must read */
+  --fg-subtle: #94a3b8;
+  --brand: #1f2937;
+  --brand-hover: #111827;
+  --brand-fg: #ffffff;
+  --ring: #1f2937;
+  --success: #10b981;
+  --success-bg: #ecfdf5;
+  --success-fg: #047857;
+  --warning: #f59e0b;
+  --warning-bg: #fffbeb;
+  --warning-fg: #b45309;
+  --error: #ef4444;
+  --error-bg: #fef2f2;
+  --error-fg: #b91c1c;
+  --info: #3b82f6;
+  --info-bg: #eff6ff;
+  --info-fg: #1d4ed8;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f172a;
+  --bg-subtle: #1e293b;
+  --surface: #1e293b;
+  --line: #334155;
+  --fg: #f9fafb;
+  --fg-muted: #cbd5e1;
+  --fg-subtle: #94a3b8;
+  --brand: #ffffff;
+  --brand-hover: #e5e7eb;
+  --brand-fg: #0f172a;
+  --ring: #ffffff;
+  --success: #34d399;
+  --success-bg: #064e3b;
+  --success-fg: #6ee7b7;
+  --warning: #fbbf24;
+  --warning-bg: #78350f;
+  --warning-fg: #fcd34d;
+  --error: #f87171;
+  --error-bg: #7f1d1d;
+  --error-fg: #fca5a5;
+  --info: #60a5fa;
+  --info-bg: #1e3a8a;
+  --info-fg: #93c5fd;
+}
+
+@theme inline {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --color-bg: var(--bg);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-fg: var(--brand-fg);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-success-fg: var(--success-fg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-fg: var(--warning-fg);
+  --color-error: var(--error);
+  --color-error-bg: var(--error-bg);
+  --color-error-fg: var(--error-fg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  --color-info-fg: var(--info-fg);
+}
+
+/* Legacy blue palette: remove once every component is moved to the tokens above. */
+@theme {
   --color-brand-50: #eef6ff;
   --color-brand-600: #1d5fd1;
   --color-brand-700: #184fb0;
