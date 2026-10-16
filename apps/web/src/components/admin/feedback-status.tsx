@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@ojo/ui";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiRequest } from "@/lib/api-client";
@@ -21,18 +22,14 @@ export function FeedbackStatus({ id, status }: { id: string; status: string }) {
     }
   }
   return (
-    <select
+    <Select
+      size="sm"
+      className="w-32"
+      aria-label="Message status"
       value={value}
       disabled={busy}
-      onChange={(e) => void change(e.target.value)}
-      className="rounded-field border border-line bg-surface px-2 py-1 text-sm text-fg focus-visible:outline-2 focus-visible:outline-ring"
-      aria-label="Message status"
-    >
-      {STATUSES.map((item) => (
-        <option key={item} value={item}>
-          {item.charAt(0) + item.slice(1).toLowerCase()}
-        </option>
-      ))}
-    </select>
+      onChange={(next) => void change(next)}
+      options={STATUSES.map((item) => ({ value: item, label: item.charAt(0) + item.slice(1).toLowerCase() }))}
+    />
   );
 }

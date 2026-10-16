@@ -28,6 +28,13 @@ export const EyeIcon = icon(
     <circle cx="12" cy="12" r="3" />
   </>,
 );
+export const EyeOffIcon = icon(
+  <>
+    <path d="M10.6 5.7A10.8 10.8 0 0 1 12 5.5c6.4 0 10 6.5 10 6.5a17.5 17.5 0 0 1-3 3.8M6.4 6.9C3.7 8.6 2 12 2 12s3.6 6.5 10 6.5c1.5 0 2.8-.3 4-.9" />
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    <path d="M4 4l16 16" />
+  </>,
+);
 export const BellIcon = icon(
   <>
     <path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15L6 16z" />

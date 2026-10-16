@@ -116,7 +116,7 @@ export function ProfileFields({ state }: { state: ProfileFieldsState }) {
         options={courts}
         value={values.pjnJurisdiction}
         error={errors.pjnJurisdiction}
-        onChange={(e) => setValues({ ...values, pjnJurisdiction: e.target.value })}
+        onChange={(pjnJurisdiction) => setValues({ ...values, pjnJurisdiction })}
       />
     </div>
   );

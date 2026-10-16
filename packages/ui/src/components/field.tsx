@@ -1,6 +1,8 @@
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import type { InputHTMLAttributes, ReactNode } from "react";
 import { useId } from "react";
 import { cn } from "../lib/cn";
+import { Select } from "./select";
+import type { SelectOption } from "./select-logic";
 
 export interface FieldShellProps {
   id: string;
@@ -43,7 +45,7 @@ export function TextField({ label, error, hint, className, ...rest }: TextFieldP
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}
         className={cn(
-          "block w-full rounded-lg border bg-surface px-3 py-2 text-sm text-fg shadow-sm",
+          "block w-full rounded-field border bg-surface px-3 py-2 text-sm text-fg shadow-sm",
           "placeholder:text-fg-subtle focus:outline-2 focus:outline-offset-0 focus:outline-ring",
           error ? "border-error" : "border-line",
           className,
@@ -84,43 +86,25 @@ export function CheckboxField({ label, error, className, ...rest }: CheckboxFiel
   );
 }
 
-export interface SelectOption {
-  value: string;
-  label: string;
-}
-
-export interface SelectFieldProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "id"> {
+export interface SelectFieldProps {
   label: ReactNode;
+  value: string;
+  onChange: (value: string) => void;
   options: readonly SelectOption[];
   placeholder?: string;
   error?: string | undefined;
   hint?: ReactNode;
+  disabled?: boolean;
+  name?: string;
+  className?: string;
 }
 
-/** Labeled dropdown; `placeholder` adds an empty first option. */
-export function SelectField({ label, options, placeholder, error, hint, className, ...rest }: SelectFieldProps) {
+/** Labeled drop-down list (the project's own, see `Select`); `placeholder` shows while the value is empty. */
+export function SelectField({ label, error, hint, className, ...rest }: SelectFieldProps) {
   const id = useId();
   return (
     <FieldShell id={id} label={label} error={error} hint={hint}>
-      <select
-        id={id}
-        aria-invalid={Boolean(error)}
-        aria-describedby={error ? `${id}-error` : undefined}
-        className={cn(
-          "block w-full rounded-lg border bg-surface px-3 py-2 text-sm text-fg shadow-sm",
-          "focus:outline-2 focus:outline-offset-0 focus:outline-ring",
-          error ? "border-error" : "border-line",
-          className,
-        )}
-        {...rest}
-      >
-        {placeholder !== undefined && <option value="">{placeholder}</option>}
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <Select id={id} invalid={Boolean(error)} aria-describedby={error ? `${id}-error` : undefined} className={className} {...rest} />
     </FieldShell>
   );
 }

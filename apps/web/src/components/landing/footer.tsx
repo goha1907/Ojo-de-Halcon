@@ -2,7 +2,7 @@ import { APP_CONFIG, ROUTES, type TranslateFn } from "@ojo/shared";
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { LegalLinks } from "./legal-links";
-import { PreferenceSelectors } from "./preference-selectors";
+import { LanguageSelect } from "./preference-selectors";
 import { LANDING_SECTIONS } from "./sections";
 
 /** Accepted payment methods: logo files live in `public/payments` (official artwork, 2x). */
@@ -50,7 +50,7 @@ export function LandingFooter({ t }: { t: TranslateFn }) {
             {t("landing.footer.copyright", { year: new Date().getFullYear() })}
           </span>
           <div className="flex justify-center">
-            <PreferenceSelectors t={t} className="flex-wrap justify-center" />
+            <LanguageSelect t={t} />
           </div>
           <div className="flex items-center justify-center gap-2 md:justify-end">
             <span>{t("landing.footer.payments")}:</span>

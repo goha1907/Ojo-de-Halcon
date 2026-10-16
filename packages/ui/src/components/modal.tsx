@@ -32,7 +32,7 @@ export function Modal({ open, onClose, title, closeLabel, children, className }:
         if (event.target === ref.current) onClose();
       }}
       className={cn(
-        "m-auto w-[min(32rem,calc(100vw-2rem))] rounded-xl border border-line bg-surface p-0 text-fg shadow-xl",
+        "m-auto w-[min(32rem,calc(100vw-2rem))] rounded-field border border-line bg-surface p-0 text-fg shadow-xl",
         "backdrop:bg-black/40",
         className,
       )}

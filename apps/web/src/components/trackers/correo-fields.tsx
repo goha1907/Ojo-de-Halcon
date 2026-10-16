@@ -56,8 +56,8 @@ export function CorreoFields({
           label={t("track.correo.type")}
           value={value.form}
           options={formOptions}
-          onChange={(e) => {
-            const form = e.target.value as CorreoFormKey;
+          onChange={(next) => {
+            const form = next as CorreoFormKey;
             onChange({ form, producto: defaultProducto(form), number: "" });
           }}
         />
@@ -70,7 +70,7 @@ export function CorreoFields({
               value={value.producto}
               options={products.map((item) => ({ value: item, label: item }))}
               error={errors.producto}
-              onChange={(e) => onChange({ ...value, producto: e.target.value })}
+              onChange={(producto) => onChange({ ...value, producto })}
             />
           </div>
         )}

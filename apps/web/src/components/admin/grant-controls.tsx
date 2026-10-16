@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@ojo/ui";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { ApiError, apiRequest } from "@/lib/api-client";
@@ -72,12 +73,18 @@ export function GiveGrantForm({ userId }: { userId: string }) {
       </label>
       <label className="text-xs text-fg-muted">
         Type
-        <select className={`${INPUT} mt-1 block`} value={kind} onChange={(e) => setKind(e.target.value)}>
-          <option value="GIFT">Gift</option>
-          <option value="BONUS">Bonus</option>
-          <option value="PROMO">Promo</option>
-          <option value="ADMIN">Partner / staff</option>
-        </select>
+        <Select
+          size="sm"
+          className="mt-1 w-44"
+          value={kind}
+          onChange={setKind}
+          options={[
+            { value: "GIFT", label: "Gift" },
+            { value: "BONUS", label: "Bonus" },
+            { value: "PROMO", label: "Promo" },
+            { value: "ADMIN", label: "Partner / staff" },
+          ]}
+        />
       </label>
       <label className="text-xs text-fg-muted">
         Valid until (UTC, end of day)

@@ -11,7 +11,7 @@ const TONE_CLASSES: Record<Tone, string> = {
 
 export function Alert({ tone = "info", children }: { tone?: Tone; children: ReactNode }) {
   return (
-    <div role={tone === "error" ? "alert" : "status"} className={cn("rounded-lg border px-3 py-2 text-sm", TONE_CLASSES[tone])}>
+    <div role={tone === "error" ? "alert" : "status"} className={cn("rounded-field border px-3 py-2 text-sm", TONE_CLASSES[tone])}>
       {children}
     </div>
   );

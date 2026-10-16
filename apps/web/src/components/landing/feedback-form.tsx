@@ -73,7 +73,7 @@ export function FeedbackForm({ defaultEmail }: { defaultEmail: string }) {
           label={t("feedback.topic")}
           value={topic}
           options={topics}
-          onChange={(event) => setTopic(event.target.value)}
+          onChange={setTopic}
         />
         <TextField
           label={t("feedback.name")}

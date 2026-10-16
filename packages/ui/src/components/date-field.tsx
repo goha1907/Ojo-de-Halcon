@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { cn } from "../lib/cn";
+import { Select } from "./select";
 
 export interface DateParts {
   day: string;
@@ -22,10 +22,6 @@ export interface DateFieldProps {
   error?: string | undefined;
 }
 
-const SELECT_BASE =
-  "block w-full rounded-lg border bg-surface px-3 py-2 text-sm text-fg shadow-sm " +
-  "focus:outline-2 focus:outline-offset-0 focus:outline-ring";
-
 /**
  * Date entered with three dropdowns (day / month / year): the format cannot
  * be typed wrong. Picking a shorter month or a non-leap year drops an
@@ -33,13 +29,17 @@ const SELECT_BASE =
  */
 export function DateField({ label, value, onChange, labels, monthNames, years, daysInMonth, error }: DateFieldProps) {
   const id = useId();
-  const border = error ? "border-error" : "border-line";
   const yearNumber = value.year ? Number(value.year) : null;
   const monthNumber = value.month ? Number(value.month) : null;
   const dayCount = monthNumber ? daysInMonth(yearNumber, monthNumber) : 31;
 
   // Keep a saved value selectable even if it falls outside the offered range.
   const yearOptions = yearNumber && !years.includes(yearNumber) ? [yearNumber, ...years] : years;
+
+  // the first entry of each list is the placeholder: picking it clears that part
+  const dayOptions = [{ value: "", label: labels.day }, ...Array.from({ length: dayCount }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))];
+  const monthOptions = [{ value: "", label: labels.month }, ...monthNames.map((name, index) => ({ value: String(index + 1), label: name }))];
+  const yearChoices = [{ value: "", label: labels.year }, ...yearOptions.map((year) => ({ value: String(year), label: String(year) }))];
 
   function update(next: Partial<DateParts>) {
     const merged = { ...value, ...next };
@@ -55,51 +55,27 @@ export function DateField({ label, value, onChange, labels, monthNames, years, d
     <fieldset className="space-y-1.5" aria-describedby={error ? `${id}-error` : undefined}>
       <legend className="text-sm font-medium text-fg">{label}</legend>
       <div className="grid grid-cols-[1fr_1.6fr_1.1fr] gap-2">
-        <select
+        <Select
           aria-label={labels.day}
-          aria-invalid={Boolean(error)}
-          autoComplete="bday-day"
-          className={cn(SELECT_BASE, border)}
+          invalid={Boolean(error)}
+          options={dayOptions}
           value={value.day}
-          onChange={(e) => update({ day: e.target.value })}
-        >
-          <option value="">{labels.day}</option>
-          {Array.from({ length: dayCount }, (_, i) => i + 1).map((day) => (
-            <option key={day} value={String(day)}>
-              {day}
-            </option>
-          ))}
-        </select>
-        <select
+          onChange={(day) => update({ day })}
+        />
+        <Select
           aria-label={labels.month}
-          aria-invalid={Boolean(error)}
-          autoComplete="bday-month"
-          className={cn(SELECT_BASE, border)}
+          invalid={Boolean(error)}
+          options={monthOptions}
           value={value.month}
-          onChange={(e) => update({ month: e.target.value })}
-        >
-          <option value="">{labels.month}</option>
-          {monthNames.map((name, index) => (
-            <option key={name} value={String(index + 1)}>
-              {name}
-            </option>
-          ))}
-        </select>
-        <select
+          onChange={(month) => update({ month })}
+        />
+        <Select
           aria-label={labels.year}
-          aria-invalid={Boolean(error)}
-          autoComplete="bday-year"
-          className={cn(SELECT_BASE, border)}
+          invalid={Boolean(error)}
+          options={yearChoices}
           value={value.year}
-          onChange={(e) => update({ year: e.target.value })}
-        >
-          <option value="">{labels.year}</option>
-          {yearOptions.map((year) => (
-            <option key={year} value={String(year)}>
-              {year}
-            </option>
-          ))}
-        </select>
+          onChange={(year) => update({ year })}
+        />
       </div>
       {error && (
         <p id={`${id}-error`} role="alert" className="text-xs text-error-fg">

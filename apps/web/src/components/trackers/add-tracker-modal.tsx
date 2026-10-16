@@ -231,8 +231,8 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
             label={t("track.kind")}
             value={kind}
             options={kindOptions}
-            onChange={(e) => {
-              setKind(e.target.value as TrackerKindValue);
+            onChange={(next) => {
+              setKind(next as TrackerKindValue);
               setErrors({});
             }}
           />
@@ -325,7 +325,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
             value={jurisdiction}
             options={courtOptions}
             error={errors.jurisdiction}
-            onChange={(e) => setJurisdiction(e.target.value)}
+            onChange={setJurisdiction}
           />
         )}
         {isCorreo ? (

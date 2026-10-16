@@ -23,7 +23,7 @@ export function CollapsibleCard({
   return (
     <details
       open={defaultOpen}
-      className={cn("group rounded-2xl border border-line bg-surface shadow-sm", className)}
+      className={cn("group rounded-card border border-line bg-surface shadow-sm", className)}
     >
       <summary className="flex cursor-pointer list-none items-start justify-between gap-3 p-6 [&::-webkit-details-marker]:hidden">
         <span className="min-w-0 space-y-1">

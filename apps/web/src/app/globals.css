@@ -151,6 +151,11 @@ html {
   to { --ring-angle: 360deg; }
 }
 
+@keyframes select-pop {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
 /* blocks fade in as they scroll into view; where unsupported they are simply there */
 @supports (animation-timeline: view()) {
   .reveal {
@@ -169,6 +174,7 @@ html {
   animation: ping-soft 1.8s ease-out infinite;
 }
 .row-flash { animation: row-flash 1.6s ease; }
+.select-menu { animation: select-pop 0.12s ease-out; }
 .timeline-new { animation: dot-glow 2s ease-in-out infinite; }
 
 /* light sweep over primary buttons on hover */
@@ -201,7 +207,7 @@ html {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal, .marquee-track, .live-dot::after, .row-flash, .timeline-new, .popular-ring::after {
+  .reveal, .marquee-track, .live-dot::after, .row-flash, .timeline-new, .popular-ring::after, .select-menu {
     animation: none;
   }
   .btn-shine::after { display: none; }

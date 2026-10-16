@@ -1,26 +1,19 @@
 import type { TranslateFn } from "@ojo/shared";
 import { cn } from "@ojo/ui";
+import { LanguageSelectControl } from "./language-select";
 import { ThemeSelector, type ThemeLabels } from "@/components/theme/theme-selector";
 import { getTheme } from "@/server/theme";
 
 /** Language picker, shown as a short code. Only the first option works for now; the rest are announced. Prices are in ARS only. */
-export function LanguageSelect({ t, className }: { t: TranslateFn; className?: string }) {
+export function LanguageSelect({ t }: { t: TranslateFn }) {
   return (
-    <select
-      aria-label={t("landing.lang")}
-      defaultValue="ru"
-      className={cn(
-        "w-[4.5rem] rounded-full border border-line bg-surface px-3 py-1.5 text-sm font-medium text-fg focus-visible:outline-2 focus-visible:outline-ring",
-        className,
-      )}
-    >
-      <option value="ru" title="Русский">
-        RU
-      </option>
-      <option value="es" disabled title="Español">
-        {t("landing.soonOption", { name: "ES" })}
-      </option>
-    </select>
+    <LanguageSelectControl
+      label={t("landing.lang")}
+      options={[
+        { value: "ru", label: "RU" },
+        { value: "es", label: t("landing.soonOption", { name: "ES" }), disabled: true },
+      ]}
+    />
   );
 }
 

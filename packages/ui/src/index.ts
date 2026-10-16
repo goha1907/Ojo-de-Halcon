@@ -9,11 +9,12 @@ export {
   TextField,
   type CheckboxFieldProps,
   type SelectFieldProps,
-  type SelectOption,
   type TextFieldProps,
 } from "./components/field";
 export { PasswordField, type PasswordFieldProps } from "./components/password-field";
 export { Modal, type ModalProps } from "./components/modal";
+export { Select, type SelectProps } from "./components/select";
+export { type SelectOption, firstEnabledIndex, lastEnabledIndex, matchPrefix, nextEnabledIndex } from "./components/select-logic";
 export {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -24,6 +25,7 @@ export {
   ClockIcon,
   ContrastIcon,
   EyeIcon,
+  EyeOffIcon,
   GlobeIcon,
   HelpIcon,
   IdCardIcon,

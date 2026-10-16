@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Select } from "@ojo/ui";
 import { useT } from "@/components/providers/i18n-provider";
 import { highlightMatches, matchesAll, searchWords } from "@/lib/search";
 import { SearchWordsProvider } from "./search-context";
@@ -167,31 +168,23 @@ export function TrackerBoard({ items, storageKey }: { items: BoardItem[]; storag
           />
           <label className="flex items-center gap-2 text-sm text-fg-muted">
             {t("board.filter.label")}
-            <select
+            <Select
+              size="sm"
+              aria-label={t("board.filter.label")}
               value={filter}
-              onChange={(event) => choose({ filter: event.target.value as Filter })}
-              className="rounded-field border border-line bg-surface px-2 py-1.5 text-sm text-fg"
-            >
-              {visibleFilters.map((name) => (
-                <option key={name} value={name}>
-                  {t(`board.filter.${name}` as never)} ({counts[name]})
-                </option>
-              ))}
-            </select>
+              onChange={(next) => choose({ filter: next as Filter })}
+              options={visibleFilters.map((name) => ({ value: name, label: `${t(`board.filter.${name}` as never)} (${counts[name]})` }))}
+            />
           </label>
           <label className="flex items-center gap-2 text-sm text-fg-muted">
             {t("board.sort.label")}
-            <select
+            <Select
+              size="sm"
+              aria-label={t("board.sort.label")}
               value={sort}
-              onChange={(event) => choose({ sort: event.target.value as Sort })}
-              className="rounded-field border border-line bg-surface px-2 py-1.5 text-sm text-fg"
-            >
-              {(Object.keys(SORTS) as Sort[]).map((name) => (
-                <option key={name} value={name}>
-                  {t(`board.sort.${name}` as never)}
-                </option>
-              ))}
-            </select>
+              onChange={(next) => choose({ sort: next as Sort })}
+              options={(Object.keys(SORTS) as Sort[]).map((name) => ({ value: name, label: t(`board.sort.${name}` as never) }))}
+            />
           </label>
         </div>
       )}
