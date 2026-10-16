@@ -1,6 +1,7 @@
 import { PRICING, TRACKER_KIND_SECTION, ROUTES, sectionHref, settingsHref, type MessageKey } from "@ojo/shared";
 import { Alert, Card } from "@ojo/ui";
 import Link from "next/link";
+import { CopyButton } from "@/components/copy-button";
 import { StatTile } from "@/components/stat-tile";
 import { AddTrackerButton } from "@/components/trackers/add-tracker-button";
 import { SubscriptionSummary } from "@/components/subscription/summary";
@@ -227,10 +228,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     return (
                       <tr key={item.id} className="border-t border-slate-100 align-top">
                         <td className="py-3 pr-3">
-                          <Link href={href} className="font-medium text-slate-900 hover:underline">
-                            {item.label ?? `№ ${displayNumber(item)}`}
-                          </Link>
-                          {item.label && <div className="text-xs text-slate-500">№ {displayNumber(item)}</div>}
+                          <div className="flex items-center gap-2">
+                            <Link href={href} className="font-medium text-slate-900 hover:underline">
+                              {item.label ?? `№ ${displayNumber(item)}`}
+                            </Link>
+                            {!item.label && <CopyButton text={displayNumber(item)} />}
+                          </div>
+                          {item.label && (
+                            <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
+                              № {displayNumber(item)}
+                              <CopyButton text={displayNumber(item)} />
+                            </div>
+                          )}
                         </td>
                         <td className="px-2 py-3 text-slate-600">{sectionLabel(item.kind)}</td>
                         <td className="px-2 py-3 text-slate-800">

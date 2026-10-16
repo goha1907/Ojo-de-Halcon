@@ -159,6 +159,31 @@ describe("free places", () => {
     expect((await core.capacity.get(userId)).granted).toBe(0);
   });
 
+  it("explains a case on a gift place that will need a paid place after the gift ends", async () => {
+    const clock = { at: new Date("2026-10-14T10:00:00Z") };
+    const { core, userId } = await setup(clock);
+    // a gift that ends before the subscription period does, one case on it, five paid places bought
+    await core.grants.give({ userId, kind: "GIFT", cases: 1, expiresAt: new Date(clock.at.getTime() + 10 * DAY) });
+    await core.trackers.addTramite(userId, "RENAPER", NUMBERS[0]!);
+    expect(await core.billing.checkout(userId, 5)).toMatchObject({ ok: true });
+
+    const state = await core.billing.state(userId);
+    expect(state).toMatchObject({
+      paidCases: 5,
+      paidUsedCases: 0,
+      grantedUsedCases: 1,
+      // the five paid places are empty today, but the case needs one of them once the gift is over
+      unusedCases: 5,
+      incomingCases: 1,
+      leavesMarked: 0,
+      nextPeriodCases: 1,
+    });
+    // the rows explain the figure: paid - empty + incoming = next
+    expect(state.paidCases - state.unusedCases - state.freedByFinished + state.incomingCases).toBe(
+      state.nextPeriodCases,
+    );
+  });
+
   it("charges the next period only for the cases the free places do not cover", async () => {
     const clock = { at: new Date("2026-10-14T10:00:00Z") };
     const { core, userId } = await setup(clock);

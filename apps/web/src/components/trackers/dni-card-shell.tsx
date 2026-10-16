@@ -4,6 +4,7 @@ import { API_ROUTES, APP_CONFIG } from "@ojo/shared";
 import { cn } from "@ojo/ui";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type ReactNode } from "react";
+import { CopyButton } from "@/components/copy-button";
 import { useT } from "@/components/providers/i18n-provider";
 import { apiRequest } from "@/lib/api-client";
 import { TONE_STYLES, type StatusTone } from "@/lib/status-tones";
@@ -115,6 +116,7 @@ export function DniCardShell({ id, tone, label, number, summary, renameTitle, to
             label && <span>{label}</span>
           )}
           <small className="whitespace-nowrap font-medium text-slate-500">№ {number}</small>
+          <CopyButton text={number} className="self-center" />
         </div>
         {!editing && <span className="whitespace-nowrap text-xs text-slate-500">{summary}</span>}
         {editing ? (

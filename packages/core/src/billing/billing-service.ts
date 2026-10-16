@@ -38,6 +38,10 @@ export interface BillingStateDto {
   leavesMarked: number;
   freedByFinished: number;
   unusedCases: number;
+  /** Paid places the gift places will still cover at the renewal. */
+  coveredByGiftCases: number;
+  /** Paid places the next period needs for cases now on gift places that end before the renewal. */
+  incomingCases: number;
   /** Paid places the next period is charged for. */
   nextPeriodCases: number;
   /** Cases that completed during the running period (they held a place). */
@@ -142,12 +146,17 @@ export function createBillingService(deps: {
       where: { userId, status: "FINISHED", finishedAt: { gt: running ? periodStart : new Date(at.getTime() - APP_CONFIG.limits.subscriptionDays * DAY_MS) } },
     });
     const next = await nextPaid(userId, count.kept, periodEnd);
-    // paid places that will not be paid for again: what the next period needs is `next`, the rest leaves.
-    // (A case on a free place today may move to a paid one when the free place ends: that place stays.)
-    const leaving = Math.max(0, paid - next);
-    const leavesMarked = Math.min(count.cancelled, leaving);
-    const rest = leaving - leavesMarked;
-    const freedByFinished = Math.min(finishedThisPeriod, rest);
+    // How the paid places go from today's to the next period's (they add up: paid - empty + incoming - shrink = next).
+    // Empty now: nobody sits on them (finished cases freed some). The count of paid places in use changes by
+    // `delta`: a case on a gift place that ends before the renewal moves to a paid one (incoming), while
+    // marked cases and cases a gift place will still cover stop needing one (shrink).
+    const paidUsed = Math.max(0, count.active - freeNow);
+    const emptyPaid = Math.max(0, paid - paidUsed);
+    const delta = next - paidUsed;
+    const incoming = Math.max(0, delta);
+    const shrink = Math.max(0, -delta);
+    const leavesMarked = Math.min(count.cancelled, shrink);
+    const freedByFinished = Math.min(finishedThisPeriod, emptyPaid);
     return {
       paidCases: paid,
       activeCases: count.active,
@@ -157,8 +166,10 @@ export function createBillingService(deps: {
       paidUsedCases: Math.max(0, count.active - freeNow),
       capacity: paid + freeNow,
       freedByFinished,
-      unusedCases: rest - freedByFinished,
+      unusedCases: emptyPaid - freedByFinished,
       leavesMarked,
+      coveredByGiftCases: shrink - leavesMarked,
+      incomingCases: incoming,
       nextPeriodCases: next,
       finishedThisPeriod,
       keptCases: count.kept,

@@ -46,4 +46,27 @@ describe("payment stub", () => {
     await prisma.tracker.deleteMany({ where: { userId } });
     expect((await core.access.stub(userId, "resetTrial")).plan).toBe("granted");
   });
+
+  it("adds and removes gift places and clears only the test payment log", async () => {
+    const { core, userId } = await user();
+    await core.access.stub(userId, "giftAdd");
+    await core.access.stub(userId, "giftAdd");
+    expect(await core.access.get(userId)).toMatchObject({ giftCases: 2, trialCases: 0 });
+    await core.access.stub(userId, "giftRemove");
+    expect(await core.access.get(userId)).toMatchObject({ giftCases: 1 });
+    await core.access.stub(userId, "giftRemove");
+    expect(await core.access.get(userId)).toMatchObject({ plan: "none", giftCases: 0 });
+    await core.access.stub(userId, "giftRemove"); // nothing to take back: no error
+
+    await core.billing.checkout(userId, 1);
+    await prisma.payment.create({
+      data: { userId, amount: 5000, currency: "ARS", kind: "subscription", casesDelta: 1, provider: "mercadopago" },
+    });
+    expect(await prisma.payment.count({ where: { userId } })).toBe(2);
+    await core.access.stub(userId, "cancel");
+    // the test record is gone, the real one stays
+    const left = await prisma.payment.findMany({ where: { userId } });
+    expect(left.map((row) => row.provider)).toEqual(["mercadopago"]);
+    expect(await core.billing.state(userId)).toMatchObject({ paidCases: 0 });
+  });
 });

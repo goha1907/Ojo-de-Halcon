@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@ojo/db";
-import type { CapacityService } from "../capacity/capacity-service";
+import { activeGrantWhere, type CapacityService } from "../capacity/capacity-service";
 import { trialGrantData, type GrantService } from "../grants/grant-service";
 
 /**
@@ -88,15 +88,43 @@ export function createAccessService(deps: {
   }
 
   /**
-   * TEST ONLY: revokes the subscription or starts a fresh trial (payment goes through billing). The caller
-   * (web route) must check the PAYMENTS_STUB flag; real billing replaces this.
+   * TEST ONLY (the web route checks the PAYMENTS_STUB flag; real billing replaces this):
+   * - cancel: ends the subscription and clears the test payment log (only records of the test provider,
+   *   so real payments are never touched);
+   * - resetTrial: starts a fresh trial;
+   * - giftAdd / giftRemove: adds one gift place for 30 days / takes one back.
    */
-  async function stub(userId: string, action: "cancel" | "resetTrial"): Promise<AccessState> {
+  async function stub(
+    userId: string,
+    action: "cancel" | "resetTrial" | "giftAdd" | "giftRemove",
+  ): Promise<AccessState> {
     if (action === "cancel") {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { subscriptionUntil: null, subscriptionCancelledAt: null },
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: userId },
+          data: { subscriptionUntil: null, subscriptionCancelledAt: null, paidCases: 0 },
+        }),
+        prisma.payment.deleteMany({ where: { userId, provider: "stub" } }),
+        prisma.paymentIntent.deleteMany({ where: { userId, provider: "stub" } }),
+      ]);
+    } else if (action === "giftAdd") {
+      await grants.give({
+        userId,
+        kind: "GIFT",
+        cases: 1,
+        expiresAt: new Date(now().getTime() + 30 * 86_400_000),
+        grantedBy: "test",
       });
+    } else if (action === "giftRemove") {
+      const latest = await prisma.freeGrant.findFirst({
+        where: { userId, kind: { not: "TRIAL" }, ...activeGrantWhere(now()) },
+        orderBy: { createdAt: "desc" },
+      });
+      if (latest && latest.cases > 1) {
+        await prisma.freeGrant.update({ where: { id: latest.id }, data: { cases: latest.cases - 1 } });
+      } else if (latest) {
+        await grants.revoke(latest.id);
+      }
     } else {
       await prisma.$transaction([
         grants.endTrial(userId),

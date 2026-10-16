@@ -82,18 +82,22 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
   const price = subscribed ? casesPrice(target) - casesPrice(billing.paidCases) : casesPrice(target);
   // what the subscription holds now: without one (free places only, or none) it holds nothing
   const currentTotal = subscribed ? billing.paidCases : 0;
-  // the places bought now stay empty until cases are added to them, so they count as unused
+  // the places bought now stay empty until cases are added to them: a row of their own, outside the sum
   const added = subscribed && valid ? count : 0;
-  const nowTotal = subscribed ? billing.paidCases + added : currentTotal;
+  const nowTotal = currentTotal;
+  const incoming = subscribed ? billing.incomingCases : 0;
   const leaves = subscribed
     ? [
         { key: "marked", label: t("settings.sub.leaves.marked"), value: billing.leavesMarked },
-        { key: "finished", label: t("settings.sub.leaves.finished"), value: billing.freedByFinished },
-        { key: "unused", label: t("settings.sub.leaves.unused"), value: billing.unusedCases + added },
+        { key: "covered", label: t("settings.sub.leaves.covered"), value: billing.coveredByGiftCases },
+        // empty paid places, the ones freed by finished cases included
+        { key: "unused", label: t("settings.sub.leaves.unused"), value: billing.unusedCases + billing.freedByFinished },
       ].filter((row) => row.value > 0)
     : [];
   // paid places the next period is charged for: what the cases that stay need beyond the free places
   const nextTotal = subscribed ? billing.nextPeriodCases : valid ? target : currentTotal;
+  // what the next period will cost: the paid places it needs (a new subscription is the number typed)
+  const nextPrice = subscribed ? billing.nextPeriodPrice : valid ? casesPrice(target) : 0;
   // cancelled = it will not renew; the cases keep running until the paid period ends
   const cancelled = subscribed && !billing.renews;
 
@@ -214,6 +218,15 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
                 {!subscribed && count > 0 && count < minBuy && (
                   <p className="text-xs text-amber-700">{t("settings.sub.minHint", { min: minBuy })}</p>
                 )}
+                <div className="space-y-3 pt-3">
+                  <div className="flex items-baseline justify-between gap-3 border-t border-slate-200 pt-3">
+                    <span className="text-slate-600">{t("settings.sub.toPay")}</span>
+                    <span className="text-xl font-bold text-slate-900">{money(valid ? price : 0)}</span>
+                  </div>
+                  <Button fullWidth disabled={!valid || price <= 0} onClick={() => setPaying(true)}>
+                    {t("settings.sub.buyNow")}
+                  </Button>
+                </div>
               </div>
               <div className="space-y-3 rounded-xl bg-slate-50 p-4 text-sm">
                 <div className="flex justify-between gap-3">
@@ -226,6 +239,18 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
                     <span className="font-medium text-slate-700">−{row.value}</span>
                   </div>
                 ))}
+                {incoming > 0 && (
+                  <div className="flex justify-between gap-3 pl-3 text-xs">
+                    <span className="text-slate-500">{t("settings.sub.leaves.incoming")}</span>
+                    <span className="font-medium text-slate-700">+{incoming}</span>
+                  </div>
+                )}
+                {added > 0 && (
+                  <div className="flex justify-between gap-3 pl-3 text-xs">
+                    <span className="text-slate-500">{t("settings.sub.leaves.added")}</span>
+                    <span className="font-medium text-slate-700">{added}</span>
+                  </div>
+                )}
                 <div className="flex justify-between gap-3">
                   <span className="text-slate-500">{t("settings.sub.willHave")}</span>
                   <span className="font-medium text-slate-900">{nextTotal}</span>
@@ -235,12 +260,9 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
                   <p className="text-xs text-slate-500">{t("settings.sub.giftFirst", { count: giftCases })}</p>
                 )}
                 <div className="flex items-baseline justify-between gap-3 border-t border-slate-200 pt-3">
-                  <span className="text-slate-600">{t("settings.sub.toPay")}</span>
-                  <span className="text-xl font-bold text-slate-900">{money(valid ? price : 0)}</span>
+                  <span className="text-slate-600">{t("settings.sub.nextCost")}</span>
+                  <span className="text-lg font-bold text-slate-900">{money(nextPrice)}</span>
                 </div>
-                <Button fullWidth disabled={!valid || price <= 0} onClick={() => setPaying(true)}>
-                  {t("settings.sub.buyNow")}
-                </Button>
               </div>
             </div>
           )}
@@ -332,6 +354,39 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
                     }
                   >
                     {t("settings.access.stubCancel")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    loading={busy === "giftAdd"}
+                    onClick={() =>
+                      void run("giftAdd", () =>
+                        apiRequest(API_ROUTES.billingStub, { method: "POST", body: { action: "giftAdd" } }),
+                      )
+                    }
+                  >
+                    {t("settings.access.stubGiftAdd")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    loading={busy === "giftRemove"}
+                    onClick={() =>
+                      void run("giftRemove", () =>
+                        apiRequest(API_ROUTES.billingStub, { method: "POST", body: { action: "giftRemove" } }),
+                      )
+                    }
+                  >
+                    {t("settings.access.stubGiftRemove")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    loading={busy === "resetTrial"}
+                    onClick={() =>
+                      void run("resetTrial", () =>
+                        apiRequest(API_ROUTES.billingStub, { method: "POST", body: { action: "resetTrial" } }),
+                      )
+                    }
+                  >
+                    {t("settings.access.stubResetTrial")}
                   </Button>
                 </div>
               </details>
