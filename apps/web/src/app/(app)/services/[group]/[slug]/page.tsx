@@ -12,7 +12,6 @@ import { Alert, Card } from "@ojo/ui";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddTrackerButton } from "@/components/trackers/add-tracker-button";
-import { CourtFinder } from "@/components/trackers/court-finder";
 import { DniCard } from "@/components/trackers/dni-card";
 import { TrackerBoard } from "@/components/trackers/tracker-board";
 import { currentStatus, displayNumber, lastChange } from "@/lib/tracker-view";
@@ -46,7 +45,6 @@ export default async function ServicePage({
   const access = await core.access.get(user.id);
   const subscription = { active: access.plan === "subscription", periodEnd: access.until };
   // with no court case yet the user is offered to find theirs by the profile name
-  const offerFinder = kind === "PJN" && trackers.length === 0;
 
   return (
     <>
@@ -68,7 +66,6 @@ export default async function ServicePage({
 
       {kind ? (
         <>
-          {offerFinder && <CourtFinder />}
           <TrackerBoard
             storageKey={`ojo.board.${service.group}.${service.slug}`}
             items={trackers.map((tracker) => ({

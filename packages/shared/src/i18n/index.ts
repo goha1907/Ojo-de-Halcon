@@ -1,10 +1,11 @@
 import { APP_CONFIG, LOCALES, type Locale } from "../config/app";
+import { en } from "./en";
 import { es } from "./es";
 import { ru, type MessageKey, type Messages } from "./ru";
 
 export type { MessageKey, Messages };
 
-const DICTIONARIES: Record<Locale, Messages> = { ru, es };
+const DICTIONARIES: Record<Locale, Messages> = { ru, es, en };
 
 export function isLocale(value: unknown): value is Locale {
   return typeof value === "string" && (LOCALES as readonly string[]).includes(value);

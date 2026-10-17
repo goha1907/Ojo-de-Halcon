@@ -10,14 +10,6 @@ export interface ScrapedTramite {
   holder?: string;
 }
 
-export interface PjnPartyRow {
-  expediente: string;
-  dependencia: string;
-  caratula: string;
-  situacion: string;
-  ultima_actuacion: string;
-}
-
 export interface PjnCaseResult {
   header: { expediente: string; dependencia: string; sit_actual: string; caratula: string };
   /** Oldest first; absent for `headerOnly` calls. */
@@ -32,7 +24,6 @@ export interface Scraper {
   correo(reference: string): Promise<ScrapedTramite>;
   /** Migraciones (DNM): needs the holder's birth date as DD/MM/YYYY next to the number. */
   dnm(input: { kind: "DNM_DNI" | "DNM_CITIZENSHIP"; number: string; birthDate: string }): Promise<ScrapedTramite>;
-  pjnParty(input: { jurisdiction: string; name: string }): Promise<PjnPartyRow[]>;
   pjnCase(input: {
     jurisdiction: string;
     number: string;
@@ -135,16 +126,6 @@ export function createProcessScraper(options: ProcessScraperOptions): Scraper {
       call<ScrapedTramite>([kind === "DNM_DNI" ? "dnm-dni" : "dnm-citizenship", "--number", number], {
         SCRAPER_BIRTH_DATE: birthDate,
       }),
-    async pjnParty({ jurisdiction, name }) {
-      const result = await call<{ results: PjnPartyRow[] }>([
-        "pjn-party",
-        "--jurisdiction",
-        jurisdiction,
-        "--name",
-        name,
-      ]);
-      return result.results;
-    },
     pjnCase({ jurisdiction, number, year, headerOnly }) {
       return call<PjnCaseResult>([
         "pjn-case",

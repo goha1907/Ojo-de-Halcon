@@ -7,14 +7,13 @@ import { getCore } from "@/server/core";
 type Context = { params: Promise<{ id: string }> };
 
 /**
- * Discards a court case that is still waiting for confirmation, or frees the
- * slot of a confirmed case when the replacement rule allows it (30 days).
+ * Frees the slot of a case when the replacement rule allows it (30 days).
  */
 export async function DELETE(_request: Request, context: Context) {
   const { id } = await context.params;
   return withUser(async (user) => {
     const trackers = getCore().trackers;
-    const ok = (await trackers.discardPending(user.id, id)) || (await trackers.releaseCase(user.id, id));
+    const ok = await trackers.releaseCase(user.id, id);
     return ok ? NextResponse.json({ ok: true }) : apiError("FORBIDDEN");
   });
 }

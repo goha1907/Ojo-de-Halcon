@@ -98,3 +98,14 @@ describe("profile", () => {
     expect((await prisma.user.findUniqueOrThrow({ where: { id: userId } })).onboardingCompletedAt).toEqual(first);
   });
 });
+
+describe("interface language", () => {
+  it("is kept in the profile, so e-mails and the bot can use it", async () => {
+    const { core, userId } = await register();
+    const session = await core.sessions.create(userId);
+    expect((await core.sessions.getUser(session.token))?.locale).toBe("ru");
+    await core.profile.setLocale(userId, "en");
+    expect((await core.sessions.getUser(session.token))?.locale).toBe("en");
+  });
+});
+

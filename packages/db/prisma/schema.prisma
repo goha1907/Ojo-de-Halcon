@@ -357,3 +357,24 @@ model Payment {
 
   @@index([userId, createdAt])
 }
+
+/// A news entry written in the admin area, one row per language; rows with the same `slug` are one entry.
+/// An entry with the same slug and language as a file in apps/web/content/news replaces that file.
+model NewsPost {
+  id        String   @id @default(cuid())
+  /// `YYYY-MM-DD-name`, also the URL segment.
+  slug      String
+  locale    String
+  /// `YYYY-MM-DD` and `HH:MM` of the publication (orders the list, newest first).
+  date      String
+  time      String   @default("00:00")
+  title     String
+  summary   String   @default("")
+  /// Markdown.
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([slug, locale])
+  @@index([date, time])
+}

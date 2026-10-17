@@ -184,53 +184,6 @@ describe("trackers: PJN", () => {
     actuaciones: [{ orden: 1, fecha: "1/09/2026", oficina: "X", tipo: "ESCRITO", detalle: "PRESENTACION" }],
   };
 
-  it("finds candidates by profile name and ignores other people", async () => {
-    const queries: string[] = [];
-    const core = makeCore({
-      scraper: {
-        pjnParty: async ({ name }) => {
-          queries.push(name);
-          return [
-          { expediente: "CNE 007900/2026", dependencia: "J", caratula: "MEDVEDEV, EGOR S/NAC", situacion: "", ultima_actuacion: "" },
-          { expediente: "CNE 001000/2025", dependencia: "J", caratula: "MEDVEDEV, IVAN S/NAC", situacion: "", ultima_actuacion: "" },
-          ];
-        },
-      },
-    });
-    const userId = await newUser(core);
-    const result = await core.trackers.findPjnByProfile(userId);
-    expect(result).toMatchObject({ ok: true });
-    if (!result.ok) return;
-    expect(result.candidates.map((item) => item.number)).toEqual(["7900"]);
-    // the site is queried as "SURNAME NAME"
-    expect(queries).toEqual(["Medvedev Egor"]);
-  });
-
-  it("does not offer a case that is already tracked", async () => {
-    const core = makeCore({
-      scraper: {
-        pjnParty: async () => [
-          { expediente: "CNE 007900/2026", dependencia: "J", caratula: "MEDVEDEV, EGOR S/NAC", situacion: "", ultima_actuacion: "" },
-        ],
-        pjnCase: async () => ({ header: caseResult.header }),
-      },
-    });
-    const userId = await newUser(core);
-    await core.trackers.startPjn(userId, { jurisdiction: "4", number: "7900", year: "2026" });
-    const result = await core.trackers.findPjnByProfile(userId);
-    expect(result).toEqual({ ok: true, candidates: [] });
-  });
-
-  it("needs a court and a full name before searching", async () => {
-    const core = makeCore();
-    const registered = await core.accounts.register({ email: "b@example.com", password: "password-123" });
-    if (!registered.ok) throw new Error("register failed");
-    expect(await core.trackers.findPjnByProfile(registered.userId)).toEqual({
-      ok: false,
-      reason: "PROFILE_INCOMPLETE",
-    });
-  });
-
   it("parses only the header until the user confirms, then fully", async () => {
     const calls: boolean[] = [];
     const core = makeCore({
@@ -242,15 +195,16 @@ describe("trackers: PJN", () => {
       },
     });
     const userId = await newUser(core);
-    const started = await core.trackers.startPjn(userId, { jurisdiction: "4", number: "7900", year: "2026" });
-    expect(started).toMatchObject({ ok: true });
+    const input = { jurisdiction: "4", number: "7900", year: "2026" };
+    // step one: only the header is read and nothing is stored
+    expect(await core.trackers.previewPjn(userId, input)).toMatchObject({ ok: true });
     expect(calls).toEqual([true]);
+    expect(await core.trackers.list(userId)).toHaveLength(0);
 
-    // pending trackers are never checked
-    expect(await core.trackers.runDue()).toBe(0);
-
-    if (!started.ok) return;
-    expect(await core.trackers.confirmPjn(userId, started.tracker.id)).toBe(true);
+    // step two: the user confirmed; the header read is reused and the case is checked in full next
+    const added = await core.trackers.addPjn(userId, input);
+    expect(added).toMatchObject({ ok: true });
+    expect(calls).toEqual([true]);
     expect(await core.trackers.runDue()).toBe(1);
     expect(calls).toEqual([true, false]);
     const [tracker] = await core.trackers.list(userId);
@@ -258,29 +212,16 @@ describe("trackers: PJN", () => {
     expect(tracker!.header.sit_actual).toBe("GIRO");
   });
 
-  it("lets users discard only an unconfirmed case", async () => {
+  it("keeps the trial to one case", async () => {
     const core = makeCore({
       scraper: { pjnCase: async (input) => (input.headerOnly ? { header: caseResult.header } : caseResult) },
     });
     const userId = await newUser(core);
-    const started = await core.trackers.startPjn(userId, { jurisdiction: "4", number: "7900", year: "2026" });
-    if (!started.ok) throw new Error("start failed");
-    await core.trackers.confirmPjn(userId, started.tracker.id);
-    // confirmed: users cannot remove it themselves
-    expect(await core.trackers.discardPending(userId, started.tracker.id)).toBe(false);
-    expect(await core.trackers.list(userId)).toHaveLength(1);
-
-    const again = await core.trackers.startPjn(userId, { jurisdiction: "4", number: "7901", year: "2026" });
-    expect(again).toMatchObject({ ok: false, reason: "SUBSCRIPTION_REQUIRED" });
-  });
-
-  it("discards a case that is still waiting for confirmation", async () => {
-    const core = makeCore({ scraper: { pjnCase: async () => ({ header: caseResult.header }) } });
-    const userId = await newUser(core);
-    const started = await core.trackers.startPjn(userId, { jurisdiction: "4", number: "7900", year: "2026" });
-    if (!started.ok) throw new Error("start failed");
-    expect(await core.trackers.discardPending(userId, started.tracker.id)).toBe(true);
-    expect(await core.trackers.list(userId)).toHaveLength(0);
+    expect(await core.trackers.addPjn(userId, { jurisdiction: "4", number: "7900", year: "2026" })).toMatchObject({ ok: true });
+    expect(await core.trackers.addPjn(userId, { jurisdiction: "4", number: "7901", year: "2026" })).toMatchObject({
+      ok: false,
+      reason: "SUBSCRIPTION_REQUIRED",
+    });
   });
 
   it("reports a case that does not exist", async () => {
@@ -292,7 +233,7 @@ describe("trackers: PJN", () => {
       },
     });
     const userId = await newUser(core);
-    expect(await core.trackers.startPjn(userId, { jurisdiction: "4", number: "99999", year: "2026" })).toEqual({
+    expect(await core.trackers.previewPjn(userId, { jurisdiction: "4", number: "99999", year: "2026" })).toEqual({
       ok: false,
       reason: "NOT_FOUND",
     });
@@ -387,9 +328,8 @@ describe("ordered notifications and the Telegram digest", () => {
   });
 
   async function confirmedCase(core: ReturnType<typeof makeCore>, userId: string) {
-    const started = await core.trackers.startPjn(userId, { jurisdiction: "4", number: "7900", year: "2026" });
-    if (!started.ok) throw new Error("start failed");
-    await core.trackers.confirmPjn(userId, started.tracker.id);
+    const added = await core.trackers.addPjn(userId, { jurisdiction: "4", number: "7900", year: "2026" });
+    if (!added.ok) throw new Error("add failed");
   }
 
   it("creates one event per new stage, oldest first, and no events for the first full read", async () => {
@@ -1210,9 +1150,8 @@ describe("replacing and releasing a case", () => {
       },
     });
     const userId = await newUser(core);
-    const started = await core.trackers.startPjn(userId, { jurisdiction: "4", number: "7900", year: "2026" });
-    if (!started.ok) throw new Error("start failed");
-    await core.trackers.confirmPjn(userId, started.tracker.id);
+    const started = await core.trackers.addPjn(userId, { jurisdiction: "4", number: "7900", year: "2026" });
+    if (!started.ok) throw new Error("add failed");
     await core.trackers.runDue();
     expect(await core.trackers.releaseCase(userId, started.tracker.id)).toBe(false);
     clock = new Date(clock.getTime() + 31 * 86_400_000);

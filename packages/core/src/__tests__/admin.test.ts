@@ -157,3 +157,43 @@ describe("admin: early access", () => {
   });
 });
 
+
+describe("news", () => {
+  const post = (title: string) => ({ title, summary: "s", body: "text" });
+
+  it("saves all languages at once, updates them and removes an emptied language", async () => {
+    const { core, actor } = await setup();
+    const slug = "2026-10-17-hello";
+    const saved = await core.admin.saveNews(actor, {
+      slug,
+      time: "09:30",
+      translations: { ru: post("Привет"), es: post("Hola"), en: post("Hello") },
+    });
+    expect(saved.ok).toBe(true);
+    expect((await core.admin.listNews())[0]).toMatchObject({ slug, date: "2026-10-17", time: "09:30" });
+    expect(Object.keys((await core.admin.listNews())[0]!.translations).sort()).toEqual(["en", "es", "ru"]);
+
+    await core.admin.saveNews(actor, { slug, time: "09:30", translations: { ru: post("Привет!"), es: post(" ") } });
+    const [entry] = await core.admin.listNews();
+    expect(entry!.translations.ru!.title).toBe("Привет!");
+    expect(Object.keys(entry!.translations)).toEqual(["ru"]);
+    expect(await prisma.auditLog.count({ where: { action: "news.save" } })).toBe(2);
+  });
+
+  it("requires the default language and a well-formed slug and time", async () => {
+    const { core, actor } = await setup();
+    const only = { es: post("Hola") };
+    expect(await core.admin.saveNews(actor, { slug: "2026-10-17-x", time: "09:30", translations: only })).toEqual({ ok: false, reason: "INVALID" });
+    expect(await core.admin.saveNews(actor, { slug: "bad slug", time: "09:30", translations: { ru: post("a") } })).toEqual({ ok: false, reason: "INVALID" });
+    expect(await core.admin.saveNews(actor, { slug: "2026-10-17-x", time: "25:00", translations: { ru: post("a") } })).toEqual({ ok: false, reason: "INVALID" });
+    expect(await core.admin.saveNews(actor, { slug: "2026-13-45-x", time: "10:00", translations: { ru: post("a") } })).toEqual({ ok: false, reason: "INVALID" });
+  });
+
+  it("deletes an entry with all its languages", async () => {
+    const { core, actor } = await setup();
+    await core.admin.saveNews(actor, { slug: "2026-10-17-gone", time: "00:00", translations: { ru: post("a"), en: post("b") } });
+    expect((await core.admin.deleteNews(actor, "2026-10-17-gone")).ok).toBe(true);
+    expect(await core.admin.listNews()).toHaveLength(0);
+    expect(await core.admin.deleteNews(actor, "2026-10-17-gone")).toEqual({ ok: false, reason: "NOT_FOUND" });
+  });
+});

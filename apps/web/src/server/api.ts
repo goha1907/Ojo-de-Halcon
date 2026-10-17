@@ -10,6 +10,7 @@ export type ApiErrorCode =
   | "VALIDATION"
   | "UNAUTHORIZED"
   | "RATE_LIMITED"
+  | "PROBING"
   | "NOT_CONFIGURED"
   | "FORBIDDEN"
   | "BAD_REQUEST"
@@ -36,6 +37,7 @@ const STATUS: Record<ApiErrorCode, number> = {
   VALIDATION: 422,
   UNAUTHORIZED: 401,
   RATE_LIMITED: 429,
+  PROBING: 429,
   NOT_CONFIGURED: 503,
   FORBIDDEN: 403,
   BAD_REQUEST: 400,

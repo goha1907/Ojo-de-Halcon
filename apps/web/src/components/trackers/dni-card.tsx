@@ -8,7 +8,6 @@ import { DniCardShell } from "./dni-card-shell";
 import { FixNumberForm } from "./fix-number-form";
 import { OcasaManual } from "./ocasa-manual";
 import { ReleaseCaseButton } from "./release-case-button";
-import { PendingCaseActions } from "./tracker-actions";
 import { ReplaceSection } from "./replace-section";
 import { SubscriptionControl } from "./subscription-control";
 
@@ -117,12 +116,6 @@ export function DniCard({ tracker, t, locale, subscription }: Props) {
         </div>
       )}
       {alert && !isOcasa && <div className="border-b border-line px-5 py-3">{alert}</div>}
-      {tracker.status === "PENDING_CONFIRMATION" && (
-        <div className="space-y-3 border-b border-line px-5 py-3">
-          <Alert tone="info">{t("pjn.pending.text")}</Alert>
-          <PendingCaseActions id={tracker.id} />
-        </div>
-      )}
       {isOcasa && tracker.notStarted ? null : unread ? (
         <div className="space-y-4 px-5 py-4">
           <p className="text-sm text-fg-muted">{t("track.notStarted.text")}</p>

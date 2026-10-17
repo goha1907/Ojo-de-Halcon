@@ -11,6 +11,7 @@ export const ADMIN_PERMISSIONS = [
   "users.manage",
   "grants.manage",
   "feedback.manage",
+  "news.manage",
   "sources.read",
   "stats.read",
   "audit.read",

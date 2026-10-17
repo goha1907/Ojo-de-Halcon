@@ -10,7 +10,7 @@ Conectamos las últimas fuentes. Ahora en el panel puedes seguir:
 - **ciudadanía en Migraciones** — estado por número y fecha de nacimiento;
 - **DNI en RENAPER** — etapas de producción, incluido el movimiento postal;
 - **Correo Argentino** — envío por número;
-- **causa de ciudadanía en la justicia (PJN)** — por nombre o por número de causa.
+- **causa de ciudadanía en la justicia (PJN)** — por juzgado, número y año de la causa.
 
 ## Cómo se agrega un seguimiento
 

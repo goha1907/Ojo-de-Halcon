@@ -2,7 +2,7 @@
  * Non-secret application constants. Anything that is a magic number,
  * cookie name or limit lives here, never inline in feature code.
  */
-export const LOCALES = ["ru", "es"] as const;
+export const LOCALES = ["ru", "es", "en"] as const;
 export type Locale = (typeof LOCALES)[number];
 
 export const APP_CONFIG = {
@@ -61,6 +61,11 @@ export const APP_CONFIG = {
     /** Length of one paid period. */
     subscriptionDays: 30,
   },
+  /**
+   * Protection against probing numbers (every source reads the case at the "preview" step): lookups that are not
+   * followed by adding the case count as unconfirmed. One short of the maximum brings a warning, the maximum a block.
+   */
+  probe: { windowMs: 60 * 60_000, maxLookups: 30, maxUnconfirmed: 5 },
   rateLimit: {
     /** Sign-in attempts, per client IP. */
     login: { windowMs: 10 * 60_000, max: 20 },
@@ -68,7 +73,7 @@ export const APP_CONFIG = {
     register: { windowMs: 60 * 60_000, max: 10 },
     /** Password reset / verification e-mails, per client IP. */
     email: { windowMs: 60 * 60_000, max: 10 },
-    /** Adding trackers and searching courts (each may start a browser), per user. */
+    /** Adding trackers (each may start a browser), per user. */
     trackerAdd: { windowMs: 10 * 60_000, max: 20 },
     /** Creating and polling checkouts, per user. */
     payment: { windowMs: 10 * 60_000, max: 60 },
@@ -137,10 +142,9 @@ export const API_ROUTES = {
   telegramLink: "/api/telegram/link",
   telegram: "/api/telegram",
   account: "/api/account",
+  locale: "/api/locale",
   changePassword: "/api/account/password",
   trackers: "/api/trackers",
-  pjnSearch: "/api/trackers/pjn/search",
-  pjnConfirm: "/api/trackers/pjn/confirm",
   pjnPreview: "/api/trackers/pjn/preview",
   trackerPreview: "/api/trackers/preview",
   feedback: "/api/feedback",

@@ -4,17 +4,9 @@ import { LanguageSelectControl } from "./language-select";
 import { ThemeSelector, type ThemeLabels } from "@/components/theme/theme-selector";
 import { getTheme } from "@/server/theme";
 
-/** Language picker, shown as a short code. Only the first option works for now; the rest are announced. Prices are in ARS only. */
+/** Language picker, shown as a short code. Prices are in ARS only. */
 export function LanguageSelect({ t }: { t: TranslateFn }) {
-  return (
-    <LanguageSelectControl
-      label={t("landing.lang")}
-      options={[
-        { value: "ru", label: "RU" },
-        { value: "es", label: t("landing.soonOption", { name: "ES" }), disabled: true },
-      ]}
-    />
-  );
+  return <LanguageSelectControl label={t("landing.lang")} />;
 }
 
 /** The colour theme switch on its own. */

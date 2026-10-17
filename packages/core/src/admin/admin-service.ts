@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@ojo/db";
-import { APP_CONFIG, casesPrice, type TrackerKindValue } from "@ojo/shared";
+import { APP_CONFIG, casesPrice, LOCALES, type Locale, type TrackerKindValue } from "@ojo/shared";
 import type { AccessService } from "../access/access-service";
 import type { BillingService } from "../billing/billing-service";
 import type { CapacityService } from "../capacity/capacity-service";
@@ -56,6 +56,23 @@ export type MutationResult<T = undefined> =
 const FEEDBACK_STATUSES = ["NEW", "READ", "ANSWERED", "SPAM"] as const;
 export type FeedbackStatus = (typeof FEEDBACK_STATUSES)[number];
 export const FEEDBACK_STATUS_LIST = FEEDBACK_STATUSES;
+
+export const NEWS_SLUG_PATTERN = /^\d{4}-\d{2}-\d{2}-[a-z0-9]+(-[a-z0-9]+)*$/;
+const NEWS_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export interface NewsTranslation {
+  title: string;
+  summary: string;
+  body: string;
+}
+
+/** One news entry of the admin area: the date and one text per language. */
+export interface NewsEntryDto {
+  slug: string;
+  date: string;
+  time: string;
+  translations: Partial<Record<Locale, NewsTranslation>>;
+}
 
 const DAY_MS = 86_400_000;
 
@@ -372,6 +389,63 @@ export function createAdminService(deps: {
     return { ok: true, value: undefined };
   }
 
+  /** Entries written in the admin area, newest first. */
+  async function listNews(): Promise<NewsEntryDto[]> {
+    const rows = await prisma.newsPost.findMany({ orderBy: [{ date: "desc" }, { time: "desc" }, { slug: "asc" }] });
+    const bySlug = new Map<string, NewsEntryDto>();
+    for (const row of rows) {
+      const entry = bySlug.get(row.slug) ?? { slug: row.slug, date: row.date, time: row.time, translations: {} };
+      entry.translations[row.locale as Locale] = { title: row.title, summary: row.summary, body: row.body };
+      bySlug.set(row.slug, entry);
+    }
+    return [...bySlug.values()];
+  }
+
+  /**
+   * Publishes or changes an entry in all languages at once. The default language is required; a language left
+   * empty is removed from the entry (readers then get the default one). The date comes from the slug.
+   */
+  async function saveNews(
+    actor: Actor,
+    input: { slug: string; time: string; translations: Partial<Record<Locale, NewsTranslation>> },
+  ): Promise<MutationResult> {
+    if (!NEWS_SLUG_PATTERN.test(input.slug) || !NEWS_TIME_PATTERN.test(input.time)) return { ok: false, reason: "INVALID" };
+    const date = input.slug.slice(0, 10);
+    if (Number.isNaN(Date.parse(`${date}T00:00:00Z`))) return { ok: false, reason: "INVALID" };
+    const filled = (item: NewsTranslation | undefined) =>
+      item !== undefined && item.title.trim() !== "" && item.body.trim() !== "";
+    if (!filled(input.translations[APP_CONFIG.defaultLocale])) return { ok: false, reason: "INVALID" };
+    const saved: string[] = [];
+    for (const locale of LOCALES) {
+      const item = input.translations[locale];
+      if (!filled(item)) {
+        await prisma.newsPost.deleteMany({ where: { slug: input.slug, locale } });
+        continue;
+      }
+      const data = { date, time: input.time, title: item!.title.trim(), summary: item!.summary.trim(), body: item!.body.trim() };
+      await prisma.newsPost.upsert({
+        where: { slug_locale: { slug: input.slug, locale } },
+        create: { slug: input.slug, locale, ...data },
+        update: data,
+      });
+      saved.push(locale);
+    }
+    await record({ actor, action: "news.save", details: { slug: input.slug, locales: saved } });
+    return { ok: true, value: undefined };
+  }
+
+  async function deleteNews(actor: Actor, slug: string): Promise<MutationResult> {
+    const { count } = await prisma.newsPost.deleteMany({ where: { slug } });
+    if (count === 0) return { ok: false, reason: "NOT_FOUND" };
+    await record({ actor, action: "news.delete", details: { slug } });
+    return { ok: true, value: undefined };
+  }
+
+  /** Every stored row, for the public pages (merged with the entries kept in files). */
+  async function publishedNews() {
+    return prisma.newsPost.findMany();
+  }
+
   async function sourcesHealth(): Promise<SourceHealthRow[]> {
     const at = now();
     const overdueBefore = new Date(at.getTime() - 60 * 60_000);
@@ -439,6 +513,10 @@ export function createAdminService(deps: {
     setEarlyAccess,
     listFeedback,
     setFeedbackStatus,
+    listNews,
+    saveNews,
+    deleteNews,
+    publishedNews,
     sourcesHealth,
     statusStats,
     auditLog,

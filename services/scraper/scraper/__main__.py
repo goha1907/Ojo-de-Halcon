@@ -5,7 +5,6 @@
     python -m scraper correo --action ondnp --producto CU --number 123456789
     python -m scraper dnm-dni --number 1129912025        # birth date: env SCRAPER_BIRTH_DATE (DD/MM/YYYY)
     python -m scraper dnm-citizenship --number 2275808    # same
-    python -m scraper pjn-party --jurisdiction 4 --name MEDVEDEV
     python -m scraper pjn-case --jurisdiction 4 --number 7900 --year 2026 [--header-only]
 """
 
@@ -30,9 +29,6 @@ def build_parser() -> argparse.ArgumentParser:
     correo.add_argument("--producto", default="")
     sub.add_parser("dnm-dni").add_argument("--number", required=True)
     sub.add_parser("dnm-citizenship").add_argument("--number", required=True)
-    party = sub.add_parser("pjn-party")
-    party.add_argument("--jurisdiction", required=True)
-    party.add_argument("--name", required=True)
     case = sub.add_parser("pjn-case")
     case.add_argument("--jurisdiction", required=True)
     case.add_argument("--number", type=int, required=True)
@@ -59,8 +55,6 @@ def run(args: argparse.Namespace) -> dict:
         ocr = ddddocr.DdddOcr(show_ad=False)
         browser, page = pjn.open_home(playwright)
         try:
-            if args.command == "pjn-party":
-                return {"ok": True, "results": pjn.search_party(page, ocr, args.jurisdiction, args.name)}
             pjn.open_case(page, ocr, args.jurisdiction, args.number, args.year)
             result = {"ok": True, "header": pjn.case_header(page)}
             if not args.header_only:

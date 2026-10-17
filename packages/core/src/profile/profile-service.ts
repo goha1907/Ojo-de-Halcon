@@ -57,7 +57,12 @@ export function createProfileService(deps: { prisma: PrismaClient; now: () => Da
     });
   }
 
-  return { canEdit, update, completeOnboarding };
+  /** The interface language of the account: the e-mails and the bot speak it too. */
+  async function setLocale(userId: string, locale: string): Promise<void> {
+    await prisma.user.update({ where: { id: userId }, data: { locale } });
+  }
+
+  return { canEdit, update, completeOnboarding, setLocale };
 }
 
 export type ProfileService = ReturnType<typeof createProfileService>;

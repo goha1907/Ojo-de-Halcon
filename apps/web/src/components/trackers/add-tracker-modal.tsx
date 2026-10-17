@@ -84,6 +84,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
   const [birthDate, setBirthDate] = useState(splitIsoDate(defaultBirthDate));
   const [step, setStep] = useState<"form" | "confirm">("form");
   const [found, setFound] = useState<Record<string, string> | null>(null);
+  const [probeWarn, setProbeWarn] = useState(false);
   const [label, setLabel] = useState("");
   const [number, setNumber] = useState("");
   const [correo, setCorreo] = useState<CorreoValue>({
@@ -127,6 +128,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
       : (tramiteNumberSchema.safeParse(number).data ?? number);
 
   function showError(error: unknown) {
+    setProbeWarn(error instanceof ApiError && error.warn);
     if (error instanceof ApiError && error.code === "VALIDATION") {
       setErrors(issuesToFieldErrors(error.issues, t));
     } else if (error instanceof ApiError && ERROR_KEYS[error.code]) {
@@ -171,15 +173,16 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
       // the source is asked first, so the user sees what is found before agreeing
       const { label: _label, ...caseInput } = payload as Record<string, string>;
       const result = isCourt
-        ? await apiRequest<{ header: Record<string, string> }>(API_ROUTES.pjnPreview, {
+        ? await apiRequest<{ header: Record<string, string>; warn?: boolean }>(API_ROUTES.pjnPreview, {
             method: "POST",
             body: (({ kind: _kind, ...rest }) => rest)(caseInput),
           })
-        : await apiRequest<{ header: Record<string, string> }>(API_ROUTES.trackerPreview, {
+        : await apiRequest<{ header: Record<string, string>; warn?: boolean }>(API_ROUTES.trackerPreview, {
             method: "POST",
             body: caseInput,
           });
       setFound(result.header);
+      setProbeWarn(result.warn === true);
       setStep("confirm");
     } catch (error) {
       showError(error);
@@ -236,6 +239,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
       ) : (
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         {formError && <Alert tone="error">{formError}</Alert>}
+        {probeWarn && <Alert tone="info">{t("track.probeWarn")}</Alert>}
         {!fixedKind && (
           <SelectField
             label={t("track.kind")}
@@ -267,6 +271,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
           <>
           {step === "confirm" ? (
             <div className="space-y-4">
+              {probeWarn && <Alert tone="info">{t("track.probeWarn")}</Alert>}
               {label.trim() && (
                 <p className="text-sm text-fg-muted">{t("track.step.name", { name: label.trim() })}</p>
               )}

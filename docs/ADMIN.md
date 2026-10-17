@@ -34,6 +34,7 @@ Pages, the menu and the API routes all ask it.
 | `sources.read` (Sources) | yes | yes |
 | `stats.read` (Statuses) | yes | yes |
 | `audit.read` (Audit log) | yes | no |
+| `news.manage` (News in all languages) | yes | no |
 
 To add a role or a permission: edit that file, and the menu in `apps/web/src/components/admin/nav.ts`.
 

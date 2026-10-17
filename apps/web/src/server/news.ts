@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { APP_CONFIG, LOCALES, type Locale } from "@ojo/shared";
+import { getCore } from "./core";
 
 export interface NewsItem {
   /** `YYYY-MM-DD-name`, also the URL segment. */
@@ -63,7 +64,8 @@ export function pickLocale(items: NewsItem[], locale: Locale): NewsItem[] {
   );
 }
 
-async function readAll(): Promise<NewsItem[]> {
+/** Entries kept as files in the repository (the built-in ones). */
+export async function readFiles(): Promise<NewsItem[]> {
   let files: string[];
   try {
     files = await readdir(NEWS_DIR);
@@ -79,6 +81,25 @@ async function readAll(): Promise<NewsItem[]> {
     items.push({ ...info, time, title: meta.title ?? info.slug, summary: meta.summary ?? "", body });
   }
   return items;
+}
+
+/** Files plus entries written in the admin area; an admin entry replaces a file with the same slug and language. */
+async function readAll(): Promise<NewsItem[]> {
+  const merged = new Map<string, NewsItem>();
+  for (const item of await readFiles()) merged.set(`${item.slug}.${item.locale}`, item);
+  for (const row of await getCore().admin.publishedNews()) {
+    if (!(LOCALES as readonly string[]).includes(row.locale)) continue;
+    merged.set(`${row.slug}.${row.locale}`, {
+      slug: row.slug,
+      date: row.date,
+      time: row.time,
+      title: row.title,
+      summary: row.summary,
+      body: row.body,
+      locale: row.locale as Locale,
+    });
+  }
+  return [...merged.values()];
 }
 
 export async function listNews(locale: Locale): Promise<NewsItem[]> {

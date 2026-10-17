@@ -5,8 +5,6 @@ import {
   APP_CONFIG,
   TRACKER_CONFIG,
   TRACKER_KIND_SECTION,
-  caratulaMatchesName,
-  findJurisdiction,
   isDnmKind,
   isEarlyAccessKind,
   isFinalStatus,
@@ -15,7 +13,6 @@ import {
   OCASA_NUMBER_LENGTH,
   parseOcasaText,
   normalizeCorreoReference,
-  parseExpediente,
   parsePjnReference,
   pjnReference,
   type TrackerHeaderFields,
@@ -54,17 +51,6 @@ export interface TrackerDto {
   lastError: string | null;
 }
 
-export interface PjnCandidate {
-  jurisdiction: string;
-  number: string;
-  year: string;
-  expediente: string;
-  dependencia: string;
-  caratula: string;
-  /** The court registry already shows it as closed (archived). */
-  closed: boolean;
-}
-
 type AddFailure =
   | "NOT_AVAILABLE"
   | "ALREADY_EXISTS"
@@ -89,11 +75,6 @@ export type PjnPreviewResult =
   | { ok: true; header: TrackerHeaderFields }
   | { ok: false; reason: AddFailure | "NOT_FOUND" | "SOURCE_DOWN" };
 
-export type PjnSearchResult =
-  | { ok: true; candidates: PjnCandidate[] }
-  | { ok: false; reason: "PROFILE_INCOMPLETE" | "NO_COURT" | "SOURCE_DOWN" };
-
-/** One notification = one change. A check that finds several new stages creates several events. */
 export interface EventPayload {
   /** The stage that appeared; null when only the status in the header changed. */
   step: TrackerStep | null;
@@ -527,63 +508,6 @@ export function createTrackerService(deps: {
     });
   }
 
-  /** Searches the court registry by the profile name and keeps results that match it. */
-  async function findPjnByProfile(userId: string): Promise<PjnSearchResult> {
-    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-    if (!user.firstName || !user.lastName) return { ok: false, reason: "PROFILE_INCOMPLETE" };
-    if (!user.pjnJurisdiction || !findJurisdiction(user.pjnJurisdiction)) {
-      return { ok: false, reason: "NO_COURT" };
-    }
-    try {
-      // The site expects "SURNAME NAME" without commas; a bare surname is the fallback
-      // (e.g. when the registry holds only one of several given names).
-      const full = `${user.lastName} ${user.firstName}`;
-      let rows = await scraper.pjnParty({ jurisdiction: user.pjnJurisdiction, name: full });
-      if (rows.length === 0) {
-        rows = await scraper.pjnParty({ jurisdiction: user.pjnJurisdiction, name: user.lastName });
-      }
-      const tracked = new Set(
-        (
-          await prisma.tracker.findMany({
-            where: { userId, kind: "PJN" },
-            select: { reference: true },
-          })
-        ).map((item) => item.reference),
-      );
-      const candidates: PjnCandidate[] = [];
-      for (const row of rows) {
-        if (!caratulaMatchesName(row.caratula, user.firstName, user.lastName)) continue;
-        const parsed = parseExpediente(row.expediente);
-        if (!parsed) continue;
-        const reference = pjnReference({
-          jurisdiction: user.pjnJurisdiction,
-          number: parsed.number,
-          year: parsed.year,
-        });
-        if (tracked.has(reference)) continue;
-        // the search already returned the header: reuse it when the user confirms
-        rememberPreview(previewKey(userId, reference), {
-          expediente: row.expediente,
-          dependencia: row.dependencia,
-          sit_actual: row.situacion,
-          caratula: row.caratula,
-        });
-        candidates.push({
-          jurisdiction: user.pjnJurisdiction,
-          number: parsed.number,
-          year: parsed.year,
-          expediente: row.expediente,
-          dependencia: row.dependencia,
-          caratula: row.caratula,
-          closed: isFinalStatus("PJN", row.situacion),
-        });
-      }
-      return { ok: true, candidates };
-    } catch {
-      return { ok: false, reason: "SOURCE_DOWN" };
-    }
-  }
-
   /** Headers read in the preview step, reused when the user confirms (no second captcha). */
   const previews = new Map<string, { header: TrackerHeaderFields; at: number }>();
   const PREVIEW_TTL_MS = 15 * 60_000;
@@ -652,7 +576,6 @@ export function createTrackerService(deps: {
   async function createPjn(
     userId: string,
     input: { jurisdiction: string; number: string; year: string },
-    status: "ACTIVE" | "PENDING_CONFIRMATION",
     label?: string | null,
   ): Promise<PjnStartResult> {
     const checked = await pjnPreflight(userId, input);
@@ -675,7 +598,7 @@ export function createTrackerService(deps: {
           userId,
           kind: "PJN",
           reference,
-          status,
+          status: "ACTIVE",
           label: label ?? null,
           lastCheckedAt: now(),
           nextCheckAt: now(),
@@ -709,24 +632,7 @@ export function createTrackerService(deps: {
     input: { jurisdiction: string; number: string; year: string },
     label?: string | null,
   ): Promise<PjnStartResult> {
-    return createPjn(userId, input, "ACTIVE", label);
-  }
-
-  /** Older flow: the case waits for confirmation on its tab (kept for existing rows and tests). */
-  async function startPjn(
-    userId: string,
-    input: { jurisdiction: string; number: string; year: string },
-  ): Promise<PjnStartResult> {
-    return createPjn(userId, input, "PENDING_CONFIRMATION");
-  }
-
-  /** The user confirmed the case is theirs: it becomes active and is fully parsed next. */
-  async function confirmPjn(userId: string, trackerId: string): Promise<boolean> {
-    const result = await prisma.tracker.updateMany({
-      where: { id: trackerId, userId, kind: "PJN", status: "PENDING_CONFIRMATION" },
-      data: { status: "ACTIVE", nextCheckAt: now() },
-    });
-    return result.count === 1;
+    return createPjn(userId, input, label);
   }
 
   /** Support/admin only (not exposed to users). */
@@ -735,19 +641,6 @@ export function createTrackerService(deps: {
     if (!tracker) return false;
     const result = await prisma.tracker.deleteMany({ where: { id: tracker.id, userId } });
     return result.count > 0;
-  }
-
-  /**
-   * The only removal available to users: a court case found by mistake that
-   * they have not confirmed yet (nothing but the carátula was read). Confirmed
-   * cases can only be closed by support, otherwise adding/removing cases over
-   * and over would bypass the subscription limits.
-   */
-  async function discardPending(userId: string, trackerId: string): Promise<boolean> {
-    const result = await prisma.tracker.deleteMany({
-      where: { id: trackerId, userId, status: "PENDING_CONFIRMATION" },
-    });
-    return result.count === 1;
   }
 
   /** Support/admin only (not exposed to users). */
@@ -1154,16 +1047,12 @@ export function createTrackerService(deps: {
     previewTramite,
     closeFinished,
     statusStats,
-    findPjnByProfile,
     previewPjn,
     addPjn,
-    startPjn,
-    confirmPjn,
     replaceNumber,
     setLabel,
     setNotify,
     releaseCase,
-    discardPending,
     remove,
     finish,
     runDue,

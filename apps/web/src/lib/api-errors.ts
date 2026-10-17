@@ -5,6 +5,7 @@ import { ApiError } from "./api-client";
 export function describeApiError(error: unknown, t: TranslateFn): string {
   if (error instanceof ApiError) {
     if (error.code === "RATE_LIMITED") return t("common.rateLimited");
+    if (error.code === "PROBING") return t("track.error.probing");
     if (error.code === "NOT_CONFIGURED") return t("common.notConfigured");
     if (error.code === "EMAIL_NOT_VERIFIED") return t("common.emailNotVerified");
     if (error.code === "SUBSCRIPTION_REQUIRED") return t("track.error.subscription");

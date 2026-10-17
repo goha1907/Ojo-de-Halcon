@@ -14,7 +14,7 @@ async function main(): Promise<void> {
   }
 
   const core = createCoreFromEnv(env);
-  const bot = createBot({ token: env.TELEGRAM_BOT_TOKEN, core });
+  const bot = createBot({ token: env.TELEGRAM_BOT_TOKEN, core, appUrl: env.APP_URL });
 
   const purge = setInterval(() => {
     Promise.all([core.telegram.purgeExpired(), core.sessions.purgeExpired()])

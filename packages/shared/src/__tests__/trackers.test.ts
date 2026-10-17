@@ -1,30 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   addTrackerSchema,
-  caratulaMatchesName,
-  parseExpediente,
   parsePjnReference,
   pjnReference,
   sectionHref,
 } from "../index";
-
-describe("caratulaMatchesName", () => {
-  const caratula = "MEDVEDEV, EGOR S/NACIONALIDAD Y CIUDADANÍA - SOLICITUD DE CARTA DE CIUDADANIA";
-
-  it("matches regardless of order, case and accents", () => {
-    expect(caratulaMatchesName(caratula, "Egor", "Medvedev")).toBe(true);
-    expect(caratulaMatchesName("NIKOLÁEV, ROMÁN S/NAC", "Roman", "Nikolaev")).toBe(true);
-  });
-
-  it("rejects other people and partial words", () => {
-    expect(caratulaMatchesName(caratula, "Ivan", "Medvedev")).toBe(false);
-    expect(caratulaMatchesName(caratula, "Ego", "Medvedev")).toBe(false);
-  });
-
-  it("only looks at the parties, not at the subject", () => {
-    expect(caratulaMatchesName("PEREZ, JUAN S/NACIONALIDAD EGOR", "Egor", "Perez")).toBe(false);
-  });
-});
 
 describe("pjn references", () => {
   it("round-trips", () => {
@@ -32,10 +12,6 @@ describe("pjn references", () => {
     expect(parsePjnReference(reference)).toEqual({ jurisdiction: "4", number: "7900", year: "2026" });
   });
 
-  it("parses the expediente column", () => {
-    expect(parseExpediente("CNE 007900/2026")).toEqual({ number: "7900", year: "2026" });
-    expect(parseExpediente("sin numero")).toBeNull();
-  });
 });
 
 describe("addTrackerSchema", () => {

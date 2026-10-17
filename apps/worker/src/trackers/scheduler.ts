@@ -10,11 +10,12 @@ export interface SchedulerDeps {
 }
 
 /**
- * Periodic loop: checks due trackers, then delivers the resulting events.
- * Ticks never overlap (a slow scrape just delays the next tick).
+ * Two loops: one checks due trackers (slow: it scrapes), one delivers the resulting events and queued messages
+ * (fast). Each never overlaps itself, and a slow scrape does not hold messages back.
  */
 export function startTrackerScheduler(deps: SchedulerDeps): () => void {
-  let busy = false;
+  let checking = false;
+  let delivering = false;
 
   async function deliver(): Promise<void> {
     const pending = await deps.core.trackers.pendingNotifications();
@@ -59,24 +60,40 @@ export function startTrackerScheduler(deps: SchedulerDeps): () => void {
     }
   }
 
-  async function tick(): Promise<void> {
-    if (busy) return;
-    busy = true;
+  /** Reads the sources that are due. A slow scrape only delays the next check, never the delivery below. */
+  async function checkTick(): Promise<void> {
+    if (checking) return;
+    checking = true;
     try {
       const checked = await deps.core.trackers.runDue();
       if (checked > 0) logger.info("trackers checked", { checked });
-      await deliver();
-      await deliverOutbox();
     } catch (error) {
-      logger.error("tracker tick failed", {
-        error: error instanceof Error ? error.message : "unknown",
-      });
+      logger.error("tracker check failed", { error: error instanceof Error ? error.message : "unknown" });
     } finally {
-      busy = false;
+      checking = false;
     }
   }
 
-  const timer = setInterval(() => void tick(), TRACKER_CONFIG.tickIntervalSeconds * 1000);
-  void tick();
-  return () => clearInterval(timer);
+  /** Sends what is waiting (new stages, farewell and notice messages) within seconds. */
+  async function deliveryTick(): Promise<void> {
+    if (delivering) return;
+    delivering = true;
+    try {
+      await deliver();
+      await deliverOutbox();
+    } catch (error) {
+      logger.error("delivery failed", { error: error instanceof Error ? error.message : "unknown" });
+    } finally {
+      delivering = false;
+    }
+  }
+
+  const checkTimer = setInterval(() => void checkTick(), TRACKER_CONFIG.tickIntervalSeconds * 1000);
+  const deliveryTimer = setInterval(() => void deliveryTick(), TRACKER_CONFIG.deliveryIntervalSeconds * 1000);
+  void checkTick();
+  void deliveryTick();
+  return () => {
+    clearInterval(checkTimer);
+    clearInterval(deliveryTimer);
+  };
 }

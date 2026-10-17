@@ -158,36 +158,3 @@ export function parsePjnReference(
   if (!jurisdiction || !number || !year) return null;
   return { jurisdiction, number, year };
 }
-
-function normalizeWord(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9 ]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** The part of a carátula before " S/" holds the parties. */
-export function caratulaParties(caratula: string): string {
-  const index = caratula.toUpperCase().indexOf(" S/");
-  return normalizeWord(index > 0 ? caratula.slice(0, index) : caratula);
-}
-
-/**
- * True when every word of the first and last name appears in the parties part
- * of the carátula (order and accents ignored: "MEDVEDEV, EGOR" matches
- * "Egor Medvedev").
- */
-export function caratulaMatchesName(caratula: string, firstName: string, lastName: string): boolean {
-  const parties = ` ${caratulaParties(caratula)} `;
-  const words = normalizeWord(`${firstName} ${lastName}`).split(" ").filter(Boolean);
-  return words.length > 0 && words.every((word) => parties.includes(` ${word} `));
-}
-
-/** "CNE 007900/2026" -> { number: "7900", year: "2026" } */
-export function parseExpediente(expediente: string): { number: string; year: string } | null {
-  const match = /(\d{1,7})\s*\/\s*(\d{4})/.exec(expediente);
-  return match ? { number: String(Number(match[1])), year: match[2]! } : null;
-}

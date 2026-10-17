@@ -86,22 +86,48 @@
 
 ### Тексты (можно скопировать)
 
+Бот и проект про отслеживание всего важного в Аргентине (дела, трамите, посылки и другое), поэтому в текстах не перечисляем
+конкретные сервисы: список будет расти.
+
 **About** (до 120 символов):
 
-```
-Уведомления о ваших делах в Аргентине: DNI, Correo, гражданство. Привязка в кабинете на сайте.
-```
+- ru: `Следим за вашими делами, трамите и посылками в Аргентине и пишем, когда что-то меняется.`
+- es: `Seguimos tus trámites y envíos en Argentina y te avisamos cuando algo cambia.`
+- en: `We track your cases, procedures and parcels in Argentina and message you when something changes.`
 
 **Description** (до 512 символов):
 
+ru:
 ```
-Я слежу за вашими делами в Аргентине и пишу, когда в них что-то меняется: DNI в Migraciones и RENAPER, посылки Correo Argentino, гражданство и суд.
+Ojo de Halcón следит за вашими делами, трамите и посылками в Аргентине и сразу пишет вам, когда что-то меняется. Не нужно заходить на сайты и проверять статус вручную.
 
 Как подключить:
-1. Откройте сайт, раздел «Настройки».
-2. Нажмите «Подключить Telegram».
+1. Откройте сайт и добавьте то, что хотите отслеживать.
+2. В «Настройках» нажмите «Подключить Telegram».
 3. Вернитесь сюда и нажмите «Start».
 ```
+
+es:
+```
+Ojo de Halcón sigue tus trámites y envíos en Argentina y te avisa apenas algo cambia. Sin entrar a cada sitio a revisar el estado a mano.
+
+Cómo conectarlo:
+1. Abre el sitio y agrega lo que quieres seguir.
+2. En «Configuración» pulsa «Conectar Telegram».
+3. Vuelve aquí y pulsa «Start».
+```
+
+en:
+```
+Ojo de Halcón keeps track of your cases, procedures and parcels in Argentina and messages you the moment something changes. No more checking websites by hand.
+
+How to connect:
+1. Open the website and add what you want to follow.
+2. In Settings tap “Connect Telegram”.
+3. Come back here and tap “Start”.
+```
+
+Картинка приветствия общая для всех языков: `apps/web/public/brand/telegram-welcome-es.png` (или `-ru`, `-en`).
 
 **Commands** (формат: одна команда на строку, `команда - описание`, команда в нижнем регистре):
 
@@ -110,31 +136,6 @@ start - Подключить уведомления
 ```
 
 Когда у бота появятся новые команды (статус дел, помощь, отключение), добавляйте строки сюда и в код.
-
-### Тексты на испанском
-
-Telegram умеет показывать разное описание по языку интерфейса пользователя. В чате с BotFather после
-`/setdescription` (и `/setabouttext`) выберите бота, а потом язык, если BotFather его предложит, или
-используйте раздел локализаций в Mini App. Ниже готовые тексты.
-
-**About (ES):**
-
-```
-Avisos sobre tus trámites en Argentina: DNI, Correo, ciudadanía. Se vincula desde el panel del sitio.
-```
-
-**Description (ES):**
-
-```
-Sigo tus trámites en Argentina y te aviso cuando algo cambia: DNI en Migraciones y RENAPER, envíos de Correo Argentino, ciudadanía y juzgado.
-
-Cómo conectarlo:
-1. Abre el sitio, sección «Configuración».
-2. Pulsa «Conectar Telegram».
-3. Vuelve aquí y pulsa «Start».
-```
-
----
 
 ## 4. Приватность и группы
 

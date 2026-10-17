@@ -58,7 +58,8 @@ export async function LandingPage() {
         <Pricing t={t} locale={locale} signedIn={signedIn} />
         <section id="news" className="scroll-mt-20 mx-auto max-w-3xl space-y-4 px-4 pb-16">
           <h2 className="text-3xl font-bold tracking-tight text-fg sm:text-4xl">{t("landing.news.title")}</h2>
-          <NewsFeed initial={news} />
+          {/* the feed keeps its own list: a new language needs a fresh one */}
+          <NewsFeed key={locale} initial={news} />
         </section>
         <Faq t={t} />
         <section id="feedback" className="scroll-mt-20 mx-auto max-w-3xl space-y-4 px-4 py-16">

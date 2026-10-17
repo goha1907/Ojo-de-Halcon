@@ -146,26 +146,6 @@ def open_home(playwright):
     return browser, page
 
 
-def search_party(page, ocr, jurisdiction: str, name: str) -> list[dict]:
-    page.locator("text=Por parte").first.click()
-    page.locator("#formPublica\\:nomIntervParte").wait_for(state="visible", timeout=10_000)
-    page.select_option("#formPublica\\:camaraPartes", value=jurisdiction)
-    page.fill("#formPublica\\:nomIntervParte", name)
-    if not solve_captcha(page, ocr):
-        raise PjnError("captcha", "captcha was not solved")
-    page.click("#formPublica\\:buscarPorParteButton")
-    page.wait_for_function(
-        """() => { const t = ((document.body && document.body.innerText) || '').toLowerCase();
-            return t.includes('no se encontraron') || t.includes('situación') || t.includes('situacion')
-                || t.includes('campo verificador'); }""",
-        timeout=25_000,
-    )
-    if "campo verificador" in page.inner_text("body").lower():
-        raise PjnError("captcha", "verification field missing")
-    rows = page.evaluate(_PARSE_RESULTS_JS)
-    return [{k: one_line(v) for k, v in row.items()} for row in rows]
-
-
 def open_case(page, ocr, jurisdiction: str, number: int, year: int) -> None:
     page.select_option("#formPublica\\:camaraNumAni", value=jurisdiction)
     page.fill("#formPublica\\:numero", str(number))

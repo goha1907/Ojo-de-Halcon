@@ -8,6 +8,8 @@ export const TRACKER_CONFIG = {
   batchSize: 5,
   /** How often the worker looks for due trackers. */
   tickIntervalSeconds: 60,
+  /** How often queued Telegram messages are sent (kept apart from the slow source checks, so notices go out at once). */
+  deliveryIntervalSeconds: 3,
   /** Lengths accepted for a DNI trámite number. */
   tramiteNumber: { minDigits: 6, maxDigits: 12 },
   /** Case number / year limits for PJN. */

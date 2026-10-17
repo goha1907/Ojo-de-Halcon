@@ -64,16 +64,14 @@ export type { PaymentProvider, PaymentMethod, ProviderPayment } from "./payments
 export { PAYMENT_METHODS } from "./payments/provider";
 export { createConsoleMailer } from "./mailer";
 export { createCoreFromEnv } from "./from-env";
-export type { Scraper, ScrapedTramite, PjnCaseResult, PjnPartyRow, ProcessScraperOptions } from "./trackers/scraper";
+export type { Scraper, ScrapedTramite, PjnCaseResult, ProcessScraperOptions } from "./trackers/scraper";
 export { ScraperError, createProcessScraper } from "./trackers/scraper";
 export type {
   AddResult,
   DigestItem,
   EventPayload,
   PendingNotification,
-  PjnCandidate,
   PjnPreviewResult,
-  PjnSearchResult,
   PjnStartResult,
   TrackerDto,
   TrackerService,
@@ -85,12 +83,14 @@ export type {
   AdminService,
   FeedbackStatus,
   MutationResult,
+  NewsEntryDto,
+  NewsTranslation,
   OverviewDto,
   Page,
   SourceHealthRow,
   UserRow,
 } from "./admin/admin-service";
-export { FEEDBACK_STATUS_LIST } from "./admin/admin-service";
+export { FEEDBACK_STATUS_LIST, NEWS_SLUG_PATTERN } from "./admin/admin-service";
 export type { PlaceBreakdown, CapacityService } from "./capacity/capacity-service";
 export { GRANT_KINDS } from "./grants/grant-service";
 export { resolveAccess } from "./access/access-service";
