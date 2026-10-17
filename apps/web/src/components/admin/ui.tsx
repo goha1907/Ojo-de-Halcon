@@ -24,13 +24,21 @@ export function Panel({ title, children, note }: { title?: string; note?: string
   );
 }
 
-export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
-  return (
-    <div className="rounded-field border border-line bg-surface p-4 shadow-sm">
+export function Stat({ label, value, hint, href }: { label: string; value: ReactNode; hint?: string; href?: string }) {
+  const body = (
+    <>
       <div className="text-xs font-medium text-fg-muted">{label}</div>
       <div className="mt-1 text-2xl font-bold text-fg">{value}</div>
       {hint && <div className="mt-1 text-xs text-fg-muted">{hint}</div>}
-    </div>
+    </>
+  );
+  const box = "block rounded-field border border-line bg-surface p-4 shadow-sm";
+  return href ? (
+    <Link href={href} className={`${box} transition-colors hover:border-brand hover:bg-line/20 focus-visible:outline-2 focus-visible:outline-ring`}>
+      {body}
+    </Link>
+  ) : (
+    <div className={box}>{body}</div>
   );
 }
 

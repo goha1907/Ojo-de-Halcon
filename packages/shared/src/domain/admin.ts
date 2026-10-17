@@ -15,6 +15,7 @@ export const ADMIN_PERMISSIONS = [
   "sources.read",
   "stats.read",
   "audit.read",
+  "economics.read",
 ] as const;
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
 

@@ -2,21 +2,14 @@ import type { PrismaClient } from "@ojo/db";
 import { APP_CONFIG, casesPrice, LOCALES, type Locale, type TrackerKindValue } from "@ojo/shared";
 import type { AccessService } from "../access/access-service";
 import type { BillingService } from "../billing/billing-service";
-import type { CapacityService } from "../capacity/capacity-service";
 import { GRANT_KINDS, type GrantKind, type GrantService } from "../grants/grant-service";
+import { createAdminLists } from "./admin-lists";
 import type { TrackerService } from "../trackers/tracker-service";
 
 /** Who is acting in the admin area (copied into the audit log). */
 export interface Actor {
   id: string;
   email: string;
-}
-
-export interface Page<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
 }
 
 export interface OverviewDto {
@@ -26,18 +19,6 @@ export interface OverviewDto {
   trackers: { active: number; finished: number; paused: number; withError: number };
   feedbackNew: number;
   outboxPending: number;
-}
-
-export interface UserRow {
-  id: string;
-  email: string;
-  role: string;
-  createdAt: string;
-  emailVerified: boolean;
-  telegramLinked: boolean;
-  plan: string;
-  places: number;
-  cases: number;
 }
 
 export interface SourceHealthRow {
@@ -81,11 +62,10 @@ export function createAdminService(deps: {
   now: () => Date;
   access: AccessService;
   billing: BillingService;
-  capacity: CapacityService;
   grants: GrantService;
   trackers: TrackerService;
 }) {
-  const { prisma, now, access, billing, capacity, grants, trackers } = deps;
+  const { prisma, now, access, billing, grants, trackers } = deps;
 
   /** Writes one audit entry. A repeated `requestId` is the same form sent twice: returns false then. */
   async function record(entry: {
@@ -157,52 +137,14 @@ export function createAdminService(deps: {
     };
   }
 
-  async function listUsers(input: { query?: string; page?: number; pageSize?: number }): Promise<Page<UserRow>> {
-    const pageSize = Math.min(100, Math.max(1, input.pageSize ?? 25));
-    const page = Math.max(1, input.page ?? 1);
-    const query = (input.query ?? "").trim();
-    const where = query
-      ? { OR: [{ email: { contains: query, mode: "insensitive" as const } }, { id: query }] }
-      : {};
-    const [total, rows] = await Promise.all([
-      prisma.user.count({ where }),
-      prisma.user.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        include: { _count: { select: { trackers: { where: { status: { in: ["ACTIVE", "PENDING_CONFIRMATION"] } } } } } },
-      }),
-    ]);
-    const items = await Promise.all(
-      rows.map(async (row): Promise<UserRow> => {
-        const places = await capacity.get(row.id);
-        return {
-          id: row.id,
-          email: row.email,
-          role: row.role,
-          createdAt: row.createdAt.toISOString(),
-          emailVerified: row.emailVerifiedAt !== null,
-          telegramLinked: row.telegramId !== null,
-          plan: places.running ? "subscription" : places.granted > 0 ? (places.gift > 0 ? "gift" : "trial") : "none",
-          places: places.total,
-          cases: row._count.trackers,
-        };
-      }),
-    );
-    return { items, total, page, pageSize };
-  }
-
   async function userDetail(userId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return null;
-    const [accessState, state, grantList, trackerRows, payments, audit] = await Promise.all([
+    const [accessState, state, grantList, trackerRows] = await Promise.all([
       access.get(userId),
       billing.state(userId),
       grants.list(userId),
       prisma.tracker.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, include: { snapshot: true } }),
-      prisma.payment.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 20 }),
-      prisma.auditLog.findMany({ where: { targetUserId: userId }, orderBy: { createdAt: "desc" }, take: 20 }),
     ]);
     return {
       user: {
@@ -236,22 +178,6 @@ export function createAdminService(deps: {
         keepNext: row.keepNext,
         notifyTelegram: row.notifyTelegram,
         header: (row.snapshot?.header ?? {}) as Record<string, string>,
-      })),
-      payments: payments.map((row) => ({
-        id: row.id,
-        createdAt: row.createdAt.toISOString(),
-        amount: row.amount,
-        currency: row.currency,
-        kind: row.kind,
-        casesDelta: row.casesDelta,
-        provider: row.provider,
-      })),
-      audit: audit.map((row) => ({
-        id: row.id,
-        createdAt: row.createdAt.toISOString(),
-        actorEmail: row.actorEmail,
-        action: row.action,
-        details: row.details as Record<string, unknown> | null,
       })),
     };
   }
@@ -353,30 +279,47 @@ export function createAdminService(deps: {
     return { ok: true, value: undefined };
   }
 
-  async function listFeedback(input: { status?: string; page?: number; pageSize?: number }) {
-    const pageSize = Math.min(100, Math.max(1, input.pageSize ?? 25));
-    const page = Math.max(1, input.page ?? 1);
-    const where = input.status && (FEEDBACK_STATUSES as readonly string[]).includes(input.status) ? { status: input.status } : {};
-    const [total, rows] = await Promise.all([
-      prisma.feedbackMessage.count({ where }),
-      prisma.feedbackMessage.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * pageSize, take: pageSize }),
-    ]);
+  /** One inbox message for reading. Opening a new message marks it as read. */
+  async function openFeedback(actor: Actor, id: string) {
+    const row = await prisma.feedbackMessage.findUnique({ where: { id } });
+    if (!row) return null;
+    let status = row.status;
+    if (status === "NEW") {
+      status = "READ";
+      await prisma.feedbackMessage.update({ where: { id }, data: { status } });
+      await record({ actor, action: "feedback.status", details: { id, from: "NEW", to: "READ" } });
+    }
     return {
-      total,
-      page,
-      pageSize,
-      items: rows.map((row) => ({
-        id: row.id,
-        createdAt: row.createdAt.toISOString(),
-        topic: row.topic,
-        name: row.name,
-        email: row.email,
-        message: row.message,
-        locale: row.locale,
-        status: row.status,
-        userId: row.userId,
-      })),
+      id: row.id,
+      createdAt: row.createdAt.toISOString(),
+      topic: row.topic,
+      name: row.name,
+      email: row.email,
+      message: row.message,
+      locale: row.locale,
+      status,
+      userId: row.userId,
+      reply: row.reply,
+      repliedAt: row.repliedAt?.toISOString() ?? null,
+      repliedBy: row.repliedBy,
     };
+  }
+
+  /**
+   * Answers an inbox message. SIMULATED: the text is stored and the message moves to "answered", but no
+   * e-mail leaves yet (the support mailbox is not connected).
+   */
+  async function replyFeedback(actor: Actor, id: string, text: string): Promise<MutationResult> {
+    const reply = text.trim();
+    if (reply === "" || reply.length > 5000) return { ok: false, reason: "INVALID" };
+    const row = await prisma.feedbackMessage.findUnique({ where: { id }, select: { id: true, email: true } });
+    if (!row) return { ok: false, reason: "NOT_FOUND" };
+    await prisma.feedbackMessage.update({
+      where: { id },
+      data: { reply, repliedAt: now(), repliedBy: actor.email, status: "ANSWERED" },
+    });
+    await record({ actor, action: "feedback.reply", details: { id, to: row.email, simulated: true } });
+    return { ok: true, value: undefined };
   }
 
   async function setFeedbackStatus(actor: Actor, id: string, status: string): Promise<MutationResult> {
@@ -386,6 +329,25 @@ export function createAdminService(deps: {
     if (row.status === status) return { ok: true, value: undefined };
     await prisma.feedbackMessage.update({ where: { id }, data: { status } });
     await record({ actor, action: "feedback.status", details: { id, from: row.status, to: status } });
+    return { ok: true, value: undefined };
+  }
+
+  /** Ends a subscription at once and clears the test payment log of the account (test provider only). */
+  async function resetSubscription(actor: Actor, userId: string): Promise<MutationResult> {
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true } });
+    if (!target) return { ok: false, reason: "NOT_FOUND" };
+    await access.resetSubscription(userId);
+    await record({ actor, action: "subscription.reset", target });
+    return { ok: true, value: undefined };
+  }
+
+  /** Simulates the renewal: one more period at the price of the places the account keeps. */
+  async function renewSubscription(actor: Actor, userId: string): Promise<MutationResult> {
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true } });
+    if (!target) return { ok: false, reason: "NOT_FOUND" };
+    const result = await billing.renew(userId);
+    if (!result.ok) return { ok: false, reason: "INVALID" };
+    await record({ actor, action: "subscription.renew", target, details: { amount: result.quote.amount } });
     return { ok: true, value: undefined };
   }
 
@@ -480,46 +442,31 @@ export function createAdminService(deps: {
     return trackers.statusStats(kind);
   }
 
-  async function auditLog(input: { page?: number; pageSize?: number }) {
-    const pageSize = Math.min(100, Math.max(1, input.pageSize ?? 50));
-    const page = Math.max(1, input.page ?? 1);
-    const [total, rows] = await Promise.all([
-      prisma.auditLog.count(),
-      prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, skip: (page - 1) * pageSize, take: pageSize }),
-    ]);
-    return {
-      total,
-      page,
-      pageSize,
-      items: rows.map((row) => ({
-        id: row.id,
-        createdAt: row.createdAt.toISOString(),
-        actorEmail: row.actorEmail,
-        action: row.action,
-        targetUserId: row.targetUserId,
-        targetEmail: row.targetEmail,
-        details: row.details as Record<string, unknown> | null,
-      })),
-    };
-  }
+  const lists = createAdminLists({ prisma, now });
 
   return {
     overview,
-    listUsers,
+    listUsers: lists.users,
+    userPayments: lists.payments,
+    auditLog: lists.audit,
+    economics: lists.economics,
+    listFeedback: (input: Parameters<typeof lists.feedback>[0]) => lists.feedback(input, FEEDBACK_STATUSES),
     userDetail,
     giveGrant,
     revokeGrant,
     setGrantExpiry,
     setEarlyAccess,
-    listFeedback,
     setFeedbackStatus,
+    openFeedback,
+    replyFeedback,
+    resetSubscription,
+    renewSubscription,
     listNews,
     saveNews,
     deleteNews,
     publishedNews,
     sourcesHealth,
     statusStats,
-    auditLog,
   };
 }
 

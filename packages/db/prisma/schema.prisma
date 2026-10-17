@@ -240,6 +240,10 @@ model FeedbackMessage {
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   /// NEW | READ | ANSWERED | SPAM (handled in the admin area).
   status    String   @default("NEW")
+  /// The answer sent from the admin area (simulated until the support mail is connected).
+  reply     String?
+  repliedAt DateTime?
+  repliedBy String?
 
   @@index([status, createdAt])
 }
@@ -353,6 +357,8 @@ model Payment {
   method     String?
   /// The checkout that produced it.
   intentId   String?  @unique
+  /// Link to the receipt or payment document of the provider (filled in when real billing is connected).
+  receiptUrl String?
   createdAt  DateTime @default(now())
 
   @@index([userId, createdAt])

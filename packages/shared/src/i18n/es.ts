@@ -277,10 +277,6 @@ export const es: Messages = {
   "track.error.subscription": "La prueba cubre un solo seguimiento. Para agregar otro hace falta una suscripción (Ajustes → Suscripción).",
   "settings.access.subscription": "Suscripción activa hasta {date}.",
 
-  "settings.access.stubCancel": "Reiniciar la suscripción y borrar el registro de pagos",
-  "settings.access.stubGiftAdd": "+1 lugar de regalo (30 días)",
-  "settings.access.stubGiftRemove": "−1 lugar de regalo",
-  "settings.access.stubResetTrial": "Empezar el período de prueba de nuevo",
 
   "bot.accountDeleted": "Tu cuenta fue eliminada y las notificaciones se detuvieron. Gracias por usar Ojo de Halcón.",
   "bot.unlinked": "Telegram se desvinculó de tu cuenta y ya no recibirás notificaciones aquí. Puedes volver a vincularlo en los ajustes del sitio.",
@@ -386,7 +382,6 @@ export const es: Messages = {
   "track.sub.finished": "El seguimiento finalizó y su lugar está libre. Agrega uno nuevo; si no, el próximo período el importe baja.",
   "bot.freePlacesEnded": "⏸ Terminó el plazo de los lugares de prueba o de regalo: {count} seguimientos quedaron sin lugar y se detuvieron. Para continuar, contrata la suscripción en tu panel.",
   "bot.caseFinished": "✅ El seguimiento {caseId} finalizó. Quedó un lugar libre en la suscripción: agrega uno nuevo; si no, el próximo período el importe baja.",
-  "billing.renew": "Simular la renovación ({amount})",
   "landing.nav.how": "Cómo funciona",
   "landing.nav.pricing": "Planes",
   "landing.nav.news": "Novedades",
@@ -753,7 +748,6 @@ export const es: Messages = {
   "settings.sub.willHave": "Quedará en la suscripción desde el próximo período",
   "settings.sub.toPay": "A pagar ahora",
   "settings.sub.buyNow": "Comprar",
-  "settings.access.testActions": "Acciones de prueba",
   "settings.sub.validUntil": "Vigente hasta",
   "billing.cases.cancelledNext": "La suscripción no se renovará",
   "dash.attn.cancelled": "Suscripción cancelada: los seguimientos se detendrán el {date}.",

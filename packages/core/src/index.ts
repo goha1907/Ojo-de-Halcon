@@ -34,7 +34,7 @@ export function createCore(deps: CoreDeps) {
     capacity,
     ...(deps.earlyAccessKinds ? { earlyAccessKinds: deps.earlyAccessKinds } : {}),
   });
-  const access = createAccessService({ prisma, now, capacity, grants });
+  const access = createAccessService({ prisma, now, capacity });
   return {
     sessions: createSessionService({ prisma, config, now }),
     accounts: createAccountService({ prisma, config, mailer, now }),
@@ -46,7 +46,7 @@ export function createCore(deps: CoreDeps) {
     access,
     billing,
     feedback: createFeedbackService({ prisma }),
-    admin: createAdminService({ prisma, now, access, billing, capacity, grants, trackers }),
+    admin: createAdminService({ prisma, now, access, billing, grants, trackers }),
     payments: createPaymentService({ prisma, billing, providers, config: config.payments, now }),
   };
 }
@@ -86,10 +86,9 @@ export type {
   NewsEntryDto,
   NewsTranslation,
   OverviewDto,
-  Page,
   SourceHealthRow,
-  UserRow,
 } from "./admin/admin-service";
+export type { ListQuery, Page, UserRow } from "./admin/admin-lists";
 export { FEEDBACK_STATUS_LIST, NEWS_SLUG_PATTERN } from "./admin/admin-service";
 export type { PlaceBreakdown, CapacityService } from "./capacity/capacity-service";
 export { GRANT_KINDS } from "./grants/grant-service";

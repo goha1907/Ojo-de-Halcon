@@ -1,33 +1,64 @@
 import Link from "next/link";
 import { dateOnly, pageParam } from "@/components/admin/format";
-import { Badge, PageTitle, Pager, Panel, TABLE, TD, TH } from "@/components/admin/ui";
+import { FilterBar, SortTh, flatParams, listHref, type FilterField } from "@/components/admin/list-controls";
+import { Badge, PageTitle, Pager, Panel, TABLE, TD } from "@/components/admin/ui";
 import { getCore } from "@/server/core";
 import { requireStaff } from "@/server/session";
 
-export default async function AdminUsersPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+const BASE = "/admin/users";
+const YES_NO = [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }];
+
+const FIELDS: FilterField[] = [
+  { name: "q", label: "E-mail or user id", kind: "text", placeholder: "Search…" },
+  { name: "role", label: "Role", kind: "select", options: [{ value: "USER", label: "Customer" }, { value: "staff", label: "Any staff" }, { value: "SUPPORT", label: "Support" }, { value: "ADMIN", label: "Admin" }] },
+  { name: "plan", label: "Plan", kind: "select", options: [{ value: "subscription", label: "Subscription" }, { value: "gift", label: "Gift places" }, { value: "trial", label: "Trial" }, { value: "none", label: "No places" }] },
+  { name: "gift", label: "Gift places in use", kind: "select", options: [{ value: "yes", label: "Has gift places" }] },
+  { name: "cases", label: "Cases", kind: "select", options: [{ value: "active", label: "Has active cases" }, { value: "none", label: "No active cases" }] },
+  { name: "telegram", label: "Telegram", kind: "select", options: YES_NO.map((o) => ({ ...o, label: o.value === "yes" ? "Linked" : "Not linked" })) },
+  { name: "verified", label: "E-mail verified", kind: "select", options: YES_NO },
+  { name: "earlyAccess", label: "Early access", kind: "select", options: [{ value: "yes", label: "Has it" }] },
+  { name: "from", label: "Joined from", kind: "date" },
+  { name: "to", label: "Joined to", kind: "date" },
+];
+
+export default async function AdminUsersPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await requireStaff("users.read");
-  const { q, page } = await searchParams;
-  const result = await getCore().admin.listUsers({ ...(q ? { query: q } : {}), page: pageParam(page) });
-  const href = (n: number) => `/admin/users?${new URLSearchParams({ ...(q ? { q } : {}), page: String(n) })}`;
+  const params = flatParams(await searchParams);
+  const result = await getCore().admin.listUsers({
+    ...(params.q ? { query: params.q } : {}),
+    ...(params.role ? { role: params.role } : {}),
+    ...(params.plan ? { plan: params.plan } : {}),
+    ...(params.gift ? { gift: params.gift } : {}),
+    ...(params.cases ? { cases: params.cases } : {}),
+    ...(params.telegram ? { telegram: params.telegram } : {}),
+    ...(params.verified ? { verified: params.verified } : {}),
+    ...(params.earlyAccess ? { earlyAccess: params.earlyAccess } : {}),
+    ...(params.from ? { from: params.from } : {}),
+    ...(params.to ? { to: params.to } : {}),
+    ...(params.sort ? { sort: params.sort } : {}),
+    ...(params.dir === "asc" || params.dir === "desc" ? { dir: params.dir } : {}),
+    page: pageParam(params.page),
+  });
+  const sort = (label: string, field: string, defaultDir: "asc" | "desc" = "asc") => (
+    <SortTh label={label} field={field} base={BASE} params={params} defaultSort="createdAt" defaultDir={field === "createdAt" ? "desc" : defaultDir} />
+  );
   return (
     <>
       <PageTitle title="Users" />
-      <form className="mb-4 flex gap-2" action="/admin/users">
-        <input name="q" defaultValue={q ?? ""} placeholder="Search by e-mail or user id" className="w-full max-w-sm rounded-field border border-line bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-ring" />
-        <button className="rounded-field bg-brand px-4 py-2 text-sm font-medium text-brand-fg hover:bg-brand-hover">Search</button>
-      </form>
+      <FilterBar base={BASE} fields={FIELDS} params={params} />
       <Panel>
         <div className="overflow-x-auto">
           <table className={TABLE}>
             <thead>
               <tr>
-                <th className={TH}>E-mail</th>
-                <th className={TH}>Role</th>
-                <th className={TH}>Plan</th>
-                <th className={TH}>Places</th>
-                <th className={TH}>Cases</th>
-                <th className={TH}>Telegram</th>
-                <th className={TH}>Joined</th>
+                {sort("E-mail", "email")}
+                {sort("Role", "role")}
+                {sort("Plan", "plan")}
+                {sort("Places", "places", "desc")}
+                {sort("Gift places", "gift", "desc")}
+                {sort("Cases", "cases", "desc")}
+                <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-fg-muted">Telegram</th>
+                {sort("Joined", "createdAt")}
               </tr>
             </thead>
             <tbody>
@@ -40,18 +71,19 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                   <td className={TD}>{row.role === "USER" ? <span className="text-fg-muted">user</span> : <Badge tone="blue">{row.role}</Badge>}</td>
                   <td className={TD}><Badge tone={row.plan === "subscription" ? "green" : row.plan === "none" ? "red" : "slate"}>{row.plan}</Badge></td>
                   <td className={TD}>{row.places}</td>
+                  <td className={TD}>{row.gift > 0 ? <Badge tone="blue">{row.gift}</Badge> : <span className="text-fg-muted">0</span>}</td>
                   <td className={TD}>{row.cases}</td>
                   <td className={TD}>{row.telegramLinked ? "linked" : "—"}</td>
                   <td className={TD}>{dateOnly(row.createdAt)}</td>
                 </tr>
               ))}
               {result.items.length === 0 && (
-                <tr><td className={`${TD} text-fg-muted`} colSpan={7}>No users found.</td></tr>
+                <tr><td className={`${TD} text-fg-muted`} colSpan={8}>No users found.</td></tr>
               )}
             </tbody>
           </table>
         </div>
-        <Pager page={result.page} pageSize={result.pageSize} total={result.total} href={href} />
+        <Pager page={result.page} pageSize={result.pageSize} total={result.total} href={(n) => listHref(BASE, params, { page: String(n) })} />
       </Panel>
     </>
   );

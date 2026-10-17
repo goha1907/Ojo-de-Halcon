@@ -5,7 +5,7 @@
  */
 export const ru = {
   "app.name": "Ojo de Halcón",
-  "app.tagline": "Все ваши отслеживания — в одном месте",
+  "app.tagline": "Все ваши отслеживания в одном месте",
 
   "common.loading": "Загрузка…",
   "common.save": "Сохранить",
@@ -280,10 +280,6 @@ export const ru = {
   "track.error.subscription": "В пробном периоде доступно одно отслеживание. Чтобы добавить ещё, оформите подписку (Настройки → Подписка).",
   "settings.access.subscription": "Подписка активна до {date}.",
 
-  "settings.access.stubCancel": "Сбросить подписку и очистить лог платежей",
-  "settings.access.stubGiftAdd": "+1 подарочное место (30 дней)",
-  "settings.access.stubGiftRemove": "−1 подарочное место",
-  "settings.access.stubResetTrial": "Начать пробный период заново",
 
   "bot.accountDeleted": "Аккаунт удалён, уведомления остановлены. Спасибо, что пользовались Ojo de Halcón.",
   "bot.unlinked": "Telegram отключён от аккаунта, уведомления сюда больше не придут. Подключить снова можно в настройках на сайте.",
@@ -389,7 +385,6 @@ export const ru = {
   "track.sub.finished": "Отслеживание завершено, место в подписке свободно. Добавьте вместо него новое. В ином случае сумма подписки в следующем периоде уменьшится.",
   "bot.freePlacesEnded": "⏸ Срок пробных или подарочных мест закончился: отслеживаний без места — {count}, они остановлены. Чтобы продолжить, оформите подписку в личном кабинете.",
   "bot.caseFinished": "✅ Отслеживание {caseId} завершено, место в подписке свободно. Добавьте вместо него новое. В ином случае сумма подписки в следующем периоде уменьшится.",
-  "billing.renew": "Имитировать продление ({amount})",
   "landing.nav.how": "Как это работает",
   "landing.nav.pricing": "Тарифы",
   "landing.nav.news": "Новости",
@@ -400,7 +395,7 @@ export const ru = {
   "landing.cta.register": "Регистрация",
   "landing.cta.cabinet": "В кабинет",
   "landing.cta.start": "Начать бесплатно",
-  "landing.hero.title": "Все ваши отслеживания — в одном месте",
+  "landing.hero.title": "Все ваши отслеживания в одном месте",
   "landing.hero.text": "Ojo de Halcón следит за вашими документами в RENAPER, Migraciones, Correo Argentino и суде и сразу отправляет уведомление в бот, когда что-то меняется. Больше не нужно каждый день обходить разные сайты.",
   "landing.hero.trial": "Первые {days} дней бесплатно, одно отслеживание.",
   "landing.hero.b1": "Статусы на понятном языке",
@@ -756,7 +751,6 @@ export const ru = {
   "settings.sub.willHave": "Будет в подписке со следующего периода",
   "settings.sub.toPay": "К оплате сейчас",
   "settings.sub.buyNow": "Купить",
-  "settings.access.testActions": "Тестовые действия",
   "settings.sub.validUntil": "Действует до",
   "billing.cases.cancelledNext": "Подписка не продлится",
   "dash.attn.cancelled": "Подписка отменена: отслеживания остановятся {date}.",

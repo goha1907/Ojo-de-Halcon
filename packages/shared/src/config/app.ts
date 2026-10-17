@@ -149,9 +149,7 @@ export const API_ROUTES = {
   trackerPreview: "/api/trackers/preview",
   feedback: "/api/feedback",
   people: "/api/people",
-  billingStub: "/api/billing/stub",
   paymentIntents: "/api/payments/intents",
-  billingRenew: "/api/billing/renew",
   billingCases: "/api/billing/cases",
   billingSubscription: "/api/billing/subscription",
 } as const;

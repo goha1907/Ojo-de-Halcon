@@ -1,19 +1,55 @@
 import { can } from "@ojo/shared";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { dateOnly, dateTime, money } from "@/components/admin/format";
+import { dateOnly, dateTime, money, pageParam } from "@/components/admin/format";
+import { FilterBar, SortTh, flatParams, listHref } from "@/components/admin/list-controls";
 import { EarlyAccessToggle } from "@/components/admin/early-access-toggle";
 import { GiveGrantForm, GrantRowActions } from "@/components/admin/grant-controls";
-import { Badge, PageTitle, Panel, Stat, TABLE, TD, TH } from "@/components/admin/ui";
+import { Badge, PageTitle, Pager, Panel, Stat, TABLE, TD, TH } from "@/components/admin/ui";
 import { getCore } from "@/server/core";
+import { SubscriptionTools } from "@/components/admin/subscription-tools";
+import { getEnv } from "@/server/env";
 import { requireStaff } from "@/server/session";
 
-export default async function AdminUserPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AdminUserPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const staff = await requireStaff("users.read");
   const { id } = await params;
-  const detail = await getCore().admin.userDetail(id);
+  const query = flatParams(await searchParams);
+  const core = getCore();
+  const detail = await core.admin.userDetail(id);
   if (!detail) notFound();
-  const { user, access, billing, grants, trackers, payments, audit } = detail;
+  const { user, access, billing, grants, trackers } = detail;
+  const base = `/admin/users/${id}`;
+  const [payments, audit] = await Promise.all([
+    core.admin.userPayments(id, {
+      page: pageParam(query.pay_page),
+      ...(query.pay_kind ? { kind: query.pay_kind } : {}),
+      ...(query.pay_provider ? { provider: query.pay_provider } : {}),
+      ...(query.pay_from ? { from: query.pay_from } : {}),
+      ...(query.pay_to ? { to: query.pay_to } : {}),
+      ...(query.pay_sort ? { sort: query.pay_sort } : {}),
+      ...(query.pay_dir === "asc" || query.pay_dir === "desc" ? { dir: query.pay_dir } : {}),
+    }),
+    core.admin.auditLog({
+      userId: id,
+      pageSize: 10,
+      page: pageParam(query.act_page),
+      ...(query.act_q ? { query: query.act_q } : {}),
+      ...(query.act_action ? { action: query.act_action } : {}),
+      ...(query.act_from ? { from: query.act_from } : {}),
+      ...(query.act_to ? { to: query.act_to } : {}),
+      ...(query.act_sort ? { sort: query.act_sort } : {}),
+      ...(query.act_dir === "asc" || query.act_dir === "desc" ? { dir: query.act_dir } : {}),
+    }),
+  ]);
+  const payKeys = { sort: "pay_sort", dir: "pay_dir", page: "pay_page" };
+  const actKeys = { sort: "act_sort", dir: "act_dir", page: "act_page" };
+  const paySort = (label: string, field: string) => (
+    <SortTh label={label} field={field} base={base} params={query} keys={payKeys} defaultSort="createdAt" defaultDir={field === "createdAt" ? "desc" : "asc"} />
+  );
+  const actSort = (label: string, field: string) => (
+    <SortTh label={label} field={field} base={base} params={query} keys={actKeys} defaultSort="createdAt" defaultDir={field === "createdAt" ? "desc" : "asc"} />
+  );
   const canGrant = can(staff.role, "grants.manage");
   const canManage = can(staff.role, "users.manage");
   return (
@@ -53,6 +89,11 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
             <dt className="text-fg-muted">Free places left</dt><dd>{billing.freeCases}</dd>
             <dt className="text-fg-muted">Next period</dt><dd>{billing.nextPeriodCases} paid places · {money(billing.nextPeriodPrice, billing.currency)}</dd>
           </dl>
+          {canManage && getEnv().PAYMENTS_STUB && (
+            <div className="mt-3 border-t border-line pt-3">
+              <SubscriptionTools userId={user.id} subscribed={access.plan === "subscription"} />
+            </div>
+          )}
         </Panel>
       </div>
 
@@ -121,36 +162,86 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
           )}
         </Panel>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <Panel title="Payments (last 20)">
-            {payments.length === 0 ? (
-              <p className="text-sm text-fg-muted">None.</p>
-            ) : (
-              <ul className="divide-y divide-line text-sm">
-                {payments.map((row) => (
-                  <li key={row.id} className="flex justify-between gap-3 py-1.5">
-                    <span>{dateTime(row.createdAt)} · {row.kind}{row.casesDelta ? ` (+${row.casesDelta})` : ""} · {row.provider}</span>
-                    <span className="font-medium">{money(row.amount, row.currency)}</span>
-                  </li>
+        <Panel title="Payments">
+          <FilterBar
+            base={base}
+            params={query}
+            pageKey="pay_page"
+            fields={[
+              { name: "pay_kind", label: "Kind", kind: "select", options: payments.kinds.map((value) => ({ value, label: value })) },
+              { name: "pay_provider", label: "Provider", kind: "select", options: payments.providers.map((value) => ({ value, label: value === "stub" ? "stub (test)" : value })) },
+              { name: "pay_from", label: "From", kind: "date" },
+              { name: "pay_to", label: "To", kind: "date" },
+            ]}
+          />
+          <div className="overflow-x-auto">
+            <table className={TABLE}>
+              <thead>
+                <tr>
+                  {paySort("When", "createdAt")}
+                  {paySort("Kind", "kind")}
+                  <th className={TH}>Places</th>
+                  {paySort("Provider", "provider")}
+                  {paySort("Amount", "amount")}
+                  <th className={TH}>Receipt</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.items.map((row) => (
+                  <tr key={row.id} className="border-t border-line">
+                    <td className={`${TD} whitespace-nowrap`}>{dateTime(row.createdAt)}</td>
+                    <td className={TD}>{row.kind}</td>
+                    <td className={TD}>{row.casesDelta ? `+${row.casesDelta}` : "—"}</td>
+                    <td className={TD}>{row.provider === "stub" ? <Badge tone="amber">stub (test)</Badge> : row.provider}{row.method ? <span className="text-fg-muted"> · {row.method}</span> : null}</td>
+                    <td className={`${TD} font-medium`}>{money(row.amount, row.currency)}</td>
+                    <td className={TD}>
+                      {row.receiptUrl ? (
+                        <a href={row.receiptUrl} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">Open</a>
+                      ) : (
+                        <span className="text-fg-muted">—</span>
+                      )}
+                    </td>
+                  </tr>
                 ))}
-              </ul>
-            )}
-          </Panel>
-          <Panel title="Admin actions on this account">
-            {audit.length === 0 ? (
-              <p className="text-sm text-fg-muted">None.</p>
-            ) : (
-              <ul className="divide-y divide-line text-sm">
-                {audit.map((row) => (
-                  <li key={row.id} className="py-1.5">
-                    <div>{dateTime(row.createdAt)} · <span className="font-medium">{row.action}</span> · {row.actorEmail}</div>
-                    {row.details && <div className="break-all font-mono text-xs text-fg-muted">{JSON.stringify(row.details)}</div>}
-                  </li>
+                {payments.items.length === 0 && <tr><td className={`${TD} text-fg-muted`} colSpan={6}>No payments.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <Pager page={payments.page} pageSize={payments.pageSize} total={payments.total} href={(n) => listHref(base, query, { pay_page: String(n) })} />
+        </Panel>
+
+        <Panel title="Admin actions on this account">
+          <FilterBar
+            base={base}
+            params={query}
+            pageKey="act_page"
+            fields={[
+              { name: "act_action", label: "Action", kind: "select", options: audit.actions.map((value) => ({ value, label: value })) },
+              { name: "act_q", label: "Staff e-mail", kind: "text", placeholder: "Search…" },
+              { name: "act_from", label: "From", kind: "date" },
+              { name: "act_to", label: "To", kind: "date" },
+            ]}
+          />
+          <div className="overflow-x-auto">
+            <table className={TABLE}>
+              <thead>
+                <tr>{actSort("When", "createdAt")}{actSort("Action", "action")}{actSort("Who", "actorEmail")}<th className={TH}>Details</th></tr>
+              </thead>
+              <tbody>
+                {audit.items.map((row) => (
+                  <tr key={row.id} className="border-t border-line">
+                    <td className={`${TD} whitespace-nowrap`}>{dateTime(row.createdAt)}</td>
+                    <td className={`${TD} font-medium`}>{row.action}</td>
+                    <td className={TD}>{row.actorEmail}</td>
+                    <td className={`${TD} break-all font-mono text-xs text-fg-muted`}>{row.details ? JSON.stringify(row.details) : ""}</td>
+                  </tr>
                 ))}
-              </ul>
-            )}
-          </Panel>
-        </div>
+                {audit.items.length === 0 && <tr><td className={`${TD} text-fg-muted`} colSpan={4}>No actions.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <Pager page={audit.page} pageSize={audit.pageSize} total={audit.total} href={(n) => listHref(base, query, { act_page: String(n) })} />
+        </Panel>
         <Stat label="Cases right now" value={`${billing.activeCases} active · ${billing.finishedCases} finished`} />
       </div>
     </>

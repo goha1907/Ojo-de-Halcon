@@ -1,13 +1,19 @@
 import { LOCALES } from "@ojo/shared";
 import Link from "next/link";
-import { Badge, PageTitle, Panel, TABLE, TD, TH } from "@/components/admin/ui";
+import { pageParam } from "@/components/admin/format";
+import { FilterBar, SortTh, flatParams, listHref } from "@/components/admin/list-controls";
+import { sortAndPage } from "@/components/admin/memory-list";
+import { Badge, PageTitle, Pager, Panel, TABLE, TD, TH } from "@/components/admin/ui";
 import { DeleteNews } from "@/components/admin/delete-news";
 import { getCore } from "@/server/core";
 import { readFiles } from "@/server/news";
 import { requireStaff } from "@/server/session";
 
-export default async function AdminNewsPage() {
+const BASE = "/admin/news";
+
+export default async function AdminNewsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await requireStaff("news.manage");
+  const params = flatParams(await searchParams);
   const [written, files] = await Promise.all([getCore().admin.listNews(), readFiles()]);
   const writtenSlugs = new Set(written.map((entry) => entry.slug));
   const fileEntries = new Map<string, { slug: string; date: string; time: string; title: string; locales: string[] }>();
@@ -18,7 +24,8 @@ export default async function AdminNewsPage() {
     if (item.locale === "ru") entry.title = item.title;
     fileEntries.set(item.slug, entry);
   }
-  const rows = [
+  const needle = (params.q ?? "").trim().toLowerCase();
+  const all = [
     ...written.map((entry) => ({
       slug: entry.slug,
       date: entry.date,
@@ -28,7 +35,21 @@ export default async function AdminNewsPage() {
       fromFile: false,
     })),
     ...[...fileEntries.values()].map((entry) => ({ ...entry, fromFile: true })),
-  ].sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
+  ].filter(
+    (row) =>
+      (!needle || row.title.toLowerCase().includes(needle) || row.slug.includes(needle)) &&
+      (!params.source || (params.source === "file") === row.fromFile) &&
+      (!params.locale || row.locales.includes(params.locale)),
+  );
+  const page = sortAndPage(
+    all,
+    { sort: params.sort, dir: params.dir, page: pageParam(params.page), pageSize: 20 },
+    { date: (row) => `${row.date} ${row.time}`, title: (row) => row.title, source: (row) => (row.fromFile ? "file" : "admin"), languages: (row) => row.locales.length },
+    { sort: "date", dir: "desc" },
+  );
+  const sort = (label: string, field: string) => (
+    <SortTh label={label} field={field} base={BASE} params={params} defaultSort="date" defaultDir={field === "date" ? "desc" : "asc"} />
+  );
 
   return (
     <>
@@ -37,20 +58,29 @@ export default async function AdminNewsPage() {
           New entry
         </Link>
       </PageTitle>
+      <FilterBar
+        base={BASE}
+        params={params}
+        fields={[
+          { name: "q", label: "Title or link contains", kind: "text", placeholder: "Search…" },
+          { name: "locale", label: "Has language", kind: "select", options: LOCALES.map((value) => ({ value, label: value })) },
+          { name: "source", label: "Source", kind: "select", options: [{ value: "admin", label: "Written here" }, { value: "file", label: "File" }] },
+        ]}
+      />
       <Panel note="Entries published here appear on the landing page at once. Entries marked “file” are kept in the repository: editing one publishes a replacement.">
         <div className="overflow-x-auto">
           <table className={TABLE}>
             <thead>
               <tr>
-                <th className={TH}>Date</th>
-                <th className={TH}>Title</th>
-                <th className={TH}>Languages</th>
-                <th className={TH}>Source</th>
+                {sort("Date", "date")}
+                {sort("Title", "title")}
+                {sort("Languages", "languages")}
+                {sort("Source", "source")}
                 <th className={TH} />
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {page.items.map((row) => (
                 <tr key={row.slug} className="border-t border-line">
                   <td className={TD}>{row.date} {row.time !== "00:00" ? row.time : ""}</td>
                   <td className={TD}>{row.title}</td>
@@ -69,6 +99,7 @@ export default async function AdminNewsPage() {
             </tbody>
           </table>
         </div>
+        <Pager page={page.page} pageSize={page.pageSize} total={page.total} href={(n) => listHref(BASE, params, { page: String(n) })} />
       </Panel>
     </>
   );

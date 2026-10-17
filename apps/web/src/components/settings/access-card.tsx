@@ -32,7 +32,7 @@ interface Props {
   daysLeft: number;
 }
 
-/** Subscription page: purchase, slot analytics, amounts and dates, payment log, test buttons. */
+/** Subscription page: purchase, slot analytics, amounts and dates, payment log. */
 export function AccessCard({ access, billing, payments, grants, methods, testMode, initialCount, daysLeft }: Props) {
   const { t, locale } = useI18n();
   const router = useRouter();
@@ -331,66 +331,6 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
                 )}
               </div>
 
-            {testMode && (
-              <details className="border-t border-line pt-3 text-sm">
-                <summary className="cursor-pointer text-fg-muted">{t("settings.access.testActions")}</summary>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {subscribed && billing.renews && billing.keptCases > 0 && (
-                    <Button
-                      variant="ghost"
-                      loading={busy === "renew"}
-                      onClick={() => void run("renew", () => apiRequest(API_ROUTES.billingRenew, { method: "POST" }))}
-                    >
-                      {t("billing.renew", { amount: money(billing.nextPeriodPrice) })}
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    loading={busy === "cancel"}
-                    onClick={() =>
-                      void run("cancel", () =>
-                        apiRequest(API_ROUTES.billingStub, { method: "POST", body: { action: "cancel" } }),
-                      )
-                    }
-                  >
-                    {t("settings.access.stubCancel")}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    loading={busy === "giftAdd"}
-                    onClick={() =>
-                      void run("giftAdd", () =>
-                        apiRequest(API_ROUTES.billingStub, { method: "POST", body: { action: "giftAdd" } }),
-                      )
-                    }
-                  >
-                    {t("settings.access.stubGiftAdd")}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    loading={busy === "giftRemove"}
-                    onClick={() =>
-                      void run("giftRemove", () =>
-                        apiRequest(API_ROUTES.billingStub, { method: "POST", body: { action: "giftRemove" } }),
-                      )
-                    }
-                  >
-                    {t("settings.access.stubGiftRemove")}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    loading={busy === "resetTrial"}
-                    onClick={() =>
-                      void run("resetTrial", () =>
-                        apiRequest(API_ROUTES.billingStub, { method: "POST", body: { action: "resetTrial" } }),
-                      )
-                    }
-                  >
-                    {t("settings.access.stubResetTrial")}
-                  </Button>
-                </div>
-              </details>
-            )}
           </div>
         </Card>
       )}

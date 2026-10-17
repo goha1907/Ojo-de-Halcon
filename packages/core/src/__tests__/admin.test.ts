@@ -197,3 +197,123 @@ describe("news", () => {
     expect(await core.admin.deleteNews(actor, "2026-10-17-gone")).toEqual({ ok: false, reason: "NOT_FOUND" });
   });
 });
+
+describe("subscription tools", () => {
+  it("renews and resets a subscription with audit entries", async () => {
+    const { core, actor, customerId } = await setup();
+    await core.billing.checkout(customerId, 1);
+    await prisma.tracker.create({ data: { userId: customerId, kind: "RENAPER", reference: "755824304", nextCheckAt: new Date() } });
+    expect((await core.admin.renewSubscription(actor, customerId)).ok).toBe(true);
+    expect((await core.admin.resetSubscription(actor, customerId)).ok).toBe(true);
+    expect((await core.access.get(customerId)).plan).toBe("none");
+    expect(await prisma.auditLog.count({ where: { action: { in: ["subscription.renew", "subscription.reset"] } } })).toBe(2);
+    expect(await core.admin.resetSubscription(actor, "missing")).toEqual({ ok: false, reason: "NOT_FOUND" });
+  });
+});
+
+describe("inbox reading and replies", () => {
+  it("marks a message read when opened and answered when replied", async () => {
+    const { core, actor } = await setup();
+    await core.feedback.submit(
+      { topic: "technical", name: null, email: "a@example.com", message: "Hello there, help", website: "" },
+      { userId: null, locale: "ru" },
+    );
+    const [message] = (await core.admin.listFeedback({ status: "NEW" })).items;
+    const opened = await core.admin.openFeedback(actor, message!.id);
+    expect(opened).toMatchObject({ status: "READ", reply: null });
+    expect((await core.admin.listFeedback({ status: "NEW" })).total).toBe(0);
+
+    expect(await core.admin.replyFeedback(actor, message!.id, "  ")).toEqual({ ok: false, reason: "INVALID" });
+    expect((await core.admin.replyFeedback(actor, message!.id, "We are on it")).ok).toBe(true);
+    expect(await core.admin.openFeedback(actor, message!.id)).toMatchObject({ status: "ANSWERED", reply: "We are on it", repliedBy: "boss@example.com" });
+    expect(await core.admin.replyFeedback(actor, "missing", "x")).toEqual({ ok: false, reason: "NOT_FOUND" });
+    expect(await core.admin.openFeedback(actor, "missing")).toBeNull();
+  });
+});
+
+describe("admin lists", () => {
+  async function seed() {
+    const base = await setup();
+    const { core, actor, customerId } = base;
+    const second = await core.accounts.register({ email: "second@example.com", password: PASSWORD });
+    if (!second.ok) throw new Error("registration failed");
+    await core.admin.giveGrant(actor, { userId: customerId, kind: "GIFT", cases: 3, expiresAt: null });
+    await core.billing.checkout(second.userId, 2);
+    await prisma.tracker.create({ data: { userId: customerId, kind: "RENAPER", reference: "755824304", nextCheckAt: new Date() } });
+    return { ...base, secondId: second.userId };
+  }
+
+  it("filters users by plan, gift places and cases", async () => {
+    const { core, customerId, secondId } = await seed();
+    const ids = async (query: Record<string, string>) => (await core.admin.listUsers(query)).items.map((row) => row.id);
+    expect(await ids({ plan: "subscription" })).toEqual([secondId]);
+    expect(await ids({ gift: "yes" })).toEqual([customerId]);
+    expect(await ids({ plan: "gift" })).toEqual([customerId]);
+    expect(await ids({ cases: "active" })).toEqual([customerId]);
+    expect(await ids({ role: "ADMIN" })).toHaveLength(1);
+    expect(await ids({ query: "SECOND" })).toEqual([secondId]);
+    expect(await ids({ telegram: "yes" })).toEqual([]);
+  });
+
+  it("shows gift places and agrees with the capacity of each account", async () => {
+    const { core, customerId, secondId } = await seed();
+    const rows = (await core.admin.listUsers({})).items;
+    for (const row of rows) expect(row.places).toBe((await core.capacity.get(row.id)).total);
+    expect(rows.find((row) => row.id === customerId)).toMatchObject({ gift: 3, cases: 1, plan: "gift" });
+    expect(rows.find((row) => row.id === secondId)).toMatchObject({ gift: 0, plan: "subscription" });
+  });
+
+  it("sorts users by a computed column in both directions and pages the result", async () => {
+    const { core, customerId } = await seed();
+    const up = (await core.admin.listUsers({ sort: "gift", dir: "asc" })).items.map((row) => row.gift);
+    const down = (await core.admin.listUsers({ sort: "gift", dir: "desc" })).items.map((row) => row.gift);
+    expect(up).toEqual([...up].sort((a, b) => a - b));
+    expect(down).toEqual([...up].reverse());
+    const page = await core.admin.listUsers({ sort: "gift", dir: "desc", pageSize: 1, page: 1 });
+    expect(page).toMatchObject({ total: 3, pageSize: 1 });
+    expect(page.items[0]!.id).toBe(customerId);
+    // an unknown sort column falls back to the default
+    expect((await core.admin.listUsers({ sort: "password" })).total).toBe(3);
+  });
+
+  it("filters and sorts payments and the audit log of one account", async () => {
+    const { core, actor, secondId } = await seed();
+    await core.billing.renew(secondId).catch(() => undefined);
+    await prisma.payment.create({ data: { userId: secondId, amount: 10, currency: "ARS", kind: "cases", provider: "mercadopago", receiptUrl: "https://example.com/r/1" } });
+    const all = await core.admin.userPayments(secondId, {});
+    expect(all.total).toBeGreaterThanOrEqual(2);
+    expect(all.providers).toContain("mercadopago");
+    const real = await core.admin.userPayments(secondId, { provider: "mercadopago" });
+    expect(real.items).toHaveLength(1);
+    expect(real.items[0]!.receiptUrl).toBe("https://example.com/r/1");
+    const cheapest = await core.admin.userPayments(secondId, { sort: "amount", dir: "asc" });
+    expect(cheapest.items[0]!.amount).toBe(10);
+    expect((await core.admin.userPayments(secondId, { from: "2999-01-01" })).total).toBe(0);
+
+    await core.admin.giveGrant(actor, { userId: secondId, kind: "GIFT", cases: 1, expiresAt: null });
+    const log = await core.admin.auditLog({ userId: secondId });
+    expect(log.actions).toContain("grant.give");
+    expect((await core.admin.auditLog({ query: "second@" })).total).toBe(log.total);
+    expect((await core.admin.auditLog({ action: "no.such" })).total).toBe(0);
+  });
+
+  it("filters the inbox by text, topic and status", async () => {
+    const { core } = await seed();
+    await core.feedback.submit({ topic: "technical", name: "Ana", email: "ana@example.com", message: "It does not open", website: "" }, { userId: null, locale: "es" });
+    await core.feedback.submit({ topic: "other", name: null, email: "bob@example.com", message: "Thanks a lot", website: "" }, { userId: null, locale: "en" });
+    expect((await core.admin.listFeedback({ query: "does not" })).items).toHaveLength(1);
+    expect((await core.admin.listFeedback({ topic: "other" })).items[0]!.email).toBe("bob@example.com");
+    expect((await core.admin.listFeedback({ locale: "es" })).total).toBe(1);
+    expect((await core.admin.listFeedback({ sort: "email", dir: "asc" })).items[0]!.email).toBe("ana@example.com");
+    expect((await core.admin.listFeedback({ status: "ANSWERED" })).total).toBe(0);
+  });
+
+  it("reports the money for the owner", async () => {
+    const { core, secondId } = await seed();
+    const figures = await core.admin.economics();
+    expect(figures).toMatchObject({ running: 1, paidPlaces: 2, giftPlaces: 3 });
+    expect(figures.estimatedMonthly).toBeGreaterThan(0);
+    expect(figures.byKind.length).toBeGreaterThan(0);
+    expect(secondId).toBeTruthy();
+  });
+});

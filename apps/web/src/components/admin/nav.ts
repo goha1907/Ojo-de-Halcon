@@ -8,5 +8,6 @@ export const ADMIN_NAV: { href: string; label: string; permission: AdminPermissi
   { href: "/admin/news", label: "News", permission: "news.manage" },
   { href: "/admin/sources", label: "Sources", permission: "sources.read" },
   { href: "/admin/statuses", label: "Statuses", permission: "stats.read" },
+  { href: "/admin/economics", label: "Economics", permission: "economics.read" },
   { href: "/admin/audit", label: "Audit log", permission: "audit.read" },
 ];
