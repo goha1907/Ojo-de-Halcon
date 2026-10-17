@@ -1,5 +1,5 @@
 import type { AccessState } from "@ojo/core";
-import { EARLY_ACCESS_SECTIONS, ROUTES } from "@ojo/shared";
+import { DISABLED_SECTIONS, EARLY_ACCESS_SECTIONS, ROUTES } from "@ojo/shared";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/brand/logo";
@@ -44,7 +44,7 @@ export async function AppShell({
   children: ReactNode;
 }) {
   const { t, locale } = await getT();
-  const hiddenSections: readonly string[] = earlyAccess ? [] : EARLY_ACCESS_SECTIONS;
+  const hiddenSections: readonly string[] = [...DISABLED_SECTIONS, ...(earlyAccess ? [] : EARLY_ACCESS_SECTIONS)];
 
   const brand = (
     <Link href={ROUTES.home} className="flex items-center">

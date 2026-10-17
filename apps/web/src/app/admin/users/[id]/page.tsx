@@ -98,7 +98,7 @@ export default async function AdminUserPage({ params, searchParams }: { params: 
       </div>
 
       <div className="mt-4 space-y-4">
-        <Panel title="Trial and gift places" note="Granted places are used first and cost nothing. Without an end date they keep going until revoked. Giving places ends the trial.">
+        <Panel title="Trial and bonus places" note="Granted places are used first and cost nothing. Without an end date they keep going until revoked. Giving places ends the trial.">
           {grants.length === 0 ? (
             <p className="text-sm text-fg-muted">None.</p>
           ) : (

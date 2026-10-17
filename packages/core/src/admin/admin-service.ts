@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@ojo/db";
-import { APP_CONFIG, casesPrice, LOCALES, type Locale, type TrackerKindValue } from "@ojo/shared";
+import { APP_CONFIG, casesPrice, LOCALES, NEWS_COVER_PATTERN, NEWS_IMAGE_PATH, type Locale, type TrackerKindValue } from "@ojo/shared";
 import type { AccessService } from "../access/access-service";
 import type { BillingService } from "../billing/billing-service";
 import { GRANT_KINDS, type GrantKind, type GrantService } from "../grants/grant-service";
@@ -52,6 +52,10 @@ export interface NewsEntryDto {
   slug: string;
   date: string;
   time: string;
+  /** The main news: shown big on the home page; only one entry has it. */
+  featured: boolean;
+  /** Cover picture under `/news/`, or null for the default one. */
+  image: string | null;
   translations: Partial<Record<Locale, NewsTranslation>>;
 }
 
@@ -356,7 +360,7 @@ export function createAdminService(deps: {
     const rows = await prisma.newsPost.findMany({ orderBy: [{ date: "desc" }, { time: "desc" }, { slug: "asc" }] });
     const bySlug = new Map<string, NewsEntryDto>();
     for (const row of rows) {
-      const entry = bySlug.get(row.slug) ?? { slug: row.slug, date: row.date, time: row.time, translations: {} };
+      const entry = bySlug.get(row.slug) ?? { slug: row.slug, date: row.date, time: row.time, featured: row.featured, image: row.image, translations: {} };
       entry.translations[row.locale as Locale] = { title: row.title, summary: row.summary, body: row.body };
       bySlug.set(row.slug, entry);
     }
@@ -369,7 +373,15 @@ export function createAdminService(deps: {
    */
   async function saveNews(
     actor: Actor,
-    input: { slug: string; time: string; translations: Partial<Record<Locale, NewsTranslation>> },
+    input: {
+      slug: string;
+      time: string;
+      translations: Partial<Record<Locale, NewsTranslation>>;
+      /** Left out = unchanged. Setting it moves the "main news" mark here from any other entry. */
+      featured?: boolean;
+      /** Left out = unchanged; null = the default cover. */
+      image?: string | null;
+    },
   ): Promise<MutationResult> {
     if (!NEWS_SLUG_PATTERN.test(input.slug) || !NEWS_TIME_PATTERN.test(input.time)) return { ok: false, reason: "INVALID" };
     const date = input.slug.slice(0, 10);
@@ -377,6 +389,13 @@ export function createAdminService(deps: {
     const filled = (item: NewsTranslation | undefined) =>
       item !== undefined && item.title.trim() !== "" && item.body.trim() !== "";
     if (!filled(input.translations[APP_CONFIG.defaultLocale])) return { ok: false, reason: "INVALID" };
+    if (input.image && !NEWS_COVER_PATTERN.test(input.image)) return { ok: false, reason: "INVALID" };
+    const marks = {
+      ...(input.featured === undefined ? {} : { featured: input.featured }),
+      ...(input.image === undefined ? {} : { image: input.image }),
+    };
+    // only one entry is the main news: take the mark from the others first
+    if (input.featured) await prisma.newsPost.updateMany({ where: { featured: true, slug: { not: input.slug } }, data: { featured: false } });
     const saved: string[] = [];
     for (const locale of LOCALES) {
       const item = input.translations[locale];
@@ -384,7 +403,7 @@ export function createAdminService(deps: {
         await prisma.newsPost.deleteMany({ where: { slug: input.slug, locale } });
         continue;
       }
-      const data = { date, time: input.time, title: item!.title.trim(), summary: item!.summary.trim(), body: item!.body.trim() };
+      const data = { date, time: input.time, title: item!.title.trim(), summary: item!.summary.trim(), body: item!.body.trim(), ...marks };
       await prisma.newsPost.upsert({
         where: { slug_locale: { slug: input.slug, locale } },
         create: { slug: input.slug, locale, ...data },
@@ -392,7 +411,7 @@ export function createAdminService(deps: {
       });
       saved.push(locale);
     }
-    await record({ actor, action: "news.save", details: { slug: input.slug, locales: saved } });
+    await record({ actor, action: "news.save", details: { slug: input.slug, locales: saved, ...(input.featured === undefined ? {} : { featured: input.featured }) } });
     return { ok: true, value: undefined };
   }
 
@@ -403,9 +422,23 @@ export function createAdminService(deps: {
     return { ok: true, value: undefined };
   }
 
-  /** Every stored row, for the public pages (merged with the entries kept in files). */
+  /** Every stored entry, for the public pages. */
   async function publishedNews() {
     return prisma.newsPost.findMany();
+  }
+
+  /** Stores an uploaded cover (already cropped and compressed) and returns the address it is served from. */
+  async function saveNewsImage(actor: Actor, input: { mime: string; data: Uint8Array }): Promise<string> {
+    const row = await prisma.newsImage.create({ data: { mime: input.mime, data: Buffer.from(input.data) }, select: { id: true } });
+    await record({ actor, action: "news.image", details: { id: row.id, bytes: input.data.byteLength } });
+    return `${NEWS_IMAGE_PATH}/${row.id}`;
+  }
+
+  /** One uploaded cover for the public pages; null when the id is unknown. */
+  async function newsImage(id: string): Promise<{ mime: string; data: Uint8Array } | null> {
+    if (!/^[a-z0-9]+$/.test(id)) return null;
+    const row = await prisma.newsImage.findUnique({ where: { id } });
+    return row ? { mime: row.mime, data: row.data } : null;
   }
 
   async function sourcesHealth(): Promise<SourceHealthRow[]> {
@@ -465,6 +498,8 @@ export function createAdminService(deps: {
     saveNews,
     deleteNews,
     publishedNews,
+    saveNewsImage,
+    newsImage,
     sourcesHealth,
     statusStats,
   };

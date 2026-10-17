@@ -159,6 +159,32 @@ describe("free places", () => {
     expect((await core.capacity.get(userId)).granted).toBe(0);
   });
 
+  it("shows the nearest end of the bonus places and how many places end then, and moves on to the next end", async () => {
+    const clock = { at: new Date("2026-10-14T10:00:00Z") };
+    const { core, userId } = await setup(clock);
+    const day = (n: number) => new Date(Date.UTC(2026, 9, 14 + n, 23, 59, 59));
+    // two grants end on the same day, one later, one never; the trial does not count as a gift
+    await core.grants.give({ userId, kind: "GIFT", cases: 2, expiresAt: day(5) });
+    await core.grants.give({ userId, kind: "BONUS", cases: 1, expiresAt: day(5) });
+    await core.grants.give({ userId, kind: "PROMO", cases: 4, expiresAt: day(20) });
+    await core.grants.give({ userId, kind: "ADMIN", cases: 3 });
+    let access = await core.access.get(userId);
+    expect(access.giftCases).toBe(10);
+    expect(access.giftNextEnd).toEqual({ until: day(5).toISOString(), cases: 3 });
+
+    // the day passes: the numbers are recalculated and point to the next end
+    clock.at = new Date(Date.UTC(2026, 9, 20, 12));
+    access = await core.access.get(userId);
+    expect(access.giftCases).toBe(7);
+    expect(access.giftNextEnd).toEqual({ until: day(20).toISOString(), cases: 4 });
+
+    // only endless gifts are left: nothing to announce
+    clock.at = new Date(Date.UTC(2026, 10, 10, 12));
+    access = await core.access.get(userId);
+    expect(access.giftCases).toBe(3);
+    expect(access.giftNextEnd).toBeNull();
+  });
+
   it("explains a case on a gift place that will need a paid place after the gift ends", async () => {
     const clock = { at: new Date("2026-10-14T10:00:00Z") };
     const { core, userId } = await setup(clock);

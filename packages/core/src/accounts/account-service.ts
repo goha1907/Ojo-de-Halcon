@@ -1,6 +1,7 @@
 import type { EmailTokenType, PrismaClient } from "@ojo/db";
-import { canonicalEmail, createTranslator, normalizeEmail, resolveLocale } from "@ojo/shared";
+import { canonicalEmail, normalizeEmail, resolveLocale } from "@ojo/shared";
 import { hashPassword, keyedHash, randomToken, verifyPassword } from "../crypto";
+import { renderEmail } from "../mail/templates";
 import type { Mailer } from "../mailer";
 import { trialGrantData } from "../grants/grant-service";
 import type { CoreConfig } from "../types";
@@ -55,9 +56,13 @@ export function createAccountService(deps: {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.emailVerifiedAt) return;
     const token = await issueEmailToken(userId, "VERIFY_EMAIL", config.verifyEmailTtlHours * 3_600_000);
-    const t = createTranslator(resolveLocale(user.locale));
     const link = `${config.appUrl}/verify-email?token=${encodeURIComponent(token)}`;
-    await mailer.send({ to: user.email, subject: t("email.verify.subject"), text: t("email.verify.body", { link }) });
+    const mail = renderEmail("verify", {
+      locale: user.locale,
+      appUrl: config.appUrl,
+      data: { link, hours: config.verifyEmailTtlHours },
+    });
+    await mailer.send({ to: user.email, ...mail });
   }
 
   async function register(input: { email: string; password: string; locale?: string }): Promise<RegisterResult> {
@@ -112,9 +117,13 @@ export function createAccountService(deps: {
     const user = await prisma.user.findUnique({ where: { email: normalizeEmail(emailInput) } });
     if (!user) return;
     const token = await issueEmailToken(user.id, "RESET_PASSWORD", config.resetPasswordTtlMinutes * 60_000);
-    const t = createTranslator(resolveLocale(user.locale));
     const link = `${config.appUrl}/reset-password?token=${encodeURIComponent(token)}`;
-    await mailer.send({ to: user.email, subject: t("email.reset.subject"), text: t("email.reset.body", { link }) });
+    const mail = renderEmail("reset", {
+      locale: user.locale,
+      appUrl: config.appUrl,
+      data: { link, minutes: config.resetPasswordTtlMinutes },
+    });
+    await mailer.send({ to: user.email, ...mail });
   }
 
   async function resetPassword(token: string, newPassword: string): Promise<boolean> {

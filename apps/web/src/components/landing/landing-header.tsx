@@ -49,7 +49,7 @@ export function LandingHeader({
           <details className="relative md:hidden">
             <summary
               aria-label={t("landing.menu.open")}
-              className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-field border border-line text-lg [&::-webkit-details-marker]:hidden"
+              className="flex size-10 cursor-pointer list-none items-center justify-center rounded-field border border-line text-lg [&::-webkit-details-marker]:hidden"
             >
               ☰
             </summary>

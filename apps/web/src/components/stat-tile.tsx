@@ -30,7 +30,7 @@ export function StatTile({
   return (
     <div className={`rounded-card border border-l-4 border-line bg-surface p-4 shadow-sm ${style.edge}`}>
       <div className="text-xs text-fg-muted">{label}</div>
-      <div className={`mt-1 text-2xl font-bold ${style.number}`}>{value}</div>
+      <div className={`mt-1 whitespace-nowrap text-2xl font-bold ${style.number}`}>{value}</div>
       {hint && <div className="mt-0.5 text-xs text-fg-muted">{hint}</div>}
     </div>
   );

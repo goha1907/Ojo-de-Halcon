@@ -1,9 +1,10 @@
 "use client";
 
 import type { MessageKey } from "@ojo/shared";
-import { ArrowLeftIcon, ArrowRightIcon, cn } from "@ojo/ui";
+import { ArrowLeftIcon, ArrowRightIcon, GearIcon, cn } from "@ojo/ui";
 import { useState, type ReactNode } from "react";
 import { useT } from "@/components/providers/i18n-provider";
+import { SectionTitle } from "./section-title";
 
 const STEPS = [1, 2, 3, 4] as const;
 
@@ -70,7 +71,7 @@ export function HowItWorks(): ReactNode {
   return (
     <section id="how" className="scroll-mt-20 bg-surface">
       <div className="mx-auto max-w-6xl space-y-8 px-4 py-16">
-        <h2 className="text-3xl font-bold tracking-tight text-fg sm:text-4xl">{t("landing.how.title")}</h2>
+        <SectionTitle icon={GearIcon}>{t("landing.how.title")}</SectionTitle>
         <div className="grid items-center gap-8 md:grid-cols-2">
           <div className="space-y-4">
             {/* every step sits in the same grid cell: the cell is as tall as the tallest one,

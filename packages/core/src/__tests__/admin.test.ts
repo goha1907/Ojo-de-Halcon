@@ -43,7 +43,7 @@ describe("operators", () => {
   });
 });
 
-describe("admin: gift places", () => {
+describe("admin: bonus places", () => {
   it("gives places, records who did it, and ends the trial", async () => {
     const { core, actor, customerId } = await setup();
     const result = await core.admin.giveGrant(actor, {
@@ -189,6 +189,53 @@ describe("news", () => {
     expect(await core.admin.saveNews(actor, { slug: "2026-13-45-x", time: "10:00", translations: { ru: post("a") } })).toEqual({ ok: false, reason: "INVALID" });
   });
 
+  it("keeps a single main news and moves the mark to the one saved last", async () => {
+    const { core, actor } = await setup();
+    const save = (slug: string, featured?: boolean) =>
+      core.admin.saveNews(actor, { slug, time: "10:00", translations: { ru: post("a"), en: post("b") }, ...(featured === undefined ? {} : { featured }) });
+    await save("2026-10-17-first", true);
+    await save("2026-10-17-second");
+    expect((await core.admin.listNews()).filter((entry) => entry.featured).map((entry) => entry.slug)).toEqual(["2026-10-17-first"]);
+
+    await save("2026-10-17-second", true);
+    expect((await core.admin.listNews()).filter((entry) => entry.featured).map((entry) => entry.slug)).toEqual(["2026-10-17-second"]);
+    // every language of the entry carries the mark
+    expect(await prisma.newsPost.count({ where: { slug: "2026-10-17-second", featured: true } })).toBe(2);
+
+    await save("2026-10-17-second", false);
+    expect((await core.admin.listNews()).some((entry) => entry.featured)).toBe(false);
+  });
+
+  it("stores a cover only from public/news and leaves it alone when not sent", async () => {
+    const { core, actor } = await setup();
+    const slug = "2026-10-17-cover";
+    const base = { slug, time: "10:00", translations: { ru: post("a") } };
+    expect((await core.admin.saveNews(actor, { ...base, image: "/news/cabinet.svg" })).ok).toBe(true);
+    expect((await core.admin.listNews())[0]!.image).toBe("/news/cabinet.svg");
+    await core.admin.saveNews(actor, base);
+    expect((await core.admin.listNews())[0]!.image).toBe("/news/cabinet.svg");
+    expect(await core.admin.saveNews(actor, { ...base, image: "https://example.com/a.png" })).toEqual({ ok: false, reason: "INVALID" });
+    await core.admin.saveNews(actor, { ...base, image: null });
+    expect((await core.admin.listNews())[0]!.image).toBeNull();
+  });
+
+  it("stores an uploaded cover in the database and serves it back", async () => {
+    const { core, actor } = await setup();
+    const url = await core.admin.saveNewsImage(actor, { mime: "image/webp", data: new Uint8Array([1, 2, 3, 4]) });
+    expect(url).toMatch(/^\/api\/news\/image\/[a-z0-9]+$/);
+    const found = await core.admin.newsImage(url.split("/").pop()!);
+    expect(found?.mime).toBe("image/webp");
+    expect([...found!.data]).toEqual([1, 2, 3, 4]);
+    expect(await core.admin.newsImage("nope")).toBeNull();
+    expect(await core.admin.newsImage("../etc")).toBeNull();
+    // an entry may point to it, and to nothing else outside public/news
+    const base = { slug: "2026-10-17-up", time: "10:00", translations: { ru: post("a") } };
+    expect((await core.admin.saveNews(actor, { ...base, image: url })).ok).toBe(true);
+    expect((await core.admin.listNews())[0]!.image).toBe(url);
+    expect(await core.admin.saveNews(actor, { ...base, image: "/api/other/1" })).toEqual({ ok: false, reason: "INVALID" });
+    expect(await prisma.auditLog.count({ where: { action: "news.image" } })).toBe(1);
+  });
+
   it("deletes an entry with all its languages", async () => {
     const { core, actor } = await setup();
     await core.admin.saveNews(actor, { slug: "2026-10-17-gone", time: "00:00", translations: { ru: post("a"), en: post("b") } });
@@ -243,7 +290,7 @@ describe("admin lists", () => {
     return { ...base, secondId: second.userId };
   }
 
-  it("filters users by plan, gift places and cases", async () => {
+  it("filters users by plan, bonus places and cases", async () => {
     const { core, customerId, secondId } = await seed();
     const ids = async (query: Record<string, string>) => (await core.admin.listUsers(query)).items.map((row) => row.id);
     expect(await ids({ plan: "subscription" })).toEqual([secondId]);
@@ -255,7 +302,7 @@ describe("admin lists", () => {
     expect(await ids({ telegram: "yes" })).toEqual([]);
   });
 
-  it("shows gift places and agrees with the capacity of each account", async () => {
+  it("shows bonus places and agrees with the capacity of each account", async () => {
     const { core, customerId, secondId } = await seed();
     const rows = (await core.admin.listUsers({})).items;
     for (const row of rows) expect(row.places).toBe((await core.capacity.get(row.id)).total);

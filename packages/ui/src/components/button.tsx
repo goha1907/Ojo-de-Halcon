@@ -13,12 +13,12 @@ const VARIANT_CLASSES: Record<Variant, string> = {
 };
 
 const SIZE_CLASSES: Record<Size, string> = {
-  sm: "px-4 py-2 text-sm",
-  md: "px-5 py-2.5 text-sm",
-  lg: "px-7 py-3.5 text-base",
+  sm: "h-10 px-4 text-sm",
+  md: "h-11 px-5 text-sm",
+  lg: "h-14 px-7 text-base",
 };
 
-/** Class list of a button, for links that must look like one (use with next/link). */
+/** Class list of a button (control heights: sm 40px, md 44px, lg 56px; inputs and drop-downs use the same), for links that must look like one (use with next/link). */
 export function buttonClass({
   variant = "primary",
   size = "md",

@@ -29,7 +29,7 @@ Pages, the menu and the API routes all ask it.
 | `overview.read` (Overview) | yes | yes |
 | `users.read` (Users, user page) | yes | yes |
 | `users.manage` (early access flag) | yes | no |
-| `grants.manage` (give, change, revoke gift places) | yes | no |
+| `grants.manage` (give, change, revoke bonus places) | yes | no |
 | `feedback.manage` (Inbox: read, answer, statuses) | yes | yes |
 | `sources.read` (Sources) | yes | yes |
 | `stats.read` (Statuses) | yes | yes |
@@ -41,13 +41,13 @@ To add a role or a permission: edit that file, and the menu in `apps/web/src/com
 
 ## What is in it
 
-- **Overview**: users, running subscriptions and estimated monthly revenue (by the price ladder), gift places in use,
+- **Overview**: users, running subscriptions and estimated monthly revenue (by the price ladder), bonus places in use,
   active cases, cases with a source error, new inbox messages, waiting Telegram messages, sources needing attention.
 - **Users**: search by e-mail or id; one page per account: profile, access (plan, paid / granted places, next
-  period), trial and gift places with **give / change end date / revoke**, all cases with source state and
+  period), trial and bonus places with **give / change end date / revoke**, all cases with source state and
   errors, payments, admin actions on this account.
 - **Inbox**: contact-form messages with a status (New, Read, Answered, Spam). Opening a message marks it Read; answering it moves it to Answered. Answers are simulated: they are stored but no e-mail is sent until the support mailbox is connected.
-- **User page, test tools** (only while payments are simulated, `users.manage`): simulate a renewal, reset the subscription and clear the test payments. Gift places are handled by the grants form. The test buttons were removed from the customer's subscription page.
+- **User page, test tools** (only while payments are simulated, `users.manage`): simulate a renewal, reset the subscription and clear the test payments. Bonus places are handled by the grants form. The test buttons were removed from the customer's subscription page.
 - **Sources**: per source kind, active cases, errors, overdue checks, last successful check, most common errors.
 - **Statuses**: every status and stage title seen at the sources (no personal data): the basis for deciding which
   statuses end a case.
@@ -59,7 +59,7 @@ Some services are held back from ordinary accounts (OCASA is parked this way unt
 turns **Early access** on in the account block of the user page. The list of such services is `EARLY_ACCESS_KINDS` /
 `EARLY_ACCESS_SECTIONS` in `packages/shared`. The change is written to the audit log.
 
-## Giving places (gift, bonus, partner)
+## Giving places (gift, bonus, promo, partner kinds)
 
 On the user page, **Give places**: how many, the type, an end date (or "No end date": it keeps going until revoked)
 and a note. Giving places **ends the trial** of that account. The places are used first and cost nothing; when
@@ -77,8 +77,8 @@ Each form carries a one-time key, so a double click or a repeated submit acts on
 
 Every list page keeps its state in the address (`?plan=gift&sort=cases&dir=desc&page=2`), so a view can be bookmarked and shared, and the Overview tiles link to filtered lists. Column titles sort (a second click reverses), the filter bar above a table filters, and the pager works with both.
 
-- **Users**: e-mail or id, role, plan, gift places, cases, Telegram, e-mail verified, early access, joined from/to; sort by e-mail, role, plan, places, gift places, cases, joined.
+- **Users**: e-mail or id, role, plan, bonus places, cases, Telegram, e-mail verified, early access, joined from/to; sort by e-mail, role, plan, places, bonus places, cases, joined.
 - **User page**: Payments and Admin actions are full-width lists with their own filters, sorting and paging (parameters `pay_*` and `act_*`, so they do not disturb each other). Payments have a Receipt column: it shows a link once the payment provider returns one (`Payment.receiptUrl`).
 - **Inbox, Audit log, Statuses, News**: text search, dropdown filters, dates where they make sense, sorting and paging.
-- **Economics** (administrators only): estimated monthly revenue, average per subscription, value of gift places, payments by month and by kind. Test payments are shown apart from money.
+- **Economics** (administrators only): estimated monthly revenue, average per subscription, value of bonus places, payments by month and by kind. Test payments are shown apart from money.
 - Sources has a handful of rows, so it has no controls.

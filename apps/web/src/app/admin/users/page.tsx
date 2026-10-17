@@ -11,8 +11,8 @@ const YES_NO = [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }];
 const FIELDS: FilterField[] = [
   { name: "q", label: "E-mail or user id", kind: "text", placeholder: "Search…" },
   { name: "role", label: "Role", kind: "select", options: [{ value: "USER", label: "Customer" }, { value: "staff", label: "Any staff" }, { value: "SUPPORT", label: "Support" }, { value: "ADMIN", label: "Admin" }] },
-  { name: "plan", label: "Plan", kind: "select", options: [{ value: "subscription", label: "Subscription" }, { value: "gift", label: "Gift places" }, { value: "trial", label: "Trial" }, { value: "none", label: "No places" }] },
-  { name: "gift", label: "Gift places in use", kind: "select", options: [{ value: "yes", label: "Has gift places" }] },
+  { name: "plan", label: "Plan", kind: "select", options: [{ value: "subscription", label: "Subscription" }, { value: "gift", label: "Bonus places" }, { value: "trial", label: "Trial" }, { value: "none", label: "No places" }] },
+  { name: "gift", label: "Bonus places in use", kind: "select", options: [{ value: "yes", label: "Has bonus places" }] },
   { name: "cases", label: "Cases", kind: "select", options: [{ value: "active", label: "Has active cases" }, { value: "none", label: "No active cases" }] },
   { name: "telegram", label: "Telegram", kind: "select", options: YES_NO.map((o) => ({ ...o, label: o.value === "yes" ? "Linked" : "Not linked" })) },
   { name: "verified", label: "E-mail verified", kind: "select", options: YES_NO },
@@ -55,7 +55,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                 {sort("Role", "role")}
                 {sort("Plan", "plan")}
                 {sort("Places", "places", "desc")}
-                {sort("Gift places", "gift", "desc")}
+                {sort("Bonus places", "gift", "desc")}
                 {sort("Cases", "cases", "desc")}
                 <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-fg-muted">Telegram</th>
                 {sort("Joined", "createdAt")}

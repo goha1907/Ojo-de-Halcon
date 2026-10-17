@@ -62,7 +62,7 @@ export function ThemeSelector({
     <div
       role="radiogroup"
       aria-label={t("theme.label")}
-      className={cn("inline-flex items-center gap-0.5 rounded-full border border-line bg-surface p-0.5", className)}
+      className={cn("inline-flex items-center gap-0.5 rounded-full border border-line bg-surface p-[3px]", className)}
     >
       {OPTIONS.map(({ value, icon: Icon, label }) => (
         <button

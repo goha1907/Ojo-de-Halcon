@@ -3,7 +3,7 @@ import type { CapacityService } from "../capacity/capacity-service";
 
 /**
  * "subscription": a paid period is running.
- * "granted": no subscription, but granted places are active (the trial, gifted places).
+ * "granted": no subscription, but granted places are active (the trial, bonus places).
  * "none": nothing is active: tracking is paused until a subscription is bought.
  */
 export type AccessPlan = "subscription" | "granted" | "none";
@@ -18,20 +18,34 @@ export interface AccessState {
   grantedCases: number;
   /** Of them: the trial place. */
   trialCases: number;
-  /** Of them: gifted places. */
+  /** Of them: bonus places. */
   giftCases: number;
   /** Kind of the grant that ended last while nothing is active; null otherwise. */
   endedKind: string | null;
+  /** The nearest end among the bonus places and how many of them end that day; null without an end date. */
+  giftNextEnd: { until: string; cases: number } | null;
 }
 
 /** Pure rule: what the paid period and the granted places mean right now. */
 export function resolveAccess(
   user: { subscriptionUntil: Date | null },
-  granted: { trial: number; gift: number; until: Date | null; lastEnd: Date | null; endedKind?: string | null },
+  granted: {
+    trial: number;
+    gift: number;
+    until: Date | null;
+    lastEnd: Date | null;
+    endedKind?: string | null;
+    giftNextEnd?: { at: Date; cases: number } | null;
+  },
   now: Date,
 ): AccessState {
   const cases = granted.trial + granted.gift;
-  const counts = { grantedCases: cases, trialCases: granted.trial, giftCases: granted.gift };
+  const counts = {
+    grantedCases: cases,
+    trialCases: granted.trial,
+    giftCases: granted.gift,
+    giftNextEnd: granted.giftNextEnd ? { until: granted.giftNextEnd.at.toISOString(), cases: granted.giftNextEnd.cases } : null,
+  };
   if (user.subscriptionUntil && user.subscriptionUntil > now) {
     return {
       plan: "subscription",
@@ -80,6 +94,7 @@ export function createAccessService(deps: {
         until: places.grantedUntil,
         lastEnd: places.lastEnd,
         endedKind: places.endedKind,
+        giftNextEnd: places.giftNextEnd,
       },
       at,
     );

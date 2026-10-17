@@ -28,3 +28,4 @@ next-env.d.ts
 # python sidecar
 .venv/
 __pycache__/
+email-preview/

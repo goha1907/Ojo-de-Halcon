@@ -107,6 +107,8 @@ body {
 
 html {
   scroll-behavior: smooth;
+  /* keeps the page from shifting sideways when a modal locks the scroll */
+  scrollbar-gutter: stable;
 }
 
 /* matches of the page search (CSS Custom Highlight API) */

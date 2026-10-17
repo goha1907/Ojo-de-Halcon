@@ -33,6 +33,7 @@ export function createCore(deps: CoreDeps) {
     grants,
     capacity,
     ...(deps.earlyAccessKinds ? { earlyAccessKinds: deps.earlyAccessKinds } : {}),
+    ...(deps.disabledKinds ? { disabledKinds: deps.disabledKinds } : {}),
   });
   const access = createAccessService({ prisma, now, capacity });
   return {
@@ -63,6 +64,8 @@ export type { PaymentIntentDto, CreateIntentResult, IntentStatus } from "./payme
 export type { PaymentProvider, PaymentMethod, ProviderPayment } from "./payments/provider";
 export { PAYMENT_METHODS } from "./payments/provider";
 export { createConsoleMailer } from "./mailer";
+export type { EmailData, EmailKind, RenderedEmail } from "./mail/templates";
+export { EMAIL_KINDS, renderEmail } from "./mail/templates";
 export { createCoreFromEnv } from "./from-env";
 export type { Scraper, ScrapedTramite, PjnCaseResult, ProcessScraperOptions } from "./trackers/scraper";
 export { ScraperError, createProcessScraper } from "./trackers/scraper";

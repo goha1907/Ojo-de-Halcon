@@ -38,7 +38,7 @@ export function createGrantService(deps: { prisma: PrismaClient; now: () => Date
   const { prisma, now, capacity: places } = deps;
 
   /**
-   * Ends the trial place (the account got a subscription or gifted places). Returns the query, so it can be
+   * Ends the trial place (the account got a subscription or bonus places). Returns the query, so it can be
    * part of the same transaction as the event that ends the trial.
    */
   function endTrial(userId: string) {
@@ -68,7 +68,7 @@ export function createGrantService(deps: { prisma: PrismaClient; now: () => Date
   }
 
   /**
-   * Gives places for free (gift places). Without `expiresAt` they keep going until revoked. Giving places
+   * Gives places for free (bonus places). Without `expiresAt` they keep going until revoked. Giving places
    * ends the trial place: the trial only exists for an account that has nothing else.
    */
   async function give(input: {

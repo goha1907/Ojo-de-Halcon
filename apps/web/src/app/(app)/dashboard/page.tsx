@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CopyButton } from "@/components/copy-button";
 import { StatTile } from "@/components/stat-tile";
 import { AddTrackerButton } from "@/components/trackers/add-tracker-button";
+import { BonusPlacesCard, SubscriptionPlacesCard } from "@/components/subscription/place-cards";
 import { SubscriptionSummary } from "@/components/subscription/summary";
 import { nowMs } from "@/lib/days";
 import { TONE_STYLES, toneOf } from "@/lib/status-tones";
@@ -153,34 +154,27 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <AddTrackerButton />
       </header>
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label={t("dash.tile.tracking")} value={tracking.length} tone="tracking" />
-        <StatTile label={t("dash.tile.removing")} value={removing.length} tone="removing" />
-        <StatTile
-          label={t("dash.tile.finished")}
-          value={finished.length}
-          tone="finished"
-          hint={paused.length ? t("dash.tile.paused", { count: paused.length }) : undefined}
-        />
-        {subscribed ? (
+      {/* the bands below already count busy places and the ones leaving; the plain tiles stay for accounts without any */}
+      {!subscribed && access.giftCases === 0 && (
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatTile label={t("dash.tile.tracking")} value={tracking.length} tone="tracking" />
+          <StatTile label={t("dash.tile.removing")} value={removing.length} tone="removing" />
           <StatTile
-            label={t("dash.tile.slots")}
-            value={`${billing.paidUsedCases} / ${billing.paidCases}`}
-            tone="slots"
-            hint={t("dash.tile.free", { count: billing.freeCases })}
+            label={t("dash.tile.finished")}
+            value={finished.length}
+            tone="finished"
+            hint={paused.length ? t("dash.tile.paused", { count: paused.length }) : undefined}
           />
-        ) : (
           <StatTile
             label={t("dash.tile.plan")}
-            value={
-              access.plan === "granted"
-                ? t(access.giftCases > 0 && access.trialCases === 0 ? "dash.tile.gift" : "dash.tile.trial")
-                : t("dash.tile.noPlan")
-            }
+            value={access.plan === "granted" ? t("dash.tile.trial") : t("dash.tile.noPlan")}
             hint={access.until ? t("dash.tile.until", { date: day(access.until) }) : undefined}
           />
-        )}
-      </section>
+        </section>
+      )}
+
+      <BonusPlacesCard access={access} billing={billing} />
+      {subscribed && <SubscriptionPlacesCard billing={billing} />}
 
       {attention.length > 0 && (
         <Card title={t("dash.attn.title")}>

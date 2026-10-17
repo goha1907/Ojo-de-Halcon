@@ -24,7 +24,7 @@ export function SubscriptionSummary({
   untilIso: string;
   daysLeft: number;
   lastPayment: { createdAt: string; amount: number; currency: string } | null;
-  /** Free / disabled / finished counts (left out where tiles already show them). */
+  /** Free and "switched off next period" counts (left out where tiles already show them). */
   withPlaces?: boolean;
   /** The last payment line (left out where the payment log is shown right below). */
   withLastPayment?: boolean;
@@ -74,8 +74,7 @@ export function SubscriptionSummary({
           "nextAmount",
         )}
         {withPlaces && item(t("dash.sub.free"), String(billing.freeCases), "free")}
-        {withPlaces && item(t("settings.sub.disabledNext"), String(billing.cancelledCases), "disabled")}
-        {withPlaces && item(t("settings.sub.finishedPeriod"), String(billing.finishedThisPeriod), "finished")}
+        {withPlaces && item(t("settings.sub.disabledNext"), String(Math.max(0, billing.paidCases - billing.nextPeriodCases)), "disabled")}
         {withLastPayment && item(
           t("dash.sub.lastPayment"),
           lastPayment

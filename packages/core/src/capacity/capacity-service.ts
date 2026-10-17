@@ -24,6 +24,11 @@ export interface PlaceBreakdown {
   running: boolean;
   /** Latest end among the active grants; null when none is active or one has no end date. */
   grantedUntil: Date | null;
+  /**
+   * The nearest end among the active bonus places (the trial is not a gift) and how many places end that day (UTC).
+   * Null when no gift place has an end date. After that day the numbers move to the next end.
+   */
+  giftNextEnd: { at: Date; cases: number } | null;
   /** End and kind of the grant that ended last (used when nothing is active). */
   lastEnd: Date | null;
   endedKind: string | null;
@@ -63,6 +68,16 @@ export function createCapacityService(deps: { prisma: PrismaClient; now: () => D
     const endless = active.some((row) => row.expiresAt === null);
     const last = active.reduce((max, row) => Math.max(max, row.expiresAt?.getTime() ?? 0), 0);
     const paid = running ? user.paidCases : 0;
+    const giftEnds = active.filter((row) => row.kind !== "TRIAL" && row.expiresAt !== null) as Array<{ cases: number; expiresAt: Date }>;
+    const nextEnd = giftEnds.reduce<Date | null>((min, row) => (min === null || row.expiresAt < min ? row.expiresAt : min), null);
+    const giftNextEnd = nextEnd
+      ? {
+          at: nextEnd,
+          cases: giftEnds
+            .filter((row) => row.expiresAt.toISOString().slice(0, 10) === nextEnd.toISOString().slice(0, 10))
+            .reduce((total, row) => total + row.cases, 0),
+        }
+      : null;
     return {
       paid,
       trial,
@@ -71,6 +86,7 @@ export function createCapacityService(deps: { prisma: PrismaClient; now: () => D
       total: paid + trial + gift,
       running,
       grantedUntil: active.length === 0 || endless || last === 0 ? null : new Date(last),
+      giftNextEnd,
       lastEnd: lastEnded?.expiresAt ?? null,
       endedKind: lastEnded?.kind ?? null,
     };

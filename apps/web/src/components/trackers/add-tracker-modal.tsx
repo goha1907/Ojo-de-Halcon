@@ -10,6 +10,7 @@ import {
   correoDisplay,
   correoReference,
   isDnmKind,
+  isDisabledKind,
   isEarlyAccessKind,
   ocasaNumberSchema,
   splitIsoDate,
@@ -100,7 +101,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
 
   const kindOptions = useMemo(
     () =>
-      TRACKER_KINDS.filter((value) => earlyAccess || !isEarlyAccessKind(value)).map((value) => ({
+      TRACKER_KINDS.filter((value) => !isDisabledKind(value) && (earlyAccess || !isEarlyAccessKind(value))).map((value) => ({
         value,
         label: t(`track.kind.${value}` as MessageKey),
       })),

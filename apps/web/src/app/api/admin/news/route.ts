@@ -1,5 +1,5 @@
 import { NEWS_SLUG_PATTERN } from "@ojo/core";
-import { LOCALES } from "@ojo/shared";
+import { LOCALES, NEWS_COVER_PATTERN } from "@ojo/shared";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiError, parseBody, withStaff } from "@/server/api";
@@ -11,6 +11,8 @@ const bodySchema = z.object({
   slug: z.string().regex(NEWS_SLUG_PATTERN).max(120),
   time: z.string(),
   translations: z.object(Object.fromEntries(LOCALES.map((locale) => [locale, translation.optional()]))),
+  featured: z.boolean().optional(),
+  image: z.string().regex(NEWS_COVER_PATTERN).nullable().optional(),
 });
 
 /** Publishes or changes a news entry in all languages at once. */

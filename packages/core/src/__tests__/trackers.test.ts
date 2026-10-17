@@ -1288,8 +1288,8 @@ Destino
 NOMBRE PRUEBA`;
 
   async function setup(earlyAccess = true) {
-    // OCASA is open to everybody today; the tests hide it to check the early-access gate
-    const core = makeCore({ scraper: { renaper: async () => renaperAnswer() }, earlyAccessKinds: ["OCASA"] });
+    // OCASA is switched off in the product; these tests switch it on and hide it to check the early-access gate
+    const core = makeCore({ scraper: { renaper: async () => renaperAnswer() }, earlyAccessKinds: ["OCASA"], disabledKinds: [] });
     const userId = await newUser(core);
     await subscribe(userId);
     if (earlyAccess) await prisma.user.update({ where: { id: userId }, data: { earlyAccess: true } });
@@ -1297,10 +1297,25 @@ NOMBRE PRUEBA`;
   }
 
   it("is open to everybody when it is not hidden", async () => {
-    const core = makeCore({ earlyAccessKinds: [] });
+    const core = makeCore({ earlyAccessKinds: [], disabledKinds: [] });
     const userId = await newUser(core);
     await subscribe(userId);
     expect(await core.trackers.addTramite(userId, "OCASA", "000755824304")).toMatchObject({ ok: true });
+  });
+
+  it("is switched off for everybody, staff and early access included, and hides cases that already exist", async () => {
+    // a case added while the source was on (the product default switches it off)
+    const open = makeCore({ earlyAccessKinds: [], disabledKinds: [] });
+    const userId = await newUser(open);
+    await subscribe(userId);
+    await open.trackers.addTramite(userId, "OCASA", "000755824304");
+    expect(await open.trackers.list(userId)).toHaveLength(1);
+
+    const core = makeCore();
+    await prisma.user.update({ where: { id: userId }, data: { role: "ADMIN", earlyAccess: true } });
+    expect(await core.trackers.addTramite(userId, "OCASA", "000755824305")).toEqual({ ok: false, reason: "NOT_AVAILABLE" });
+    expect(await core.trackers.previewTramite(userId, "OCASA", "000755824305")).toEqual({ ok: false, reason: "NOT_AVAILABLE" });
+    expect(await core.trackers.list(userId)).toEqual([]);
   });
 
   it("can be hidden from ordinary accounts: staff and accounts with the flag only", async () => {

@@ -164,7 +164,7 @@ export function TrackerBoard({ items, storageKey }: { items: BoardItem[]; storag
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t("board.search.placeholder")}
             aria-label={t("board.search.label")}
-            className="min-w-48 flex-1 rounded-field border border-line bg-surface px-3 py-1.5 text-sm text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-ring"
+            className="h-10 min-w-48 flex-1 rounded-field border border-line bg-surface px-3 text-sm text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-ring"
           />
           <label className="flex items-center gap-2 text-sm text-fg-muted">
             {t("board.filter.label")}
@@ -188,7 +188,7 @@ export function TrackerBoard({ items, storageKey }: { items: BoardItem[]; storag
           </label>
         </div>
       )}
-      {shown.length === 0 ? (
+      {items.length === 0 ? null : shown.length === 0 ? (
         <p className="rounded-field border border-dashed border-line p-6 text-center text-sm text-fg-muted">
           {words.length > 0 ? t("board.search.empty", { query: query.trim() }) : t("board.empty")}
         </p>

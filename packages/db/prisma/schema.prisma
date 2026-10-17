@@ -366,6 +366,15 @@ model Payment {
 
 /// A news entry written in the admin area, one row per language; rows with the same `slug` are one entry.
 /// An entry with the same slug and language as a file in apps/web/content/news replaces that file.
+/// A picture uploaded for a news entry in the admin area. Kept in the database, so it survives deploys and needs no
+/// file storage; `NewsPost.image` points to it as `/api/news/image/<id>`.
+model NewsImage {
+  id        String   @id @default(cuid())
+  mime      String
+  data      Bytes
+  createdAt DateTime @default(now())
+}
+
 model NewsPost {
   id        String   @id @default(cuid())
   /// `YYYY-MM-DD-name`, also the URL segment.
@@ -378,6 +387,10 @@ model NewsPost {
   summary   String   @default("")
   /// Markdown.
   body      String
+  /// The main news: shown big on the home page. At most one entry has it; every language row of it carries the flag.
+  featured  Boolean  @default(false)
+  /// Cover picture under `/news/` (one of the built-in covers); null = the default cover.
+  image     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -1,50 +1,53 @@
-import { readdir, readFile } from "node:fs/promises";
+import { statSync } from "node:fs";
+import { readdir } from "node:fs/promises";
 import path from "node:path";
-import { APP_CONFIG, LOCALES, type Locale } from "@ojo/shared";
+import { APP_CONFIG, DEFAULT_NEWS_COVER, LOCALES, NEWS_COVER_PATTERN, type Locale } from "@ojo/shared";
 import { getCore } from "./core";
 
 export interface NewsItem {
   /** `YYYY-MM-DD-name`, also the URL segment. */
   slug: string;
-  /** ISO date taken from the file name. */
+  /** ISO date of the entry (the start of the slug). */
   date: string;
-  /** `HH:MM` from the `time` field of the entry (midnight when absent): orders entries of one day. */
+  /** `HH:MM` of the entry: orders entries of one day. */
   time: string;
   title: string;
   summary: string;
   /** Markdown body. */
   body: string;
+  /** Cover: a picture from `public/news` or an uploaded one; entries without one use the default (see `coverOf`). */
+  image?: string | undefined;
+  /** The main news: the big card on the home page (set in the admin area; only one entry has it). */
+  featured?: boolean;
   locale: Locale;
 }
 
-const NEWS_DIR = path.join(process.cwd(), "content", "news");
-const FILE_PATTERN = /^(\d{4}-\d{2}-\d{2})-([a-z0-9-]+)\.([a-z]{2})\.md$/;
 const SLUG_PATTERN = /^\d{4}-\d{2}-\d{2}-[a-z0-9-]+$/;
 
-/** Splits `---\nkey: value\n---\nbody` (flat keys only) into meta and body. */
-export function parseFrontmatter(text: string): { meta: Record<string, string>; body: string } {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(text);
-  if (!match) return { meta: {}, body: text };
-  const meta: Record<string, string> = {};
-  for (const line of match[1]!.split(/\r?\n/)) {
-    const separator = line.indexOf(":");
-    if (separator === -1) continue;
-    meta[line.slice(0, separator).trim()] = line
-      .slice(separator + 1)
-      .trim()
-      .replace(/^["']|["']$/g, "");
+export const DEFAULT_COVER = DEFAULT_NEWS_COVER;
+
+const coverVersions = new Map<string, string>();
+
+/**
+ * The address of a cover. A built-in picture gets its change time as a version, so a redrawn one is never served
+ * from a browser cache; an uploaded picture has a new address every time, so it needs none.
+ */
+function versioned(cover: string): string {
+  if (!cover.startsWith("/news/")) return cover;
+  let version = coverVersions.get(cover);
+  if (version === undefined) {
+    try {
+      version = String(Math.trunc(statSync(path.join(process.cwd(), "public", cover)).mtimeMs));
+    } catch {
+      version = "";
+    }
+    coverVersions.set(cover, version);
   }
-  return { meta, body: match[2]!.trim() };
+  return version ? `${cover}?v=${version}` : cover;
 }
 
-export function parseNewsFilename(
-  filename: string,
-): { slug: string; date: string; locale: Locale } | null {
-  const match = FILE_PATTERN.exec(filename);
-  if (!match) return null;
-  const [, date, name, locale] = match;
-  if (!(LOCALES as readonly string[]).includes(locale!)) return null;
-  return { slug: `${date}-${name}`, date: date!, locale: locale as Locale };
+export function coverOf(item: Pick<NewsItem, "image">): string {
+  return versioned(item.image ?? DEFAULT_COVER);
 }
 
 /** Picks the requested locale for each slug, falling back to the default one. */
@@ -64,32 +67,12 @@ export function pickLocale(items: NewsItem[], locale: Locale): NewsItem[] {
   );
 }
 
-/** Entries kept as files in the repository (the built-in ones). */
-export async function readFiles(): Promise<NewsItem[]> {
-  let files: string[];
-  try {
-    files = await readdir(NEWS_DIR);
-  } catch {
-    return [];
-  }
-  const items: NewsItem[] = [];
-  for (const file of files) {
-    const info = parseNewsFilename(file);
-    if (!info) continue;
-    const { meta, body } = parseFrontmatter(await readFile(path.join(NEWS_DIR, file), "utf8"));
-    const time = /^([01]\d|2[0-3]):[0-5]\d$/.test(meta.time ?? "") ? meta.time! : "00:00";
-    items.push({ ...info, time, title: meta.title ?? info.slug, summary: meta.summary ?? "", body });
-  }
-  return items;
-}
-
-/** Files plus entries written in the admin area; an admin entry replaces a file with the same slug and language. */
+/** Every entry in the database, one item per language. */
 async function readAll(): Promise<NewsItem[]> {
-  const merged = new Map<string, NewsItem>();
-  for (const item of await readFiles()) merged.set(`${item.slug}.${item.locale}`, item);
+  const items: NewsItem[] = [];
   for (const row of await getCore().admin.publishedNews()) {
     if (!(LOCALES as readonly string[]).includes(row.locale)) continue;
-    merged.set(`${row.slug}.${row.locale}`, {
+    items.push({
       slug: row.slug,
       date: row.date,
       time: row.time,
@@ -97,9 +80,24 @@ async function readAll(): Promise<NewsItem[]> {
       summary: row.summary,
       body: row.body,
       locale: row.locale as Locale,
+      image: row.image && NEWS_COVER_PATTERN.test(row.image) ? row.image : undefined,
+      featured: row.featured,
     });
   }
-  return [...merged.values()];
+  return items;
+}
+
+/** Built-in cover files the admin area can choose from (`public/news`, without the default one). */
+export async function listCovers(): Promise<string[]> {
+  try {
+    const files = await readdir(path.join(process.cwd(), "public", "news"));
+    return files
+      .map((file) => `/news/${file}`)
+      .filter((cover) => NEWS_COVER_PATTERN.test(cover) && cover !== DEFAULT_COVER)
+      .sort();
+  } catch {
+    return [];
+  }
 }
 
 export async function listNews(locale: Locale): Promise<NewsItem[]> {
@@ -131,18 +129,40 @@ export async function getNewsWithNeighbours(slug: string, locale: Locale): Promi
 
 export interface NewsPage {
   /** Entries without the body: the list only needs titles. */
-  items: Array<Pick<NewsItem, "slug" | "date" | "time" | "title">>;
+  items: Array<Pick<NewsItem, "slug" | "date" | "time" | "title" | "summary"> & { image: string }>;
   page: number;
   pages: number;
 }
 
-/** One page of the news list, newest first; an out-of-range page is clamped. */
-export async function listNewsPage(locale: Locale, page: number, pageSize: number): Promise<NewsPage> {
+const summarize = (item: NewsItem): NewsPage["items"][number] => ({
+  slug: item.slug,
+  date: item.date,
+  time: item.time,
+  title: item.title,
+  summary: item.summary,
+  image: coverOf(item),
+});
+
+/** The main news (the one marked in the admin area), or the newest entry when none is marked; null without news. */
+export async function getFeaturedNews(locale: Locale): Promise<NewsPage["items"][number] | null> {
   const all = await listNews(locale);
+  const item = all.find((entry) => entry.featured) ?? all[0];
+  return item ? summarize(item) : null;
+}
+
+/**
+ * One page of the news list, newest first; an out-of-range page is clamped. `exclude` leaves one entry out
+ * (the main news is shown separately).
+ */
+export async function listNewsPage(
+  locale: Locale,
+  page: number,
+  pageSize: number,
+  exclude?: string,
+): Promise<NewsPage> {
+  const all = (await listNews(locale)).filter((item) => item.slug !== exclude);
   const pages = Math.max(1, Math.ceil(all.length / pageSize));
   const current = Math.min(Math.max(1, Math.trunc(page) || 1), pages);
-  const items = all
-    .slice((current - 1) * pageSize, current * pageSize)
-    .map(({ slug, date, time, title }) => ({ slug, date, time, title }));
+  const items = all.slice((current - 1) * pageSize, current * pageSize).map(summarize);
   return { items, page: current, pages };
 }

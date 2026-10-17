@@ -35,21 +35,36 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
   hint?: ReactNode;
 }
 
+export interface TextInputProps extends InputHTMLAttributes<HTMLInputElement> {
+  invalid?: boolean;
+}
+
+/** The bare input, 44px high like buttons and drop-downs; `TextField` adds the label, hint and error. */
+export function TextInput({ invalid = false, className, ...rest }: TextInputProps) {
+  return (
+    <input
+      aria-invalid={invalid || undefined}
+      className={cn(
+        "block h-11 w-full rounded-field border bg-surface px-3 text-sm text-fg shadow-sm",
+        "placeholder:text-fg-subtle focus:outline-2 focus:outline-offset-0 focus:outline-ring",
+        invalid ? "border-error" : "border-line",
+        className,
+      )}
+      {...rest}
+    />
+  );
+}
+
 /** Labeled input. Works for text, date, email… via the `type` prop. */
 export function TextField({ label, error, hint, className, ...rest }: TextFieldProps) {
   const id = useId();
   return (
     <FieldShell id={id} label={label} error={error} hint={hint}>
-      <input
+      <TextInput
         id={id}
-        aria-invalid={Boolean(error)}
+        invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}
-        className={cn(
-          "block w-full rounded-field border bg-surface px-3 py-2 text-sm text-fg shadow-sm",
-          "placeholder:text-fg-subtle focus:outline-2 focus:outline-offset-0 focus:outline-ring",
-          error ? "border-error" : "border-line",
-          className,
-        )}
+        className={className}
         {...rest}
       />
     </FieldShell>

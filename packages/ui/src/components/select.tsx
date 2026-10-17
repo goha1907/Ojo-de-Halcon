@@ -217,11 +217,13 @@ export function Select({
         onClick={() => (open ? close(false) : openMenu())}
         onKeyDown={onKeyDown}
         className={cn(
-          "flex w-full items-center justify-between gap-2 border bg-surface text-left text-fg shadow-sm transition",
+          "flex items-center justify-between gap-2 border bg-surface text-left text-fg shadow-sm transition",
+          // full width unless the caller sets its own (two width classes on one element fight by stylesheet order)
+          !/(^|\s)(sm:|md:|lg:)?w-/.test(className ?? "") && "w-full",
           "hover:border-fg-subtle focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-ring",
           "disabled:cursor-not-allowed disabled:opacity-60",
           variant === "pill" ? "rounded-full" : "rounded-field",
-          size === "sm" ? "px-3 py-1.5 text-sm" : "px-3 py-2.5 text-sm",
+          size === "sm" ? "h-10 px-3 text-sm" : "h-11 px-3 text-sm",
           invalid ? "border-error" : "border-line",
           className,
         )}

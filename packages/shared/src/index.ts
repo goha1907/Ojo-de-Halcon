@@ -17,3 +17,4 @@ export * from "./domain/feedback";
 export * from "./domain/correo";
 export * from "./domain/ocasa";
 export * from "./domain/admin";
+export * from "./domain/news";

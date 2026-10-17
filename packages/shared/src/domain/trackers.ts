@@ -31,6 +31,16 @@ export function isManualKind(kind: string): boolean {
 }
 
 /**
+ * Sources switched off for everybody, staff included: no section in the menu, no way to add or refresh a case,
+ * and cases that already exist stay out of the lists. OCASA is parked here until there is an agreement with them.
+ * Switch it back on by emptying this list and `DISABLED_SECTIONS`.
+ */
+export const DISABLED_KINDS: readonly TrackerKindValue[] = ["OCASA"];
+export function isDisabledKind(kind: string, kinds: readonly string[] = DISABLED_KINDS): boolean {
+  return kinds.includes(kind);
+}
+
+/**
  * Sources not open to everyone yet: shown to staff and to accounts with early access only. OCASA is parked here
  * (a stub) until there is an agreement with them; a service is hidden by listing its kind here and its section in
  * `EARLY_ACCESS_SECTIONS`, and opened by emptying both.

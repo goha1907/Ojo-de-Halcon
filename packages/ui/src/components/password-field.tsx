@@ -24,7 +24,7 @@ export function PasswordField({ label, error, hint, className, showLabel, hideLa
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined}
           className={cn(
-            "block w-full rounded-field border bg-surface py-2 pl-3 pr-12 text-sm text-fg shadow-sm",
+            "block h-11 w-full rounded-field border bg-surface pl-3 pr-12 text-sm text-fg shadow-sm",
             "placeholder:text-fg-subtle focus:outline-2 focus:outline-offset-0 focus:outline-ring",
             error ? "border-error" : "border-line",
             className,

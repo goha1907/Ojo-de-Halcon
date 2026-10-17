@@ -18,7 +18,7 @@ export default async function AdminEconomicsPage() {
         <Stat label="Estimated monthly revenue" value={money(data.estimatedMonthly, data.currency)} hint="Running subscriptions, by the price ladder" />
         <Stat href="/admin/users?plan=subscription" label="Running subscriptions" value={data.running} hint={`${data.paidPlaces} paid places`} />
         <Stat label="Average per subscription" value={money(data.averagePerSubscription, data.currency)} hint="Per month" />
-        <Stat href="/admin/users?gift=yes" label="Gift places in use" value={data.giftPlaces} hint={`Worth ${money(data.giftValue, data.currency)} a month at the price ladder`} />
+        <Stat href="/admin/users?gift=yes" label="Bonus places in use" value={data.giftPlaces} hint={`Worth ${money(data.giftValue, data.currency)} a month at the price ladder`} />
       </div>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <Panel title="Paid by month" note="Payments of the last 12 months. Test payments (stub provider) are shown apart and are not money.">

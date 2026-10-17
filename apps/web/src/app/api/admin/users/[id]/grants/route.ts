@@ -12,7 +12,7 @@ const bodySchema = z.object({
   requestId: z.string().min(8).max(64),
 });
 
-/** Gives gift places to an account. */
+/** Gives bonus places to an account. */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   return withStaff("grants.manage", async (staff) => {

@@ -1,4 +1,5 @@
 import {
+  DISABLED_SECTIONS,
   EARLY_ACCESS_SECTIONS,
   settingsHref,
   SERVICE_OFFICIAL_LINK,
@@ -34,7 +35,8 @@ export default async function ServicePage({
   if (!service) notFound();
 
   const user = await requireUser();
-  // a service that is not open to everyone yet looks like a page that does not exist
+  // a switched-off service, or one not open to everyone yet, looks like a page that does not exist
+  if (DISABLED_SECTIONS.includes(service.section)) notFound();
   if (EARLY_ACCESS_SECTIONS.includes(service.section) && !user.earlyAccess) notFound();
   const { t, locale } = await getT();
   const core = getCore();
@@ -89,7 +91,7 @@ export default async function ServicePage({
                 .join(" "),
             }))}
           />
-          {trackers.length === 0 && kind !== "PJN" && (
+          {trackers.length === 0 && (
             <Card title={t("track.empty")} description={t("track.emptyHint")}>
               {official && (
                 <a

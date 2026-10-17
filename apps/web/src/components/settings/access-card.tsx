@@ -1,6 +1,6 @@
 "use client";
 
-import type { AccessState, BillingStateDto, FreeGrantDto, PaymentDto, PaymentMethod } from "@ojo/core";
+import type { AccessState, BillingStateDto, PaymentDto, PaymentMethod } from "@ojo/core";
 import { API_ROUTES, SETTINGS_SECTIONS, casesPrice, type MessageKey } from "@ojo/shared";
 import { Alert, Button, Card, TextField } from "@ojo/ui";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import { apiRequest } from "@/lib/api-client";
 import { describeApiError } from "@/lib/api-errors";
 import { PaymentModal } from "@/components/payments/payment-modal";
 import { StatTile } from "@/components/stat-tile";
+import { BonusPlacesCard, SubscriptionPlacesCard } from "@/components/subscription/place-cards";
 import { SubscriptionSummary } from "@/components/subscription/summary";
 import { formatMoney } from "@/lib/money";
 
@@ -21,7 +22,6 @@ interface Props {
   billing: BillingStateDto;
   payments: PaymentDto[];
   /** Free places (trial, bonus, gift): running, upcoming and recently ended. */
-  grants: FreeGrantDto[];
   /** Payment methods a provider offers right now (empty: payments are not connected yet). */
   methods: PaymentMethod[];
   /** The test provider is in use: payments are simulated. */
@@ -33,7 +33,7 @@ interface Props {
 }
 
 /** Subscription page: purchase, slot analytics, amounts and dates, payment log. */
-export function AccessCard({ access, billing, payments, grants, methods, testMode, initialCount, daysLeft }: Props) {
+export function AccessCard({ access, billing, payments, methods, testMode, initialCount, daysLeft }: Props) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -44,17 +44,9 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
   const subscribed = access.plan === "subscription";
   // the trial is its own thing: one place for a few days, shown only while it runs
   const trial = !subscribed && access.trialCases > 0;
-  // gift places are mentioned only to people who have them
+  // bonus places are mentioned only to people who have them
   const giftCases = access.giftCases;
-  const giftGrants = grants.filter((grant) => grant.kind !== "TRIAL" && grant.active);
-  const giftEnds = giftGrants
-    .map((grant) => (grant.expiresAt ? new Date(grant.expiresAt).getTime() : null))
-    .filter((value): value is number => value !== null);
-  const giftUntil = giftEnds.length > 0 ? Math.min(...giftEnds) : null;
   const trialUsed = Math.min(billing.activeCases, access.trialCases);
-  // the server decides which places hold the cases (free ones first); the page only shows it
-  const giftUsed = billing.grantedUsedCases;
-  const paidUsed = billing.paidUsedCases;
   // a running subscription grows by the entered number; without one the number is the whole subscription
   // without a subscription the number is the whole subscription: it must hold the cases the free places do not cover
   const minBuy = subscribed ? 1 : Math.max(1, billing.nextPeriodCases);
@@ -167,33 +159,9 @@ export function AccessCard({ access, billing, payments, grants, methods, testMod
         </Card>
       )}
 
-      {giftCases > 0 && (
-        <Card title={t("settings.sub.giftTitle")} description={t("settings.sub.giftNote")}>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatTile label={t("settings.sub.giftPlaces")} value={giftCases} tone="slots" />
-            <StatTile
-              label={t("settings.sub.giftUntil")}
-              value={giftUntil === null ? t("settings.sub.giftNoEnd") : day(new Date(giftUntil))}
-              hint={giftUntil === null ? t("settings.sub.giftNoEndHint") : undefined}
-            />
-            <StatTile label={t("settings.sub.used")} value={giftUsed} tone="finished" />
-            <StatTile label={t("settings.sub.free")} value={giftCases - giftUsed} tone="tracking" />
-          </div>
-        </Card>
-      )}
+      <BonusPlacesCard access={access} billing={billing} />
 
-      {!trial && (
-        <Card title={t("settings.sub.slots")}>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            <StatTile label={t("settings.sub.bought")} value={billing.paidCases} tone="slots" />
-            <StatTile label={t("settings.sub.used")} value={paidUsed} tone="finished" />
-            <StatTile label={t("settings.sub.free")} value={Math.max(0, billing.paidCases - paidUsed)} tone="tracking" />
-            <StatTile label={t("settings.sub.disabledNext")} value={billing.cancelledCases} tone="removing" />
-            <StatTile label={t("settings.sub.finishedPeriod")} value={billing.finishedThisPeriod} tone="finished" />
-            <StatTile label={t("settings.sub.finishedTotal")} value={billing.finishedCases} />
-          </div>
-        </Card>
-      )}
+      {!trial && <SubscriptionPlacesCard billing={billing} />}
 
       <Card
         title={subscribed ? t("settings.sub.addTitle") : t("settings.sub.buyTitleNew")}

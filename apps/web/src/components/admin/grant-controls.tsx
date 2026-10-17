@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { ApiError, apiRequest } from "@/lib/api-client";
 
-const INPUT = "rounded-field border border-line bg-surface px-2 py-1.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-ring";
+const INPUT = "h-10 rounded-field border border-line bg-surface px-3 text-sm text-fg focus-visible:outline-2 focus-visible:outline-ring";
 const BUTTON = "rounded-field border border-line bg-surface px-3 py-1.5 text-sm hover:bg-line/40 disabled:opacity-50";
 const PRIMARY = "rounded-field bg-brand px-3 py-1.5 text-sm font-medium text-brand-fg hover:bg-brand-hover disabled:opacity-50";
 
@@ -23,7 +23,7 @@ function message(error: unknown): string {
   return "Something went wrong. Try again.";
 }
 
-/** Form that hands out gift places. The request key makes a double click harmless. */
+/** Form that hands out bonus places. The request key makes a double click harmless. */
 export function GiveGrantForm({ userId }: { userId: string }) {
   const router = useRouter();
   const [cases, setCases] = useState("5");

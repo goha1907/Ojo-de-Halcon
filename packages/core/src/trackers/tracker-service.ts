@@ -6,6 +6,8 @@ import {
   TRACKER_CONFIG,
   TRACKER_KIND_SECTION,
   isDnmKind,
+  DISABLED_KINDS,
+  isDisabledKind,
   isEarlyAccessKind,
   isFinalStatus,
   isManualKind,
@@ -197,6 +199,8 @@ export function createTrackerService(deps: {
   capacity: CapacityService;
   /** Kinds hidden from ordinary accounts (default: `EARLY_ACCESS_KINDS`). */
   earlyAccessKinds?: readonly string[];
+  /** Kinds switched off for everybody (default: `DISABLED_KINDS`). */
+  disabledKinds?: readonly string[];
 }) {
   const { prisma, scraper, now, grants, capacity } = deps;
 
@@ -225,7 +229,7 @@ export function createTrackerService(deps: {
 
   async function list(userId: string): Promise<TrackerDto[]> {
     const rows = await prisma.tracker.findMany({
-      where: { userId },
+      where: { userId, kind: { notIn: [...(deps.disabledKinds ?? DISABLED_KINDS)] as Array<Tracker["kind"]> } },
       include: { snapshot: true },
       orderBy: { createdAt: "asc" },
     });
@@ -234,7 +238,7 @@ export function createTrackerService(deps: {
 
   /**
    * May one more case be tracked. The places are the paid ones of a running subscription plus the active
-   * free ones (trial, bonus, gift); finished and paused cases do not occupy one.
+   * free ones (trial, bonus, gift kinds); finished and paused cases do not occupy one.
    */
   async function addGate(userId: string): Promise<"OK" | "NO_FREE_SLOT" | "SUBSCRIPTION_REQUIRED"> {
     const places = await capacity.get(userId);
@@ -274,6 +278,8 @@ export function createTrackerService(deps: {
    */
   /** Services not open to everyone yet are for staff and accounts with the early-access flag. */
   async function mayUse(userId: string, kind: string): Promise<boolean> {
+    // a switched-off source is closed to everybody
+    if (isDisabledKind(kind, deps.disabledKinds)) return false;
     if (!isEarlyAccessKind(kind, deps.earlyAccessKinds)) return true;
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, earlyAccess: true } });
     return user !== null && (user.earlyAccess || user.role !== "USER");

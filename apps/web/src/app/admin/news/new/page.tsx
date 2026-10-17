@@ -2,6 +2,7 @@ import { LOCALES, type Locale } from "@ojo/shared";
 import Link from "next/link";
 import { NewsEditor } from "@/components/admin/news-editor";
 import { PageTitle, Panel } from "@/components/admin/ui";
+import { listCovers } from "@/server/news";
 import { requireStaff } from "@/server/session";
 
 const EMPTY = Object.fromEntries(LOCALES.map((locale) => [locale, { title: "", summary: "", body: "" }])) as Record<Locale, { title: string; summary: string; body: string }>;
@@ -16,7 +17,7 @@ export default async function NewNewsPage() {
       </Link>
       <PageTitle title="New news entry" />
       <Panel>
-        <NewsEditor slug={null} date={today} time="" texts={EMPTY} />
+        <NewsEditor slug={null} date={today} time="" texts={EMPTY} featured={false} image={null} covers={await listCovers()} />
       </Panel>
     </>
   );

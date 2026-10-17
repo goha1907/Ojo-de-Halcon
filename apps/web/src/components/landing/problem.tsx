@@ -1,5 +1,6 @@
 import type { MessageKey, TranslateFn } from "@ojo/shared";
 import { BellOffIcon, HelpIcon, LayersIcon } from "@ojo/ui";
+import { SectionTitle } from "./section-title";
 import type { ComponentType, SVGProps } from "react";
 
 const PROBLEMS: ReadonlyArray<{ n: 1 | 2 | 3; icon: ComponentType<SVGProps<SVGSVGElement>> }> = [
@@ -12,7 +13,7 @@ const PROBLEMS: ReadonlyArray<{ n: 1 | 2 | 3; icon: ComponentType<SVGProps<SVGSV
 export function Problem({ t }: { t: TranslateFn }) {
   return (
     <section className="mx-auto max-w-6xl space-y-9 px-4 py-20">
-      <h2 className="reveal text-3xl font-bold tracking-tight text-fg sm:text-4xl">{t("landing.problem.title")}</h2>
+      <SectionTitle icon={HelpIcon} className="reveal">{t("landing.problem.title")}</SectionTitle>
       <div className="grid gap-4 md:grid-cols-3">
         {PROBLEMS.map(({ n, icon: Icon }) => (
           <div

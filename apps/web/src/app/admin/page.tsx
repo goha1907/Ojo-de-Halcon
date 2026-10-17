@@ -21,7 +21,7 @@ export default async function AdminOverviewPage() {
         ) : (
           <Stat label="Estimated monthly revenue" value="—" hint="Visible to administrators" />
         )}
-        <Stat href="/admin/users?gift=yes" label="Gift places in use" value={overview.gifts.activePlaces} hint={`${overview.gifts.accounts} accounts`} />
+        <Stat href="/admin/users?gift=yes" label="Bonus places in use" value={overview.gifts.activePlaces} hint={`${overview.gifts.accounts} accounts`} />
         <Stat href="/admin/users?cases=active" label="Active cases" value={overview.trackers.active} hint={`${overview.trackers.finished} finished · ${overview.trackers.paused} paused`} />
         <Stat href="/admin/sources" label="Cases with a source error" value={overview.trackers.withError} hint="Open the sources" />
         <Stat href="/admin/feedback?status=NEW" label="New inbox messages" value={overview.feedbackNew} />

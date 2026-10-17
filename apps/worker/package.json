@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run",
-    "admin:create": "tsx --env-file=../../.env src/cli/create-admin.ts"
+    "admin:create": "tsx --env-file=../../.env src/cli/create-admin.ts",
+    "emails:preview": "tsx --env-file=../../.env src/cli/preview-emails.ts"
   },
   "dependencies": {
     "@ojo/core": "workspace:*",

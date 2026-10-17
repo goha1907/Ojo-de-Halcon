@@ -2,6 +2,8 @@ export interface MailMessage {
   to: string;
   subject: string;
   text: string;
+  /** Rich version; clients without HTML show `text`. */
+  html?: string;
 }
 
 export interface Mailer {

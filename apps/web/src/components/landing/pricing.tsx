@@ -7,11 +7,13 @@ import {
   type MessageKey,
   type TranslateFn,
 } from "@ojo/shared";
-import { CheckIcon, StarIcon, buttonClass } from "@ojo/ui";
+import { CheckIcon, StarIcon, TagIcon, buttonClass } from "@ojo/ui";
+import { SectionTitle } from "./section-title";
 import Link from "next/link";
 import { formatMoney } from "@/lib/money";
 import { randomVariant } from "@/lib/variant";
 import { Calculator } from "./calculator";
+import { TrialPromo } from "./trial-promo";
 
 const PLANS = [1, 3, 5] as const;
 const POPULAR = 3;
@@ -28,7 +30,7 @@ export function Pricing({ t, locale, signedIn }: { t: TranslateFn; locale: strin
   return (
     <section id="pricing" className="scroll-mt-20 mx-auto max-w-6xl space-y-8 px-4 py-16">
       <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight text-fg sm:text-4xl">{t("landing.pricing.title")}</h2>
+        <SectionTitle icon={TagIcon}>{t("landing.pricing.title")}</SectionTitle>
         <p className="text-fg-muted">{t("landing.pricing.subtitle", { days })}</p>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
@@ -82,7 +84,7 @@ export function Pricing({ t, locale, signedIn }: { t: TranslateFn; locale: strin
           {APP_CONFIG.contact.supportEmail}
         </a>
       </p>
-      <p className="text-sm text-fg-muted">{t("landing.pricing.trial", { days: APP_CONFIG.limits.trialDays })}</p>
+      <TrialPromo t={t} />
       <p className="text-sm text-fg-muted">{t("landing.pricing.note")}</p>
     </section>
   );

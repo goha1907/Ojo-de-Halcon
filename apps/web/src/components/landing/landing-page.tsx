@@ -1,9 +1,10 @@
 import { APP_CONFIG } from "@ojo/shared";
+import { ChatIcon, NewspaperIcon } from "@ojo/ui";
 import { getT } from "@/server/i18n";
 import { loadAccountSummary } from "@/server/account-summary";
 import { getCurrentUser } from "@/server/session";
 import { AddTrackerHost } from "@/components/trackers/add-tracker-host";
-import { listNewsPage } from "@/server/news";
+import { getFeaturedNews, listNewsPage } from "@/server/news";
 import { FeedbackForm } from "./feedback-form";
 import { Faq } from "./faq";
 import { FinalCta } from "./final-cta";
@@ -12,6 +13,7 @@ import { LandingHeader } from "./landing-header";
 import { Hero } from "./hero";
 import { HowItWorks } from "./how-it-works";
 import { NewsFeed } from "./news-feed";
+import { SectionTitle } from "./section-title";
 import { Pricing } from "./pricing";
 import { Problem } from "./problem";
 import { SourcesStrip } from "./sources-strip";
@@ -23,7 +25,8 @@ export async function LandingPage() {
   const user = await getCurrentUser();
   const signedIn = user !== null;
   const summary = user ? await loadAccountSummary(user) : null;
-  const news = await listNewsPage(locale, 1, APP_CONFIG.news.pageSize);
+  const featuredNews = await getFeaturedNews(locale);
+  const news = await listNewsPage(locale, 1, APP_CONFIG.news.pageSize, featuredNews?.slug);
 
   return (
     <div id="top">
@@ -56,15 +59,15 @@ export async function LandingPage() {
         <HowItWorks />
         <StatusSection t={t} />
         <Pricing t={t} locale={locale} signedIn={signedIn} />
-        <section id="news" className="scroll-mt-20 mx-auto max-w-3xl space-y-4 px-4 pb-16">
-          <h2 className="text-3xl font-bold tracking-tight text-fg sm:text-4xl">{t("landing.news.title")}</h2>
+        <section id="news" className="scroll-mt-20 mx-auto max-w-6xl space-y-6 px-4 pb-16">
+          <SectionTitle icon={NewspaperIcon}>{t("landing.news.title")}</SectionTitle>
           {/* the feed keeps its own list: a new language needs a fresh one */}
-          <NewsFeed key={locale} initial={news} />
+          <NewsFeed key={locale} featured={featuredNews} initial={news} />
         </section>
         <Faq t={t} />
         <section id="feedback" className="scroll-mt-20 mx-auto max-w-3xl space-y-4 px-4 py-16">
           <div className="space-y-1">
-            <h2 className="text-3xl font-bold tracking-tight text-fg sm:text-4xl">{t("feedback.title")}</h2>
+            <SectionTitle icon={ChatIcon}>{t("feedback.title")}</SectionTitle>
             <p className="text-fg-muted">{t("feedback.subtitle")}</p>
           </div>
           <FeedbackForm defaultEmail={user?.email ?? ""} />

@@ -82,7 +82,7 @@ export function UserMenu({
         aria-controls="account-menu"
         aria-label={t("account.menu")}
         onClick={() => setOpen((value) => !value)}
-        className="flex items-center gap-2 rounded-full border border-line bg-surface py-1 pl-1 pr-2 transition hover:border-fg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:pr-3"
+        className="flex h-10 items-center gap-2 rounded-full border border-line bg-surface pl-[3px] pr-2 transition hover:border-fg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:pr-3"
       >
         <span className="grid size-8 place-items-center rounded-full bg-brand text-sm font-bold text-brand-fg">{initial}</span>
         <span className="hidden max-w-[9rem] truncate text-sm font-medium text-fg sm:block">{label}</span>

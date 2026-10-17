@@ -1,5 +1,6 @@
 import type { MessageKey, TranslateFn } from "@ojo/shared";
-import { cn } from "@ojo/ui";
+import { DropIcon, cn } from "@ojo/ui";
+import { SectionTitle } from "./section-title";
 import { TONE_STYLES, type StatusTone } from "@/lib/status-tones";
 
 const LEGEND: ReadonlyArray<{ tone: StatusTone; label: MessageKey }> = [
@@ -22,7 +23,7 @@ export function StatusSection({ t }: { t: TranslateFn }) {
     <section className="mx-auto max-w-6xl px-4 py-20">
       <div className="grid items-center gap-12 md:grid-cols-2">
         <div className="reveal space-y-5">
-          <h2 className="max-w-[16ch] text-3xl font-bold tracking-tight text-fg sm:text-4xl">{t("landing.status.title")}</h2>
+          <SectionTitle icon={DropIcon}>{t("landing.status.title")}</SectionTitle>
           <p className="max-w-[48ch] text-fg-muted">{t("landing.status.text")}</p>
           <div className="flex flex-wrap gap-2 pt-1">
             {LEGEND.map(({ tone, label }) => (

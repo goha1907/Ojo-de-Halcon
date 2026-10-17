@@ -54,6 +54,7 @@ export const SendIcon = icon(
     <path d="M10 13l11-10" />
   </>,
 );
+export const CloseIcon = icon(<path d="M6 6l12 12M18 6L6 18" />);
 export const CheckIcon = icon(<path d="M5 12.5l4.5 4.5L19 7" />);
 export const ArrowRightIcon = icon(<path d="M5 12h14M13 6l6 6-6 6" />);
 export const ArrowLeftIcon = icon(<path d="M19 12H5M11 6l-6 6 6 6" />);
@@ -105,6 +106,48 @@ export const LogoutIcon = icon(
     <path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" />
     <path d="M16 8l4 4-4 4" />
     <path d="M20 12H9" />
+  </>,
+);
+export const GiftIcon = icon(
+  <>
+    <rect x="3" y="8" width="18" height="4.5" rx="1" />
+    <path d="M5 12.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7.5" />
+    <path d="M12 8v13" />
+    <path d="M12 8c-1.2-3.2-5-3.4-5-1.4C7 7.6 9 8 12 8zM12 8c1.2-3.2 5-3.4 5-1.4C17 7.6 15 8 12 8z" />
+  </>,
+);
+export const GearIcon = icon(
+  <>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8" />
+    <circle cx="12" cy="12" r="6.5" />
+  </>,
+);
+export const DropIcon = icon(<path d="M12 3.5s6 6.4 6 10.5a6 6 0 0 1-12 0c0-4.1 6-10.5 6-10.5z" />);
+export const TagIcon = icon(
+  <>
+    <path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.4 1.4 0 0 1 0 2l-6.7 6.7a1.4 1.4 0 0 1-2 0z" />
+    <circle cx="8" cy="8" r="1.3" />
+  </>,
+);
+export const NewspaperIcon = icon(
+  <>
+    <path d="M4 5a1 1 0 0 1 1-1h11v15a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2z" />
+    <path d="M16 8h3a1 1 0 0 1 1 1v10a2 2 0 0 1-2 2" />
+    <path d="M8 8h5M8 12h5M8 16h3" />
+  </>,
+);
+export const QuestionIcon = icon(
+  <>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.5 9.6a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.7" />
+    <path d="M12 16.9h.01" />
+  </>,
+);
+export const ChatIcon = icon(
+  <>
+    <path d="M4 5h16v11H11l-4 4v-4H4V5z" />
+    <path d="M8 9.5h8M8 12.5h5" />
   </>,
 );
 export const ClockIcon = icon(

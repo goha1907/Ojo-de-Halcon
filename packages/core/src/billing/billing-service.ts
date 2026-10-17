@@ -27,7 +27,7 @@ export interface BillingStateDto {
   paidUsedCases: number;
   /** Places that cases can still take: paid and free ones together, minus the occupied. */
   freeCases: number;
-  /** Cases the active free places cover (trial, bonus, gift): they cost nothing. */
+  /** Cases the active free places cover (trial, bonus, gift kinds): they cost nothing. */
   grantedCases: number;
   /** All places right now: paid plus free. */
   capacity: number;
@@ -38,9 +38,9 @@ export interface BillingStateDto {
   leavesMarked: number;
   freedByFinished: number;
   unusedCases: number;
-  /** Paid places the gift places will still cover at the renewal. */
+  /** Paid places the bonus places will still cover at the renewal. */
   coveredByGiftCases: number;
-  /** Paid places the next period needs for cases now on gift places that end before the renewal. */
+  /** Paid places the next period needs for cases now on bonus places that end before the renewal. */
   incomingCases: number;
   /** Paid places the next period is charged for. */
   nextPeriodCases: number;

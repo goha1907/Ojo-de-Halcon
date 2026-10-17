@@ -32,6 +32,8 @@ export interface CoreDeps {
   now?: () => Date;
   /** Source kinds hidden from ordinary accounts (default: the list in the shared config). */
   earlyAccessKinds?: readonly string[];
+  /** Source kinds switched off for everybody, staff included (default: the list in the shared config). */
+  disabledKinds?: readonly string[];
 }
 
 /** User as exposed to the application (no secrets, JSON-safe). */

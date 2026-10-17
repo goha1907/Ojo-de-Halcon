@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { apiRequest } from "@/lib/api-client";
+import { CoverPicker } from "./cover-picker";
 
 type Texts = Record<Locale, { title: string; summary: string; body: string }>;
 
@@ -18,18 +19,32 @@ interface Props {
   date: string;
   time: string;
   texts: Texts;
-  /** The entry comes from a file in the repository: saving here replaces it. */
-  fromFile?: boolean;
+  /** The main news (the big card on the home page). */
+  featured: boolean;
+  /** Cover picture, or null for the default one. */
+  image: string | null;
+  /** Built-in covers to choose from. */
+  covers: readonly string[];
 }
 
 /** One form for an entry in every language: a tab per language, one save for all of them. */
-export function NewsEditor({ slug, date: initialDate, time: initialTime, texts: initialTexts, fromFile = false }: Props) {
+export function NewsEditor({
+  slug,
+  date: initialDate,
+  time: initialTime,
+  texts: initialTexts,
+  featured: initialFeatured,
+  image: initialImage,
+  covers,
+}: Props) {
   const router = useRouter();
   const [date, setDate] = useState(initialDate);
   const [name, setName] = useState("");
   const [time, setTime] = useState(initialTime);
   const [texts, setTexts] = useState(initialTexts);
   const [active, setActive] = useState<Locale>("ru");
+  const [featured, setFeatured] = useState(initialFeatured);
+  const [image, setImage] = useState(initialImage ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -42,17 +57,24 @@ export function NewsEditor({ slug, date: initialDate, time: initialTime, texts: 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError("");
-    const finalSlug = slug ?? `${date}-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+    const shortName = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    if (slug === null && !date) return setError("Pick a date: it becomes the start of the link.");
+    if (slug === null && !shortName) return setError("Fill in the short name: latin letters or digits, for example “new-sources”.");
+    if (!texts.ru.title.trim() || !texts.ru.body.trim()) {
+      setActive("ru");
+      return setError("The Russian title and the Russian text are required; the other languages are optional.");
+    }
+    const finalSlug = slug ?? `${date}-${shortName}`;
     setBusy(true);
     try {
       await apiRequest("/api/admin/news", {
         method: "PUT",
-        body: { slug: finalSlug, time, translations: texts },
+        body: { slug: finalSlug, time: time || "00:00", translations: texts, featured, image: image || null },
       });
       router.push("/admin/news");
       router.refresh();
     } catch {
-      setError("Not saved. Check the date, the short name (latin letters and digits) and the Russian title and text.");
+      setError("Not saved: the server did not accept the entry. Check the date, the time and the cover, then try again.");
     } finally {
       setBusy(false);
     }
@@ -60,7 +82,6 @@ export function NewsEditor({ slug, date: initialDate, time: initialTime, texts: 
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      {fromFile && <Alert tone="info">This entry is kept as a file. Saving here publishes the version below instead of the file.</Alert>}
       {error && <Alert tone="error">{error}</Alert>}
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="space-y-1 text-sm text-fg-muted">
@@ -75,6 +96,24 @@ export function NewsEditor({ slug, date: initialDate, time: initialTime, texts: 
           Short name (latin, used in the link)
           <input required={slug === null} disabled={slug !== null} value={slug ? slug.slice(11) : name} onChange={(e) => setName(e.target.value)} placeholder="new-sources" className={INPUT} />
         </label>
+      </div>
+
+      <div className="space-y-4">
+        <label className="flex cursor-pointer items-start gap-2.5 text-sm text-fg">
+          <input
+            type="checkbox"
+            checked={featured}
+            onChange={(e) => setFeatured(e.target.checked)}
+            className="mt-0.5 size-4 rounded border-line accent-brand"
+          />
+          <span>
+            <b className="font-medium">Main news</b>
+            <span className="block text-xs text-fg-muted">
+              Shown as the big card on the home page. Only one entry can be the main one: saving this one takes the mark from the current main news. Without a main entry the newest news is shown.
+            </span>
+          </span>
+        </label>
+        <CoverPicker value={image} onChange={setImage} covers={covers} />
       </div>
 
       <div role="tablist" aria-label="Language" className="flex gap-1 border-b border-line">

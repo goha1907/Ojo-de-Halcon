@@ -1,29 +1,6 @@
+import { NEWS_COVER_PATTERN } from "@ojo/shared";
 import { describe, expect, it } from "vitest";
-import { parseFrontmatter, parseNewsFilename, pickLocale, type NewsItem } from "./news";
-
-describe("parseFrontmatter", () => {
-  it("reads flat keys and trims the body", () => {
-    const { meta, body } = parseFrontmatter('---\ntitle: "Hello: world"\nsummary: Short\n---\n\n# Body\n');
-    expect(meta).toEqual({ title: "Hello: world", summary: "Short" });
-    expect(body).toBe("# Body");
-  });
-  it("returns the whole text when there is no frontmatter", () => {
-    expect(parseFrontmatter("just text")).toEqual({ meta: {}, body: "just text" });
-  });
-});
-
-describe("parseNewsFilename", () => {
-  it("accepts dated slugs with a known locale only", () => {
-    expect(parseNewsFilename("2026-10-14-launch.ru.md")).toEqual({
-      slug: "2026-10-14-launch",
-      date: "2026-10-14",
-      locale: "ru",
-    });
-    expect(parseNewsFilename("2026-10-14-launch.de.md")).toBeNull();
-    expect(parseNewsFilename("launch.ru.md")).toBeNull();
-    expect(parseNewsFilename("../2026-10-14-x.ru.md")).toBeNull();
-  });
-});
+import { coverOf, DEFAULT_COVER, pickLocale, type NewsItem } from "./news";
 
 describe("pickLocale", () => {
   const item = (slug: string, locale: "ru" | "es", date = "2026-10-14", time = "00:00"): NewsItem => ({
@@ -52,5 +29,24 @@ describe("pickLocale", () => {
       "ru",
     );
     expect(picked.map((n) => n.slug)).toEqual(["2026-10-14-evening", "2026-10-14-noon", "2026-10-14-morning"]);
+  });
+});
+
+describe("news covers", () => {
+  it("accepts built-in pictures and uploaded ones, nothing else", () => {
+    expect(NEWS_COVER_PATTERN.test("/news/cabinet.svg")).toBe(true);
+    expect(NEWS_COVER_PATTERN.test("/news/photo-1.jpg")).toBe(true);
+    expect(NEWS_COVER_PATTERN.test("/api/news/image/cmvabc123")).toBe(true);
+    expect(NEWS_COVER_PATTERN.test("https://example.com/x.png")).toBe(false);
+    expect(NEWS_COVER_PATTERN.test("/news/../secret.svg")).toBe(false);
+    expect(NEWS_COVER_PATTERN.test("/api/news/image/../../x")).toBe(false);
+    expect(NEWS_COVER_PATTERN.test("/images/x.svg")).toBe(false);
+  });
+
+  it("falls back to the default cover and leaves uploaded addresses alone", () => {
+    expect(coverOf({ image: "/api/news/image/cmvabc123" })).toBe("/api/news/image/cmvabc123");
+    // a built-in file that is not there keeps its plain address; a real one gets its change time as a version
+    expect(coverOf({ image: "/news/not-there.svg" })).toBe("/news/not-there.svg");
+    expect(coverOf({ image: undefined })).toMatch(new RegExp(`^${DEFAULT_COVER}(\\?v=\\d+)?$`));
   });
 });

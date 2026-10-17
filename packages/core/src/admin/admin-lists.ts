@@ -41,7 +41,7 @@ export interface UserRow {
   plan: string;
   /** All places: paid, trial and gift. */
   places: number;
-  /** Gift places in use (the trial is not counted). */
+  /** Bonus places in use (the trial is not counted). */
   gift: number;
   cases: number;
 }
@@ -77,7 +77,7 @@ export function createAdminLists(deps: { prisma: PrismaClient; now: () => Date }
   const { prisma, now } = deps;
 
   /**
-   * Accounts. The plan, gift places and case counts are computed in bulk (a few grouped queries), so any of
+   * Accounts. The plan, bonus places and case counts are computed in bulk (a few grouped queries), so any of
    * them can be filtered and sorted on without reading every account one by one.
    */
   async function users(input: UserListQuery): Promise<Page<UserRow>> {
@@ -300,7 +300,7 @@ export function createAdminLists(deps: { prisma: PrismaClient; now: () => Date }
       estimatedMonthly: monthly,
       averagePerSubscription: running > 0 ? Math.round(monthly / running) : 0,
       giftPlaces: grants.reduce((n, row) => n + row.cases, 0),
-      // what the gift places would cost at the price ladder: the value given away
+      // what the bonus places would cost at the price ladder: the value given away
       giftValue: casesPrice(grants.reduce((n, row) => n + row.cases, 0)),
       byMonth: [...byMonth.entries()].sort(([a], [b]) => b.localeCompare(a)).map(([month, value]) => ({ month, ...value })),
       byKind: [...byKind.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([kind, value]) => ({ kind, ...value })),
