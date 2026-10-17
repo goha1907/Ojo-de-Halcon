@@ -2,6 +2,7 @@ import { can, ROUTES } from "@ojo/shared";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { AdminNav } from "@/components/admin/admin-nav";
 import { ADMIN_NAV } from "@/components/admin/nav";
 import { AdminSignOut } from "@/components/admin/sign-out";
 import { ThemeSwitch } from "@/components/landing/preference-selectors";
@@ -39,13 +40,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <AdminSignOut />
           </div>
         </div>
-        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2" aria-label="Admin sections">
-          {items.map((item) => (
-            <Link key={item.href} href={item.href} className="whitespace-nowrap rounded-field px-3 py-1.5 text-sm text-fg hover:bg-line/40">
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <AdminNav items={items} />
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
     </div>

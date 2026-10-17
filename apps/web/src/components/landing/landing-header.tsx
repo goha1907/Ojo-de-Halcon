@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { LANDING_SECTIONS } from "./sections";
 import { PreferenceSelectors } from "./preference-selectors";
+import { SectionLinks } from "./section-nav";
 import { UserMenu, type UserMenuStats } from "./user-menu";
 
 
@@ -16,15 +17,7 @@ export function LandingHeader({
   /** The signed-in visitor, or null. `stats` is null while the cabinet is not open to them yet. */
   user: { email: string; name: string | null; stats: UserMenuStats | null } | null;
 }) {
-  const links = LANDING_SECTIONS.map((section) => (
-    <a
-      key={section.id}
-      href={`#${section.id}`}
-      className="rounded-full px-3 py-1.5 text-sm text-fg-muted transition-colors hover:bg-line/40 hover:text-fg"
-    >
-      {t(section.labelKey)}
-    </a>
-  ));
+  const sections = LANDING_SECTIONS.map((section) => ({ id: section.id, label: t(section.labelKey) }));
   const auth = user ? (
     <UserMenu email={user.email} name={user.name} stats={user.stats} />
   ) : (
@@ -46,7 +39,7 @@ export function LandingHeader({
           <Logo variant="icon" alt={t("app.name")} height={36} className="sm:hidden" />
         </Link>
         <nav aria-label={t("landing.nav.label")} className="ml-4 hidden items-center gap-1 md:flex">
-          {links}
+          <SectionLinks sections={sections} variant="header" />
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <div className="hidden lg:block">
@@ -61,7 +54,7 @@ export function LandingHeader({
               ☰
             </summary>
             <div className="absolute right-0 mt-2 flex w-56 flex-col gap-1 rounded-field border border-line bg-surface p-2 shadow-lg">
-              {links}
+              <SectionLinks sections={sections} variant="menu" />
               <div className="border-t border-line pt-2 lg:hidden">
                 <PreferenceSelectors t={t} className="flex-wrap justify-center" />
               </div>

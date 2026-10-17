@@ -3,11 +3,13 @@
 import { ROUTES } from "@ojo/shared";
 import { ChevronDownIcon, cn } from "@ojo/ui";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { LogoutButton } from "@/components/logout-button";
 import { AddTrackerButton } from "@/components/trackers/add-tracker-button";
 import { formatMoney } from "@/lib/money";
+import { isActive } from "@/lib/navigation";
 
 export interface UserMenuStats {
   paid: number;
@@ -25,6 +27,7 @@ const SETTINGS_LINKS = [
 
 const ITEM =
   "block rounded-field px-3 py-2 text-sm font-medium text-fg transition-colors hover:bg-line/40 focus-visible:outline-2 focus-visible:outline-ring";
+const ITEM_ACTIVE = "bg-line/70";
 
 /**
  * The signed-in visitor's chip in the public header and its drop-down: places and price of the
@@ -41,6 +44,7 @@ export function UserMenu({
   stats: UserMenuStats | null;
 }) {
   const { t, locale } = useI18n();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -121,12 +125,23 @@ export function UserMenu({
           )}
 
           <nav className="space-y-0.5" aria-label={t("account.menu")}>
-            <Link href={ROUTES.dashboard} onClick={close} className={ITEM}>
+            <Link
+              href={ROUTES.dashboard}
+              onClick={close}
+              aria-current={isActive(pathname, ROUTES.dashboard) ? "page" : undefined}
+              className={cn(ITEM, isActive(pathname, ROUTES.dashboard) && ITEM_ACTIVE)}
+            >
               {t("nav.dashboard")}
             </Link>
             {stats &&
               SETTINGS_LINKS.map(({ href, label }) => (
-                <Link key={href} href={href} onClick={close} className={ITEM}>
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={close}
+                  aria-current={isActive(pathname, href) ? "page" : undefined}
+                  className={cn(ITEM, isActive(pathname, href) && ITEM_ACTIVE)}
+                >
                   {t(label)}
                 </Link>
               ))}

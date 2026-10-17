@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { LegalLinks } from "./legal-links";
 import { LanguageSelect } from "./preference-selectors";
+import { SectionLinks } from "./section-nav";
 import { LANDING_SECTIONS } from "./sections";
 
 /** Accepted payment methods: logo files live in `public/payments` (official artwork, 2x). */
@@ -30,13 +31,10 @@ export function LandingFooter({ t }: { t: TranslateFn }) {
         <div className="space-y-3">
           <div className="text-sm font-semibold text-fg">{t("landing.footer.menu")}</div>
           <ul className="space-y-2 text-sm">
-            {LANDING_SECTIONS.map((section) => (
-              <li key={section.id}>
-                <a href={`#${section.id}`} className="hover:text-fg">
-                  {t(section.labelKey)}
-                </a>
-              </li>
-            ))}
+            <SectionLinks
+              sections={LANDING_SECTIONS.map((section) => ({ id: section.id, label: t(section.labelKey) }))}
+              variant="footer"
+            />
           </ul>
         </div>
         <div className="space-y-3">

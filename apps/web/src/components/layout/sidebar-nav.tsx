@@ -31,8 +31,8 @@ export function SidebarNav({
               href={entry.href}
               aria-current={isActive(pathname, entry.href) ? "page" : undefined}
               className={cn(
-                "block px-3 py-1 text-xs font-semibold uppercase tracking-wide hover:text-fg",
-                isActive(pathname, entry.href) ? "text-fg" : "text-fg-muted",
+                "block rounded-field px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors hover:text-fg",
+                isActive(pathname, entry.href) ? "bg-line/70 text-fg" : "text-fg-muted",
               )}
             >
               {t(entry.labelKey)}
