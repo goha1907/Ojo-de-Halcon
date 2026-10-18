@@ -43,20 +43,22 @@ To add a role or a permission: edit that file, and the menu in `apps/web/src/com
 
 - **Overview**: users, running subscriptions and estimated monthly revenue (by the price ladder), bonus places in use,
   active cases, cases with a source error, new inbox messages, waiting Telegram messages, sources needing attention.
-- **Users**: search by e-mail or id; one page per account: profile, access (plan, paid / granted places, next
+- **Users**: a filterable, sortable list; one page per account: profile, access (plan, paid / granted places, next
   period), trial and bonus places with **give / change end date / revoke**, all cases with source state and
-  errors, payments, admin actions on this account.
+  errors, payments (with a Receipt column), admin actions on this account.
 - **Inbox**: contact-form messages with a status (New, Read, Answered, Spam). Opening a message marks it Read; answering it moves it to Answered. Answers are simulated: they are stored but no e-mail is sent until the support mailbox is connected.
 - **User page, test tools** (only while payments are simulated, `users.manage`): simulate a renewal, reset the subscription and clear the test payments. Bonus places are handled by the grants form. The test buttons were removed from the customer's subscription page.
 - **Sources**: per source kind, active cases, errors, overdue checks, last successful check, most common errors.
 - **Statuses**: every status and stage title seen at the sources (no personal data): the basis for deciding which
   statuses end a case.
+- **News**: write an entry in all languages at once (a tab per language), with an optional picture and a "Main news" flag. Details: README, section "Новости".
+- **Economics** (administrators only): the owner's money figures, see "Lists" below.
 - **Audit log**: everything staff changed. Entries are kept after an account is deleted.
 
 ## Early access
 
-Some services are held back from ordinary accounts (OCASA is parked this way until there is an agreement with it). Staff always see such services; for any other account an admin
-turns **Early access** on in the account block of the user page. The list of such services is `EARLY_ACCESS_KINDS` /
+A service can be held back from ordinary accounts. Staff always see such services; for any other account an admin
+turns **Early access** on in the account block of the user page. **Right now the flag opens nothing:** OCASA, the only service on the list, is switched off for everybody (`DISABLED_KINDS`), staff included. The list of such services is `EARLY_ACCESS_KINDS` /
 `EARLY_ACCESS_SECTIONS` in `packages/shared`. The change is written to the audit log.
 
 ## Giving places (gift, bonus, promo, partner kinds)
