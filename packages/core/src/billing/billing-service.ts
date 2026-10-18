@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@ojo/db";
-import { APP_CONFIG, PRICING, casesPrice, quotePurchase } from "@ojo/shared";
+import { APP_CONFIG, DISABLED_KINDS, PRICING, casesPrice, quotePurchase, type TrackerKindValue } from "@ojo/shared";
 import type { CapacityService } from "../capacity/capacity-service";
 import type { GrantService } from "../grants/grant-service";
 
@@ -93,13 +93,17 @@ export function createBillingService(deps: {
   now: () => Date;
   grants: GrantService;
   capacity: CapacityService;
+  /** Sources switched off for everybody (default: `DISABLED_KINDS`). */
+  disabledKinds?: readonly string[];
 }) {
   const { prisma, now, grants, capacity } = deps;
+  const disabled = [...(deps.disabledKinds ?? DISABLED_KINDS)] as TrackerKindValue[];
 
   async function counts(userId: string) {
     const rows = await prisma.tracker.groupBy({
       by: ["status", "keepNext"],
-      where: { userId },
+      // a switched-off source takes no place: its cases are out of sight
+      where: { userId, kind: { notIn: disabled } },
       _count: { _all: true },
     });
     const sum = (match: (row: (typeof rows)[number]) => boolean) =>

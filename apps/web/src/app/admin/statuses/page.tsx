@@ -1,4 +1,4 @@
-import { TRACKER_KINDS } from "@ojo/shared";
+import { TRACKER_KINDS, isDisabledKind } from "@ojo/shared";
 import { dateTime, pageParam } from "@/components/admin/format";
 import { FilterBar, SortTh, flatParams, listHref } from "@/components/admin/list-controls";
 import { sortAndPage } from "@/components/admin/memory-list";
@@ -33,7 +33,7 @@ export default async function AdminStatusesPage({ searchParams }: { searchParams
         params={params}
         fields={[
           { name: "q", label: "Value contains", kind: "text", placeholder: "Search…" },
-          { name: "kind", label: "Source", kind: "select", options: TRACKER_KINDS.map((value) => ({ value, label: value })) },
+          { name: "kind", label: "Source", kind: "select", options: TRACKER_KINDS.filter((value) => !isDisabledKind(value)).map((value) => ({ value, label: value })) },
           { name: "field", label: "Field", kind: "select", options: fields.map((value) => ({ value, label: value })) },
         ]}
       />

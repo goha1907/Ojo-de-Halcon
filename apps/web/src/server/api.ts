@@ -25,8 +25,6 @@ export type ApiErrorCode =
   | "NOT_FOUND"
   | "NOT_AVAILABLE"
   | "SOURCE_DOWN"
-  | "PROFILE_INCOMPLETE"
-  | "NO_COURT"
   | "SUBSCRIPTION_REQUIRED"
   | "LIMIT_REACHED"
   | "EMAIL_NOT_VERIFIED"
@@ -53,8 +51,6 @@ const STATUS: Record<ApiErrorCode, number> = {
   // a service that is not open to this account yet looks like a page that does not exist
   NOT_AVAILABLE: 404,
   SOURCE_DOWN: 503,
-  PROFILE_INCOMPLETE: 409,
-  NO_COURT: 409,
   SUBSCRIPTION_REQUIRED: 402,
   LIMIT_REACHED: 409,
   EMAIL_NOT_VERIFIED: 403,

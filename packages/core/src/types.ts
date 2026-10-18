@@ -45,8 +45,6 @@ export interface UserDto {
   lastName: string | null;
   /** ISO date `YYYY-MM-DD` or null. */
   birthDate: string | null;
-  /** PJN jurisdiction select value or null. */
-  pjnJurisdiction: string | null;
   profileComplete: boolean;
   telegramLinked: boolean;
   telegramUsername: string | null;

@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@ojo/db";
-import { APP_CONFIG, casesPrice, LOCALES, NEWS_COVER_PATTERN, NEWS_IMAGE_PATH, type Locale, type TrackerKindValue } from "@ojo/shared";
+import { APP_CONFIG, DISABLED_KINDS, casesPrice, LOCALES, NEWS_COVER_PATTERN, NEWS_IMAGE_PATH, type Locale, type TrackerKindValue } from "@ojo/shared";
 import type { AccessService } from "../access/access-service";
 import type { BillingService } from "../billing/billing-service";
 import { GRANT_KINDS, type GrantKind, type GrantService } from "../grants/grant-service";
@@ -114,8 +114,8 @@ export function createAdminService(deps: {
         where: { revokedAt: null, startsAt: { lte: at }, OR: [{ expiresAt: null }, { expiresAt: { gt: at } }], kind: { not: "TRIAL" } },
         select: { userId: true, cases: true },
       }),
-      prisma.tracker.groupBy({ by: ["status"], _count: { _all: true } }),
-      prisma.tracker.count({ where: { status: "ACTIVE", lastError: { not: null } } }),
+      prisma.tracker.groupBy({ by: ["status"], where: { kind: { notIn: [...DISABLED_KINDS] as TrackerKindValue[] } }, _count: { _all: true } }),
+      prisma.tracker.count({ where: { status: "ACTIVE", lastError: { not: null }, kind: { notIn: [...DISABLED_KINDS] as TrackerKindValue[] } } }),
       prisma.feedbackMessage.count({ where: { status: "NEW" } }),
       prisma.telegramOutbox.count({ where: { sentAt: null } }),
     ]);
@@ -148,7 +148,7 @@ export function createAdminService(deps: {
       access.get(userId),
       billing.state(userId),
       grants.list(userId),
-      prisma.tracker.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, include: { snapshot: true } }),
+      prisma.tracker.findMany({ where: { userId, kind: { notIn: [...DISABLED_KINDS] as TrackerKindValue[] } }, orderBy: { createdAt: "asc" }, include: { snapshot: true } }),
     ]);
     return {
       user: {
@@ -444,7 +444,7 @@ export function createAdminService(deps: {
   async function sourcesHealth(): Promise<SourceHealthRow[]> {
     const at = now();
     const overdueBefore = new Date(at.getTime() - 60 * 60_000);
-    const kinds = await prisma.tracker.groupBy({ by: ["kind"], where: { status: "ACTIVE" }, _count: { _all: true } });
+    const kinds = await prisma.tracker.groupBy({ by: ["kind"], where: { status: "ACTIVE", kind: { notIn: [...DISABLED_KINDS] as TrackerKindValue[] } }, _count: { _all: true } });
     return Promise.all(
       kinds.map(async (row): Promise<SourceHealthRow> => {
         const [withError, overdue, last, errors] = await Promise.all([

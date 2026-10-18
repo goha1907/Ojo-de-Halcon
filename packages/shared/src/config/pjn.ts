@@ -45,8 +45,6 @@ export const PJN_JURISDICTIONS: readonly PjnJurisdiction[] = RAW.map(([value, co
   name,
 }));
 
-/** Court of citizenship cases; preselected in the court dropdown. */
-export const PJN_DEFAULT_JURISDICTION = "4";
 
 export function findJurisdiction(value: string | null | undefined): PjnJurisdiction | undefined {
   return PJN_JURISDICTIONS.find((item) => item.value === value);

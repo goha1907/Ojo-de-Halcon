@@ -1,6 +1,7 @@
 import { createCoreFromEnv } from "@ojo/core";
 import { loadEnv } from "@ojo/shared";
-import { createBot } from "./bot/create-bot";
+import { InlineKeyboard } from "grammy";
+import { createBot, publicSiteUrl } from "./bot/create-bot";
 import { logger } from "./logger";
 import { startTrackerScheduler } from "./trackers/scheduler";
 
@@ -28,8 +29,11 @@ async function main(): Promise<void> {
 
   const stopScheduler = startTrackerScheduler({
     core,
-    send: async (telegramId, text) => {
-      await bot.api.sendMessage(Number(telegramId), text);
+    siteUrl: publicSiteUrl(env.APP_URL),
+    send: async (telegramId, text, button) => {
+      await bot.api.sendMessage(Number(telegramId), text, {
+        ...(button ? { reply_markup: new InlineKeyboard().url(button.text, button.url) } : {}),
+      });
     },
   });
 

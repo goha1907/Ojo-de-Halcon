@@ -16,7 +16,7 @@ export default async function SettingsProfilePage() {
       <ProfileCard
         email={user.email}
         emailVerified={user.emailVerified}
-        initial={{ firstName: user.firstName, lastName: user.lastName, birthDate: user.birthDate, pjnJurisdiction: user.pjnJurisdiction }}
+        initial={{ firstName: user.firstName, lastName: user.lastName, birthDate: user.birthDate }}
       />
       <TelegramCard linked={user.telegramLinked} username={user.telegramUsername} />
       <WhatsappCard />

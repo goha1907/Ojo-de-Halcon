@@ -62,7 +62,19 @@ export function createAccountService(deps: {
       appUrl: config.appUrl,
       data: { link, hours: config.verifyEmailTtlHours },
     });
-    await mailer.send({ to: user.email, ...mail });
+    await deliver({ to: user.email, ...mail });
+  }
+
+  /**
+   * A mail that cannot be sent must not break sign-up or the reset form (and must not show which addresses exist):
+   * the failure is logged and the flow goes on; the user can ask for the mail again.
+   */
+  async function deliver(message: Parameters<typeof mailer.send>[0]): Promise<void> {
+    try {
+      await mailer.send(message);
+    } catch (error) {
+      process.stderr.write(`${JSON.stringify({ level: "error", message: "mail not sent", error: error instanceof Error ? error.message : "unknown" })}\n`);
+    }
   }
 
   async function register(input: { email: string; password: string; locale?: string }): Promise<RegisterResult> {
@@ -123,7 +135,7 @@ export function createAccountService(deps: {
       appUrl: config.appUrl,
       data: { link, minutes: config.resetPasswordTtlMinutes },
     });
-    await mailer.send({ to: user.email, ...mail });
+    await deliver({ to: user.email, ...mail });
   }
 
   async function resetPassword(token: string, newPassword: string): Promise<boolean> {

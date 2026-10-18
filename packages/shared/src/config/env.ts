@@ -29,6 +29,12 @@ const envSchema = z.object({
    * unless explicitly forced, so a real deployment never gives access away.
    */
   PAYMENTS_STUB: z.enum(["true", "false"]).optional(),
+  /** Resend API key; empty: e-mails are only written to the log (console driver). */
+  RESEND_API_KEY: z.string().optional(),
+  /** Sender of all e-mails. Resend allows `onboarding@resend.dev` until your own domain is verified. */
+  MAIL_FROM: z.string().default("Ojo de Halcón <onboarding@resend.dev>"),
+  /** Where replies go (support address); optional. */
+  MAIL_REPLY_TO: z.string().optional(),
   EMAIL_VERIFICATION_REQUIRED: z
     .enum(["true", "false"])
     .default("false")

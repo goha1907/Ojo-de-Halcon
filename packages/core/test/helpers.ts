@@ -87,7 +87,6 @@ export const adultProfile = {
   firstName: "Egor",
   lastName: "Medvedev",
   birthDate: new Date("1987-07-19T00:00:00Z"),
-  pjnJurisdiction: "4",
 };
 
 export const PASSWORD = "correct horse battery";

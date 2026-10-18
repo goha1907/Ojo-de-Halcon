@@ -30,7 +30,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <AppShell userLabel={user.email} staff={user.role !== "USER"} earlyAccess={user.earlyAccess} showMenu={!mustVerify}
-      defaultJurisdiction={user.pjnJurisdiction}
       access={access}
       addLock={addLock}
       usage={usage}

@@ -3,7 +3,6 @@
 import {
   API_ROUTES,
   APP_CONFIG,
-  PJN_DEFAULT_JURISDICTION,
   PJN_JURISDICTIONS,
   CORREO_DEFAULT_FORM,
   composeIsoDate,
@@ -45,7 +44,6 @@ interface Props {
   fixedKind?: boolean;
   onClose: () => void;
   /** Court chosen in the profile, preselected for court cases. */
-  defaultJurisdiction: string | null;
   /** Set when the plan does not allow another case; the form is replaced by an offer. */
   lock: "trial" | "expired" | null;
   /** Used / paid cases of a subscription (null: no subscription); when all are taken the form is replaced by an offer to buy more. */
@@ -78,7 +76,7 @@ const ERROR_KEYS: Record<string, MessageKey> = {
 };
 
 /** One window for adding any tracker (the "+ Tracking" button lives in the header). */
-export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKind, lock, usage, defaultBirthDate, fixedKind = false, earlyAccess = false }: Props) {
+export function AddTrackerModal({ open, onClose, initialKind, lock, usage, defaultBirthDate, fixedKind = false, earlyAccess = false }: Props) {
   const t = useT();
   const router = useRouter();
   const [kind, setKind] = useState<TrackerKindValue>(initialKind ?? "RENAPER");
@@ -94,7 +92,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
     number: "",
   });
   const [year, setYear] = useState("");
-  const [jurisdiction, setJurisdiction] = useState(defaultJurisdiction ?? PJN_DEFAULT_JURISDICTION);
+  const [jurisdiction, setJurisdiction] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -338,6 +336,7 @@ export function AddTrackerModal({ open, onClose, defaultJurisdiction, initialKin
         {isCourt && (
           <SelectField
             label={t("field.court")}
+            placeholder={t("field.courtPlaceholder")}
             value={jurisdiction}
             options={courtOptions}
             error={errors.jurisdiction}

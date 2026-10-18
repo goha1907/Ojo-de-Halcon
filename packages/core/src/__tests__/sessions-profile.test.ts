@@ -59,7 +59,6 @@ describe("profile", () => {
       ["birthDate", "", "1987-07-19"],
       ["firstName", "", "Egor"],
       ["lastName", "", "Medvedev"],
-      ["pjnJurisdiction", "", "4"],
       ["birthDate", "1987-07-19", "1987-07-20"],
       ["firstName", "Egor", "Yegor"],
     ]);
@@ -67,9 +66,9 @@ describe("profile", () => {
 
   it("accepts a profile without birth date or court", async () => {
     const { core, userId } = await register();
-    await core.profile.update(userId, { ...adultProfile, birthDate: null, pjnJurisdiction: "" });
+    await core.profile.update(userId, { ...adultProfile, birthDate: null });
     const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-    expect([user.firstName, user.birthDate, user.pjnJurisdiction]).toEqual(["Egor", null, null]);
+    expect([user.firstName, user.birthDate]).toEqual(["Egor", null]);
     // nothing but the name was recorded, and the name alone makes the profile complete
     expect((await prisma.profileChange.findMany()).map((c) => c.field).sort()).toEqual(["firstName", "lastName"]);
     expect((await core.sessions.getUser((await core.sessions.create(userId)).token))?.profileComplete).toBe(true);
@@ -78,9 +77,9 @@ describe("profile", () => {
   it("accepts an empty profile and clears the names it had", async () => {
     const { core, userId } = await register();
     await core.profile.update(userId, adultProfile);
-    await core.profile.update(userId, { firstName: "", lastName: "", birthDate: null, pjnJurisdiction: "" });
+    await core.profile.update(userId, { firstName: "", lastName: "", birthDate: null });
     const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-    expect([user.firstName, user.lastName, user.birthDate, user.pjnJurisdiction]).toEqual([null, null, null, null]);
+    expect([user.firstName, user.lastName, user.birthDate]).toEqual([null, null, null]);
     expect((await core.sessions.getUser((await core.sessions.create(userId)).token))?.profileComplete).toBe(false);
   });
 

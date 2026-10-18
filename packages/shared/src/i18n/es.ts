@@ -132,20 +132,20 @@ export const es: Messages = {
 
   "onboarding.title": "Cuéntanos sobre ti",
   "onboarding.subtitle":
-    "Opcional. Completaremos la fecha de nacimiento en Migraciones y propondremos el juzgado elegido al agregar un caso.",
+    "Opcional. Completaremos la fecha de nacimiento en Migraciones.",
   "onboarding.profile": "Datos de tus documentos",
   "onboarding.submit": "Listo",
 
   "dashboard.welcome": "¡Hola, {name}!",
   "dashboard.welcomeAnon": "¡Bienvenido!",
-  "dashboard.profileNudge": "Completa tu perfil: pondremos la fecha de nacimiento en Migraciones y propondremos tu juzgado al agregar un caso.",
+  "dashboard.profileNudge": "Completa tu perfil: pondremos la fecha de nacimiento en Migraciones.",
   "dashboard.profileLink": "Completar perfil",
   "dashboard.telegramNudge": "Conecta Telegram para recibir avisos.",
   "dashboard.telegramLink": "Conectar Telegram",
 
   "settings.profile.title": "Perfil",
   "settings.profile.help":
-    "Todo es opcional. El nombre y el apellido sirven para saludarte, la fecha de nacimiento se completa en Migraciones y el juzgado elegido se propone al agregar un caso.",
+    "Todo es opcional. El nombre y el apellido sirven para saludarte y la fecha de nacimiento se completa en Migraciones.",
   "settings.profile.email": "Correo electrónico",
   "settings.profile.emailVerified": "Verificado",
   "settings.profile.emailUnverified": "Sin verificar",
@@ -242,7 +242,6 @@ export const es: Messages = {
   "validation.caseYearInvalid": "Indica el año con cuatro dígitos",
   "field.court": "Tribunal (jurisdicción)",
   "field.courtPlaceholder": "Elige un tribunal",
-  "field.courtHint": "Se propondrá al agregar un caso. Puedes indicarlo más tarde.",
   "track.copyNumber": "Copiar número",
   "track.add": "+ Seguimiento",
   "track.modal.title": "Nuevo seguimiento",
@@ -312,7 +311,6 @@ export const es: Messages = {
   "track.header.dependencia": "Dependencia",
   "track.header.sit_actual": "Situación actual",
   "track.header.caratula": "Carátula",
-  "bot.update.title": "🔔 {service}: hay novedades",
   "bot.update.status": "Estado: {status}",
   "bot.update.openSite": "Los detalles están en tu cuenta.",
 
@@ -338,7 +336,7 @@ export const es: Messages = {
   "validation.emailDisposable": "No se aceptan correos temporales; usa una dirección permanente",
   "common.emailNotVerified": "Primero confirma tu correo: enviamos un enlace a tu dirección.",
 
-  "bot.digest.title": "📌 {service}: última etapa",
+  "bot.digest.title": "Última etapa",
   "bot.digest.noSteps": "Todavía no hay etapas.",
 
   "billing.stubBadge": "prueba, no se cobra",
@@ -350,7 +348,7 @@ export const es: Messages = {
 
   "track.notFoundYet": "Todavía no hay datos para este número. Lo revisaremos automáticamente.",
 
-  "bot.initial.title": "🆕 {service}: seguimiento agregado, estado actual",
+  "bot.initial.title": "Seguimiento agregado, estado actual",
 
   "field.birthDateOptional": "Fecha de nacimiento (opcional)",
 

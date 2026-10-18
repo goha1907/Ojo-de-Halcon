@@ -12,13 +12,11 @@ interface OpenRequest {
 
 /** The one modal of a page; every "+ Tracking" button opens it through a window event. */
 export function AddTrackerHost({
-  defaultJurisdiction,
   lock,
   usage,
   defaultBirthDate,
   earlyAccess = false,
 }: {
-  defaultJurisdiction: string | null;
   lock: "trial" | "expired" | null;
   usage: { used: number; limit: number } | null;
   defaultBirthDate: string | null;
@@ -44,7 +42,6 @@ export function AddTrackerHost({
       key={session}
       open={open}
       onClose={() => setOpen(false)}
-      defaultJurisdiction={defaultJurisdiction}
       lock={lock}
       usage={usage}
       defaultBirthDate={defaultBirthDate}

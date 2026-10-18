@@ -206,3 +206,13 @@ describe("one account per mailbox and a remembered trial", () => {
     expect((await trialOf(second.userId)).getTime()).toBe(started.getTime());
   });
 });
+
+describe("a mail that cannot be sent", () => {
+  it("does not break sign-up or the reset request", async () => {
+    const mailer = { send: async () => { throw new Error("provider down"); } };
+    const core = makeCore({ mailer });
+    const registered = await core.accounts.register({ email: "mail-fail@example.com", password: PASSWORD });
+    expect(registered.ok).toBe(true);
+    await expect(core.accounts.requestPasswordReset("mail-fail@example.com")).resolves.not.toThrow();
+  });
+});

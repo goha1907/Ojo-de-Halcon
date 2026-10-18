@@ -135,20 +135,20 @@ export const ru = {
 
   "onboarding.title": "Расскажите о себе",
   "onboarding.subtitle":
-    "Необязательно. Дату рождения мы подставим в Migraciones, а выбранный суд предложим при добавлении дела.",
+    "Необязательно. Дату рождения мы подставим в Migraciones.",
   "onboarding.profile": "Данные из документов",
   "onboarding.submit": "Готово",
 
   "dashboard.welcome": "Здравствуйте, {name}!",
   "dashboard.welcomeAnon": "Добро пожаловать!",
-  "dashboard.profileNudge": "Заполните профиль: мы подставим дату рождения в Migraciones и предложим ваш суд при добавлении дела.",
+  "dashboard.profileNudge": "Заполните профиль: мы подставим дату рождения в Migraciones.",
   "dashboard.profileLink": "Заполнить профиль",
   "dashboard.telegramNudge": "Подключите Telegram, чтобы получать уведомления.",
   "dashboard.telegramLink": "Подключить Telegram",
 
   "settings.profile.title": "Профиль",
   "settings.profile.help":
-    "Всё необязательно. Имя и фамилия нужны для приветствия, дата рождения подставляется в Migraciones, а выбранный суд предлагается при добавлении дела.",
+    "Всё необязательно. Имя и фамилия нужны для приветствия, дата рождения подставляется в Migraciones.",
   "settings.profile.email": "E-mail",
   "settings.profile.emailVerified": "Подтверждён",
   "settings.profile.emailUnverified": "Не подтверждён",
@@ -246,7 +246,6 @@ export const ru = {
   "validation.caseYearInvalid": "Укажите год из четырёх цифр",
   "field.court": "Суд (юрисдикция)",
   "field.courtPlaceholder": "Выберите суд",
-  "field.courtHint": "Будет предложен при добавлении дела. Можно указать позже.",
   "track.copyNumber": "Скопировать номер",
   "track.add": "+ Отслеживание",
   "track.modal.title": "Новое отслеживание",
@@ -316,7 +315,6 @@ export const ru = {
   "track.header.dependencia": "Суд",
   "track.header.sit_actual": "Текущая ситуация",
   "track.header.caratula": "Наименование дела",
-  "bot.update.title": "🔔 {service}: есть новости",
   "bot.update.status": "Статус: {status}",
   "bot.update.openSite": "Подробности — в личном кабинете.",
 
@@ -342,7 +340,7 @@ export const ru = {
   "validation.emailDisposable": "Временные адреса почты не принимаются, укажите постоянный",
   "common.emailNotVerified": "Сначала подтвердите e-mail: ссылка отправлена на вашу почту.",
 
-  "bot.digest.title": "📌 {service}: последний этап",
+  "bot.digest.title": "Последний этап",
   "bot.digest.noSteps": "Этапов пока нет.",
 
   "billing.stubBadge": "тест, оплата не списывается",
@@ -354,7 +352,7 @@ export const ru = {
 
   "track.notFoundYet": "По этому номеру пока нет данных. Проверим позже автоматически.",
 
-  "bot.initial.title": "🆕 {service}: отслеживание добавлено, текущее состояние",
+  "bot.initial.title": "Отслеживание добавлено, текущее состояние",
 
   "field.birthDateOptional": "Дата рождения (необязательно)",
 

@@ -98,6 +98,8 @@ export interface DigestItem {
   who: string | null;
   /** Identifies the case in messages: trámite number or court file number. */
   caseId: string;
+  /** The name the user gave the case, if any. */
+  label: string | null;
   header: TrackerHeaderFields;
   /** Most recent stage, or null when none is known yet. */
   step: TrackerStep | null;
@@ -440,6 +442,7 @@ export function createTrackerService(deps: {
       include: { snapshot: true },
     });
     if (!tracker || !replaceState(tracker, now()).canReplace) return "NOT_ALLOWED";
+    if (isDisabledKind(tracker.kind, deps.disabledKinds)) return "NOT_ALLOWED";
     if (tracker.kind === "OCASA") newReference = onlyDigits(newReference).padStart(OCASA_NUMBER_LENGTH, "0");
     // a Correo reference ("<form>:<…>") only fits a Correo slot, and a Correo slot takes only valid ones
     if (tracker.kind === "CORREO" ? normalizeCorreoReference(newReference) === null : newReference.includes(":")) {
@@ -999,6 +1002,7 @@ export function createTrackerService(deps: {
             row.reference,
             (row.snapshot?.header ?? {}) as TrackerHeaderFields,
           ),
+          label: row.label,
           header: (row.snapshot?.header ?? {}) as TrackerHeaderFields,
           step: steps.length ? steps[steps.length - 1]! : null,
         };

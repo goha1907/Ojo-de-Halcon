@@ -79,7 +79,7 @@ describe("profileSchema", () => {
   });
 
   it("lets the whole profile be empty: it only serves automatic search", () => {
-    const parsed = profileSchema.parse({ firstName: "  ", lastName: "", birthDate: "", pjnJurisdiction: "" });
+    const parsed = profileSchema.parse({ firstName: "  ", lastName: "", birthDate: "" });
     expect(parsed).toMatchObject({ firstName: "", lastName: "", birthDate: null });
   });
 
@@ -139,7 +139,7 @@ describe("canonical e-mail", () => {
 describe("owner profile without birth date", () => {
   it("accepts an empty date but still rejects minors and partial dates", async () => {
     const { profileSchema } = await import("../index");
-    const base = { firstName: "Egor", lastName: "Medvedev", pjnJurisdiction: "" };
+    const base = { firstName: "Egor", lastName: "Medvedev" };
     expect(profileSchema.parse({ ...base, birthDate: "" }).birthDate).toBeNull();
     expect(profileSchema.safeParse({ ...base, birthDate: "2015-05-01" }).success).toBe(false);
     expect(profileSchema.safeParse({ ...base, birthDate: "1987-07-" }).success).toBe(false);

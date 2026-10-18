@@ -33,6 +33,11 @@ export const SERVICE_GROUPS = [
 
 export type ServiceGroupKey = (typeof SERVICE_GROUPS)[number]["key"];
 
+/** The group a section belongs to (DNI, CIUDADANÍA, post). */
+export function sectionGroup(section: string): ServiceGroupKey | null {
+  return SERVICE_GROUPS.find((group) => group.items.some((item) => item.section === section))?.key ?? null;
+}
+
 export function serviceHref(group: string, slug: string): string {
   return `/services/${group}/${slug}`;
 }

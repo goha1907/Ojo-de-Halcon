@@ -3,7 +3,7 @@ import path from "node:path";
 import { getPrisma } from "@ojo/db";
 import { APP_CONFIG, type Env } from "@ojo/shared";
 import { createCore } from "./index";
-import { createConsoleMailer, type Mailer } from "./mailer";
+import { createConsoleMailer, createResendMailer, type Mailer } from "./mailer";
 import { createProcessScraper } from "./trackers/scraper";
 
 /** Nearest ancestor of the working directory that holds pnpm-workspace.yaml. */
@@ -17,8 +17,15 @@ function findRepoRoot(start: string): string {
   return dir;
 }
 
+/** Resend when a key is set, otherwise the console driver (nothing leaves the machine). */
+export function mailerFromEnv(env: Env): Mailer {
+  const apiKey = env.RESEND_API_KEY?.trim();
+  if (!apiKey) return createConsoleMailer();
+  return createResendMailer({ apiKey, from: env.MAIL_FROM, ...(env.MAIL_REPLY_TO ? { replyTo: env.MAIL_REPLY_TO } : {}) });
+}
+
 /** Builds the core services for a running process from validated env. */
-export function createCoreFromEnv(env: Env, mailer: Mailer = createConsoleMailer()) {
+export function createCoreFromEnv(env: Env, mailer: Mailer = mailerFromEnv(env)) {
   const root = findRepoRoot(process.cwd());
   return createCore({
     prisma: getPrisma(env.DATABASE_URL),

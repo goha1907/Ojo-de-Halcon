@@ -1,12 +1,14 @@
 import { TRACKER_CONFIG, createTranslator, resolveLocale, type MessageKey } from "@ojo/shared";
 import type { Core } from "@ojo/core";
 import { logger } from "../logger";
-import { formatNotification } from "./format-notification";
+import { formatNotification, notificationButton } from "./format-notification";
 
 export interface SchedulerDeps {
   core: Core;
   /** Sends a Telegram message; throws when it cannot be delivered. */
-  send: (telegramId: bigint, text: string) => Promise<void>;
+  send: (telegramId: bigint, text: string, button?: { text: string; url: string }) => Promise<void>;
+  /** Public https address of the site: when set, notifications carry an "Open in the cabinet" button. */
+  siteUrl?: string | null;
 }
 
 /**
@@ -21,7 +23,7 @@ export function startTrackerScheduler(deps: SchedulerDeps): () => void {
     const pending = await deps.core.trackers.pendingNotifications();
     for (const item of pending) {
       try {
-        await deps.send(item.telegramId, formatNotification(item));
+        await deps.send(item.telegramId, formatNotification(item), notificationButton(item, deps.siteUrl));
         await deps.core.trackers.markNotified(item.eventId);
       } catch (error) {
         // Left unsent: retried on the next tick.

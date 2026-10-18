@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { APP_CONFIG } from "../config/app";
 import { DISPOSABLE_EMAIL_DOMAINS, GMAIL_DOMAINS } from "../config/email";
-import { findJurisdiction } from "../config/pjn";
 import type { MessageKey } from "../i18n/ru";
 
 /** Validation messages are i18n keys, translated at the UI boundary. */
@@ -148,12 +147,6 @@ export const makeBirthDateSchema = (minAgeYears: number) =>
     return date;
   });
 
-/** Court used to find the user's case by name; empty string means "not chosen". */
-export const courtSchema = z
-  .string()
-  .default("")
-  .refine((value) => value === "" || Boolean(findJurisdiction(value)), msg("validation.jurisdictionInvalid"));
-
 /** Account owner: must be an adult. */
 export const birthDateSchema = makeBirthDateSchema(APP_CONFIG.profile.minAccountAgeYears);
 /** Birth date of a case's holder: any age (children are tracked by a guardian). */
@@ -176,7 +169,6 @@ export const profileSchema = z.object({
   firstName: optionalNameSchema,
   lastName: optionalNameSchema,
   birthDate: optionalBirthDateSchema,
-  pjnJurisdiction: courtSchema,
 });
 export type ProfileInput = z.infer<typeof profileSchema>;
 

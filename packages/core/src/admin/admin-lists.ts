@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@ojo/db";
-import { casesPrice } from "@ojo/shared";
+import { DISABLED_KINDS, casesPrice, type TrackerKindValue } from "@ojo/shared";
 import { activeGrantWhere } from "../capacity/capacity-service";
 
 /** Common shape of a list request in the admin area. */
@@ -98,7 +98,10 @@ export function createAdminLists(deps: { prisma: PrismaClient; now: () => Date }
     else if (input.plan === "trial") and.push(idle, { NOT: giftGrant }, trialGrant);
     else if (input.plan === "none") and.push(idle, { NOT: giftGrant }, { NOT: trialGrant });
     if (input.gift === "yes") and.push(giftGrant);
-    const live = { status: { in: ["ACTIVE" as const, "PENDING_CONFIRMATION" as const] } };
+    const live = {
+      status: { in: ["ACTIVE" as const, "PENDING_CONFIRMATION" as const] },
+      kind: { notIn: [...DISABLED_KINDS] as TrackerKindValue[] },
+    };
     if (input.cases === "active") and.push({ trackers: { some: live } });
     else if (input.cases === "none") and.push({ trackers: { none: live } });
     if (input.telegram === "yes") and.push({ telegramId: { not: null } });

@@ -32,8 +32,6 @@ model User {
   firstName             String?
   lastName              String?
   birthDate             DateTime? @db.Date
-  /// PJN jurisdiction (select value) used to find the user's case by name.
-  pjnJurisdiction       String?
   telegramId            BigInt?   @unique
   telegramUsername      String?
   telegramLinkedAt      DateTime?

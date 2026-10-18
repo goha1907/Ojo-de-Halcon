@@ -19,7 +19,7 @@ export function createCore(deps: CoreDeps) {
   const { prisma, config, mailer, scraper } = deps;
   const capacity = createCapacityService({ prisma, now });
   const grants = createGrantService({ prisma, now, capacity });
-  const billing = createBillingService({ prisma, now, grants, capacity });
+  const billing = createBillingService({ prisma, now, grants, capacity, ...(deps.disabledKinds ? { disabledKinds: deps.disabledKinds } : {}) });
   // Payment providers: connecting a real one (Mercado Pago, an acquirer) is adding its adapter here.
   const providers: PaymentProvider[] = [
     ...(config.payments.stubEnabled

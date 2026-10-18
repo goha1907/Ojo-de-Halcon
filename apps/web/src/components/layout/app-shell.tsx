@@ -17,7 +17,6 @@ export async function AppShell({
   staff = false,
   earlyAccess = false,
   showMenu,
-  defaultJurisdiction,
   access,
   addLock,
   usage,
@@ -31,7 +30,6 @@ export async function AppShell({
   /** May use services that are not open to everyone yet. */
   earlyAccess?: boolean;
   showMenu: boolean;
-  defaultJurisdiction: string | null;
   access: AccessState;
   /** Why adding is blocked right now (null = allowed). */
   addLock: "trial" | "expired" | null;
@@ -101,7 +99,6 @@ export async function AppShell({
       </main>
       {/* The single "add tracker" modal of the page; all + buttons open it */}
       {showMenu && <AddTrackerHost
-          defaultJurisdiction={defaultJurisdiction}
           lock={addLock}
           usage={usage}
           defaultBirthDate={defaultBirthDate}

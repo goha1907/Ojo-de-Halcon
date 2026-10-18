@@ -25,6 +25,8 @@ describe("addTrackerSchema", () => {
     expect(
       addTrackerSchema.safeParse({ kind: "PJN", jurisdiction: "99", number: "1", year: "2026" }).success,
     ).toBe(false);
+    // no court is preselected: an empty choice is not a court
+    expect(addTrackerSchema.safeParse({ kind: "PJN", jurisdiction: "", number: "1", year: "2026" }).success).toBe(false);
   });
 
   it("accepts a court case and strips leading zeros", () => {

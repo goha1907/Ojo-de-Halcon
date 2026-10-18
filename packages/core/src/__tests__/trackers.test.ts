@@ -1316,6 +1316,11 @@ NOMBRE PRUEBA`;
     expect(await core.trackers.addTramite(userId, "OCASA", "000755824305")).toEqual({ ok: false, reason: "NOT_AVAILABLE" });
     expect(await core.trackers.previewTramite(userId, "OCASA", "000755824305")).toEqual({ ok: false, reason: "NOT_AVAILABLE" });
     expect(await core.trackers.list(userId)).toEqual([]);
+    const [existing] = await prisma.tracker.findMany({ where: { userId, kind: "OCASA" } });
+    expect(await core.trackers.refreshManual(userId, existing!.id, PAGE)).toEqual({ ok: false, reason: "NOT_AVAILABLE" });
+    expect(await core.trackers.replaceNumber(userId, existing!.id, "000755824399")).toBe("NOT_ALLOWED");
+    // its case takes no place and is not counted
+    expect((await core.billing.state(userId)).activeCases).toBe(0);
   });
 
   it("can be hidden from ordinary accounts: staff and accounts with the flag only", async () => {

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  PJN_JURISDICTIONS,
   birthYearOptions,
   composeIsoDate,
   daysInMonth,
@@ -9,7 +8,7 @@ import {
   splitIsoDate,
   type ProfileInput,
 } from "@ojo/shared";
-import { DateField, SelectField, TextField, type DateParts } from "@ojo/ui";
+import { DateField, TextField, type DateParts } from "@ojo/ui";
 import { useMemo, useState } from "react";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { issuesToFieldErrors } from "@/lib/form-errors";
@@ -18,14 +17,12 @@ export interface ProfileValues {
   firstName: string;
   lastName: string;
   birthDate: DateParts;
-  pjnJurisdiction: string;
 }
 
 export interface ProfileInitial {
   firstName: string | null;
   lastName: string | null;
   birthDate: string | null;
-  pjnJurisdiction: string | null;
 }
 
 /** Shared state + validation for the profile inputs (onboarding and settings). */
@@ -35,7 +32,6 @@ export function useProfileFields(initial: ProfileInitial) {
     firstName: initial.firstName ?? "",
     lastName: initial.lastName ?? "",
     birthDate: splitIsoDate(initial.birthDate),
-    pjnJurisdiction: initial.pjnJurisdiction ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -43,11 +39,10 @@ export function useProfileFields(initial: ProfileInitial) {
     firstName: values.firstName,
     lastName: values.lastName,
     birthDate: composeIsoDate(values.birthDate),
-    pjnJurisdiction: values.pjnJurisdiction,
   };
 
   const isEmpty =
-    !payload.firstName.trim() && !payload.lastName.trim() && !payload.birthDate && !payload.pjnJurisdiction;
+    !payload.firstName.trim() && !payload.lastName.trim() && !payload.birthDate;
 
   /** Returns the payload when valid, otherwise shows the errors and returns null. */
   function validate(): typeof payload | null {
@@ -79,10 +74,6 @@ export function ProfileFields({ state }: { state: ProfileFieldsState }) {
   const { values, setValues, errors } = state;
   const monthNames = useMemo(() => localizedMonthNames(locale), [locale]);
   const years = useMemo(() => birthYearOptions(new Date()), []);
-  const courts = useMemo(
-    () => PJN_JURISDICTIONS.map((item) => ({ value: item.value, label: `${item.code} — ${item.name}` })),
-    [],
-  );
   return (
     <div className="space-y-4">
       <TextField
@@ -108,15 +99,6 @@ export function ProfileFields({ state }: { state: ProfileFieldsState }) {
         years={years}
         daysInMonth={daysInMonth}
         onChange={(birthDate) => setValues({ ...values, birthDate })}
-      />
-      <SelectField
-        label={t("field.court")}
-        hint={t("field.courtHint")}
-        placeholder={t("field.courtPlaceholder")}
-        options={courts}
-        value={values.pjnJurisdiction}
-        error={errors.pjnJurisdiction}
-        onChange={(pjnJurisdiction) => setValues({ ...values, pjnJurisdiction })}
       />
     </div>
   );

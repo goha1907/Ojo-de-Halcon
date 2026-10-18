@@ -15,7 +15,6 @@ export interface AccountSummary {
   /** Inputs of the "add tracking" modal. */
   usage: { used: number; limit: number } | null;
   addLock: "trial" | "expired" | null;
-  defaultJurisdiction: string | null;
   defaultBirthDate: string | null;
 }
 
@@ -23,7 +22,6 @@ export async function loadAccountSummary(user: UserDto): Promise<AccountSummary>
   const cabinetReady = user.onboardingDone && !(getEnv().EMAIL_VERIFICATION_REQUIRED && !user.emailVerified);
   const base = {
     cabinetReady,
-    defaultJurisdiction: user.pjnJurisdiction,
     defaultBirthDate: user.birthDate,
   };
   if (!cabinetReady) {

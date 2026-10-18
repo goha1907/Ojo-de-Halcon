@@ -46,7 +46,6 @@ export async function LandingPage() {
       />
       {summary?.cabinetReady && (
         <AddTrackerHost
-          defaultJurisdiction={summary.defaultJurisdiction}
           lock={summary.addLock}
           usage={summary.usage}
           defaultBirthDate={summary.defaultBirthDate}

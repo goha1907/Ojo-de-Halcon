@@ -16,7 +16,7 @@ export default async function OnboardingPage() {
         <p className="text-sm text-fg-muted">{t("onboarding.subtitle")}</p>
       </header>
       <OnboardingForm
-        initial={{ firstName: user.firstName, lastName: user.lastName, birthDate: user.birthDate, pjnJurisdiction: user.pjnJurisdiction }}
+        initial={{ firstName: user.firstName, lastName: user.lastName, birthDate: user.birthDate }}
       />
     </>
   );
