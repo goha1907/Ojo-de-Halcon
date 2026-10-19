@@ -1,23 +1,24 @@
 import type { TrackerSection } from "./events";
 
 /**
- * Product services grouped for navigation. `slug` is the last URL segment:
+ * Services as the menu shows them: the service (DNM, RENAPER, PJN, delivery) and its kinds of cases inside. `slug` is the last URL segment:
  * `/services/<group>/<slug>`. Adding a service = one line here + i18n labels.
  */
 export const SERVICE_GROUPS = [
   {
-    key: "dni",
+    key: "dnm",
     items: [
-      { section: "dni_approval", slug: "migraciones" },
-      { section: "dni_production", slug: "renaper" },
+      { section: "dni_approval", slug: "dni" },
+      { section: "citizenship_dnm", slug: "citizenship" },
     ],
   },
   {
-    key: "citizenship",
-    items: [
-      { section: "citizenship_dnm", slug: "migraciones" },
-      { section: "citizenship_court", slug: "tribunal" },
-    ],
+    key: "renaper",
+    items: [{ section: "dni_production", slug: "dni" }],
+  },
+  {
+    key: "pjn",
+    items: [{ section: "citizenship_court", slug: "consulta-publica" }],
   },
   {
     key: "post",
@@ -33,10 +34,18 @@ export const SERVICE_GROUPS = [
 
 export type ServiceGroupKey = (typeof SERVICE_GROUPS)[number]["key"];
 
-/** The group a section belongs to (DNI, CIUDADANÍA, post). */
+/** The service a section belongs to (dnm, renaper, pjn, post). */
 export function sectionGroup(section: string): ServiceGroupKey | null {
   return SERVICE_GROUPS.find((group) => group.items.some((item) => item.section === section))?.key ?? null;
 }
+
+/** Addresses of the old menu (grouped by topic), sent in mails and bot messages: they lead to the new ones. */
+export const LEGACY_SERVICE_PATHS: Record<string, string> = {
+  "/services/dni/migraciones": "/services/dnm/dni",
+  "/services/dni/renaper": "/services/renaper/dni",
+  "/services/citizenship/migraciones": "/services/dnm/citizenship",
+  "/services/citizenship/tribunal": "/services/pjn/consulta-publica",
+};
 
 export function serviceHref(group: string, slug: string): string {
   return `/services/${group}/${slug}`;

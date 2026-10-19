@@ -4,12 +4,13 @@ import { NAVIGATION, isActive } from "./navigation";
 describe("navigation", () => {
   it("lists the service groups, then the settings pages, in order", () => {
     const groups = NAVIGATION.filter((e) => e.kind === "group");
-    expect(groups.map((g) => g.id)).toEqual(["dni", "citizenship", "post", "settings"]);
+    expect(groups.map((g) => g.id)).toEqual(["dnm", "renaper", "pjn", "post", "settings"]);
     expect(groups[0]!.kind === "group" && groups[0]!.items.map((i) => i.href)).toEqual([
-      "/services/dni/migraciones",
-      "/services/dni/renaper",
+      "/services/dnm/dni",
+      "/services/dnm/citizenship",
     ]);
-    expect(groups[3]!.kind === "group" && groups[3]!.items.map((i) => i.href)).toEqual([
+    expect(groups[1]!.kind === "group" && groups[1]!.items.map((i) => i.href)).toEqual(["/services/renaper/dni"]);
+    expect(groups[4]!.kind === "group" && groups[4]!.items.map((i) => i.href)).toEqual([
       "/settings/profile",
       "/settings/notifications",
       "/settings/subscription",

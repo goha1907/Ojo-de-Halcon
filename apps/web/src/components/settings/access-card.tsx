@@ -161,7 +161,7 @@ export function AccessCard({ access, billing, payments, methods, testMode, initi
 
       <BonusPlacesCard access={access} billing={billing} />
 
-      {!trial && <SubscriptionPlacesCard billing={billing} />}
+      {!trial && <SubscriptionPlacesCard billing={billing} until={access.until} />}
 
       <Card
         title={subscribed ? t("settings.sub.addTitle") : t("settings.sub.buyTitleNew")}

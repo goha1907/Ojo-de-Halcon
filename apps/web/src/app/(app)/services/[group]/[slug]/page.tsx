@@ -1,6 +1,7 @@
 import {
   DISABLED_SECTIONS,
   EARLY_ACCESS_SECTIONS,
+  LEGACY_SERVICE_PATHS,
   settingsHref,
   SERVICE_OFFICIAL_LINK,
   TRACKER_KIND_SECTION,
@@ -11,7 +12,7 @@ import {
 } from "@ojo/shared";
 import { Alert, Card } from "@ojo/ui";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { AddTrackerButton } from "@/components/trackers/add-tracker-button";
 import { DniCard } from "@/components/trackers/dni-card";
 import { TrackerBoard } from "@/components/trackers/tracker-board";
@@ -32,7 +33,12 @@ export default async function ServicePage({
 }) {
   const { group, slug } = await params;
   const service = findService(group, slug);
-  if (!service) notFound();
+  if (!service) {
+    // addresses of the old menu live on in mails and bot messages
+    const moved = LEGACY_SERVICE_PATHS[`/services/${group}/${slug}`];
+    if (moved) permanentRedirect(moved);
+    notFound();
+  }
 
   const user = await requireUser();
   // a switched-off service, or one not open to everyone yet, looks like a page that does not exist
@@ -55,7 +61,7 @@ export default async function ServicePage({
           <p className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
             {t(`menu.group.${service.group}` as MessageKey)}
           </p>
-          <h1 className="text-xl font-semibold text-fg">{t(`sections.${service.section}` as MessageKey)}</h1>
+          <h1 className="text-xl font-semibold text-fg">{t(`menu.${service.section}` as MessageKey)}</h1>
         </div>
         {/* opens the modal of this very section, without the kind dropdown */}
         {kind && (

@@ -174,7 +174,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       )}
 
       <BonusPlacesCard access={access} billing={billing} />
-      {subscribed && <SubscriptionPlacesCard billing={billing} />}
+      {subscribed && <SubscriptionPlacesCard billing={billing} until={access.until} />}
 
       {attention.length > 0 && (
         <Card title={t("dash.attn.title")}>

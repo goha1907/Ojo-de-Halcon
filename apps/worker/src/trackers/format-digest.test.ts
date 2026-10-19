@@ -13,7 +13,7 @@ describe("formatDigest", () => {
       },
       "ru",
     );
-    expect(text.split("\n").slice(0, 2)).toEqual(["📌 CIUDADANÍA · PJN", "Дело CNE 007900/2026"]);
+    expect(text.split("\n").slice(0, 2)).toEqual(["📌 Poder Judicial de la Nación · Публичный поиск", "Дело CNE 007900/2026"]);
     expect(text).toContain("• 3/09/2026 · PASE — FISCALIA");
     expect(text).toContain("GIRO");
   });

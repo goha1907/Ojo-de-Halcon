@@ -12,7 +12,7 @@ describe("formatNotification", () => {
         header: { sit_actual: "GIRO" },
       },
     });
-    expect(text.split("\n").slice(0, 2)).toEqual(["🔔 CIUDADANÍA · PJN", "Дело CNE 007900/2026"]);
+    expect(text.split("\n").slice(0, 2)).toEqual(["🔔 Poder Judicial de la Nación · Публичный поиск", "Дело CNE 007900/2026"]);
     expect(text).toContain("• 3/09/2026 · DESPACHO — TRASLADO");
     expect(text).toContain("GIRO");
   });
@@ -36,7 +36,7 @@ describe("formatNotification", () => {
       payload: { step: { date: "16/10/2026 10:06", title: "Embalado", detail: "" }, header: { status: "EN PROCESO" }, initial: true },
     });
     expect(text.split("\n")).toEqual([
-      "🆕 DNI · RENAPER",
+      "🆕 RENAPER · DNI",
       "«Паспорт мамы»",
       "Отслеживание № 755824304",
       "Отслеживание добавлено, текущее состояние",
@@ -50,9 +50,9 @@ describe("notificationButton", () => {
   it("links to the page of the case's service in the user's language", () => {
     expect(notificationButton({ kind: "RENAPER", locale: "en" }, "https://ojo.example/")).toEqual({
       text: expect.any(String),
-      url: "https://ojo.example/services/dni/renaper",
+      url: "https://ojo.example/services/renaper/dni",
     });
-    expect(notificationButton({ kind: "PJN", locale: "ru" }, "https://ojo.example")?.url).toBe("https://ojo.example/services/citizenship/tribunal");
+    expect(notificationButton({ kind: "PJN", locale: "ru" }, "https://ojo.example")?.url).toBe("https://ojo.example/services/pjn/consulta-publica");
   });
 
   it("gives no button without a public site address", () => {

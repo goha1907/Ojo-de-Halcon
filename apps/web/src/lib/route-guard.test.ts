@@ -3,7 +3,7 @@ import { safeNextPath, shouldRedirectToLogin } from "./route-guard";
 
 describe("shouldRedirectToLogin", () => {
   it("sends anonymous visitors away from the signed-in area", () => {
-    for (const path of ["/dashboard", "/settings", "/onboarding", "/links", "/services/dni/renaper", "/admin", "/admin/users/abc"]) {
+    for (const path of ["/dashboard", "/settings", "/onboarding", "/links", "/services/renaper/dni", "/admin", "/admin/users/abc"]) {
       expect(shouldRedirectToLogin(path, false)).toBe(true);
     }
   });
@@ -29,7 +29,7 @@ describe("safeNextPath", () => {
   it("keeps paths inside this site", () => {
     expect(safeNextPath("/admin")).toBe("/admin");
     expect(safeNextPath("/admin/users?q=ana&page=2")).toBe("/admin/users?q=ana&page=2");
-    expect(safeNextPath("/services/dni/renaper")).toBe("/services/dni/renaper");
+    expect(safeNextPath("/services/renaper/dni")).toBe("/services/renaper/dni");
   });
 
   it("drops anything that could leave the site", () => {

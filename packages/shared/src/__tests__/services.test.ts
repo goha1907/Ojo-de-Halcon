@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { USEFUL_LINKS, LINK_GROUPS, findLink } from "../config/links";
 import { TRACKER_SECTIONS } from "../domain/events";
-import { SERVICE_GROUPS, SERVICE_OFFICIAL_LINK, findService, serviceHref } from "../domain/services";
+import { LEGACY_SERVICE_PATHS, SERVICE_GROUPS, SERVICE_OFFICIAL_LINK, findService, serviceHref } from "../domain/services";
 import { ru } from "../i18n/ru";
 
 describe("service navigation", () => {
@@ -20,10 +20,20 @@ describe("service navigation", () => {
   });
 
   it("builds and resolves hrefs", () => {
-    expect(serviceHref("dni", "renaper")).toBe("/services/dni/renaper");
-    expect(findService("dni", "renaper")?.section).toBe("dni_production");
-    expect(findService("dni", "nope")).toBeNull();
-    expect(findService("nope", "renaper")).toBeNull();
+    expect(serviceHref("renaper", "dni")).toBe("/services/renaper/dni");
+    expect(findService("renaper", "dni")?.section).toBe("dni_production");
+    expect(findService("dnm", "citizenship")?.section).toBe("citizenship_dnm");
+    expect(findService("renaper", "nope")).toBeNull();
+    expect(findService("nope", "dni")).toBeNull();
+  });
+
+  it("sends every address of the old menu to a page that exists", () => {
+    for (const [from, to] of Object.entries(LEGACY_SERVICE_PATHS)) {
+      const [, , group, slug] = to.split("/");
+      expect(findService(group!, slug!)).not.toBeNull();
+      expect(from.startsWith("/services/")).toBe(true);
+      expect(findService(from.split("/")[2]!, from.split("/")[3]!)).toBeNull();
+    }
   });
 
   it("links every service to an existing official page", () => {

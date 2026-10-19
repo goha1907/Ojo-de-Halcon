@@ -37,7 +37,7 @@ describe("addTrackerSchema", () => {
 
 describe("sectionHref", () => {
   it("links sections to their pages", () => {
-    expect(sectionHref("dni_production")).toBe("/services/dni/renaper");
-    expect(sectionHref("citizenship_court")).toBe("/services/citizenship/tribunal");
+    expect(sectionHref("dni_production")).toBe("/services/renaper/dni");
+    expect(sectionHref("citizenship_court")).toBe("/services/pjn/consulta-publica");
   });
 });
